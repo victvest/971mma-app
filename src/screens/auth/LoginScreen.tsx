@@ -10,7 +10,6 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
@@ -20,6 +19,7 @@ import { Logo } from '../../components/Logo';
 import { TextField } from '../../components/TextField';
 import { Button } from '../../components/Button';
 import { GlassSurface } from '../../components/GlassSurface';
+import { ScreenShell } from '../../components/ScreenShell';
 
 const heroImg = require('../../../assets/images/hero-bjj.jpg');
 
@@ -46,32 +46,29 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
-      <View style={styles.hero}>
-        <Image source={heroImg} style={StyleSheet.absoluteFill as any} resizeMode="cover" />
-        <LinearGradient
-          colors={['rgba(4,6,10,0.25)', 'rgba(4,6,10,0.75)', palette.ink900]}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={[styles.heroContent, { paddingTop: insets.top + 28 }]}>
-          <View style={styles.logoRing}>
-            <Logo size={46} tint="white" />
-          </View>
-          <Text style={styles.brand}>971 MMA</Text>
-          <Text style={styles.brandSub}>& FITNESS ACADEMY</Text>
-        </View>
-      </View>
-
+    <ScreenShell>
+      <StatusBar style="dark" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.sheetWrap}
+        style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={styles.scroll}
+          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.xl }]}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          <View style={styles.brandBlock}>
+            <View style={styles.logoBadge}>
+              <Logo size={36} tint="black" />
+            </View>
+            <Text style={styles.brand}>971 MMA</Text>
+            <Text style={styles.brandSub}>Fitness Academy · Dubai</Text>
+          </View>
+
+          <View style={styles.heroStrip}>
+            <Image source={heroImg} style={styles.heroImg} resizeMode="cover" />
+          </View>
+
           <GlassSurface strong tone="green" radius={radii.xl} padding={spacing.xxl}>
             <Text style={styles.kicker}>Member access</Text>
             <Text style={styles.title}>Welcome back</Text>
@@ -121,38 +118,35 @@ export function LoginScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.ink900 },
-  hero: { height: 320 },
-  heroContent: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 6 },
-  logoRing: {
-    width: 84,
-    height: 84,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+  scroll: {
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
+  },
+  brandBlock: { alignItems: 'center', marginBottom: spacing.xl },
+  logoBadge: {
+    width: 72,
+    height: 72,
+    borderRadius: 22,
+    backgroundColor: palette.glass12,
     borderWidth: 1,
     borderColor: palette.greenLine,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: spacing.md,
   },
-  brand: { fontFamily: fonts.displayBlack, color: '#fff', fontSize: 38, letterSpacing: 1 },
-  brandSub: {
-    fontFamily: fonts.semi,
-    color: 'rgba(255,255,255,0.6)',
-    fontSize: 12,
-    letterSpacing: 4,
+  brand: { fontFamily: fonts.displayBlack, color: colors.text, fontSize: 32, letterSpacing: 0.3, marginTop: spacing.md },
+  brandSub: { fontFamily: fonts.medium, color: colors.textMuted, fontSize: 13, marginTop: 4 },
+  heroStrip: {
+    height: 120,
+    borderRadius: radii.lg,
+    overflow: 'hidden',
+    marginBottom: spacing.xl,
   },
-  sheetWrap: { flex: 1, marginTop: -48 },
-  scroll: {
-    paddingHorizontal: spacing.xl,
-    paddingTop: spacing.lg,
-    paddingBottom: spacing.huge,
-  },
+  heroImg: { width: '100%', height: '100%' },
   kicker: { fontFamily: fonts.semi, color: colors.accent, fontSize: 13 },
   title: { ...typography.h1, color: colors.text, marginTop: 8 },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
@@ -162,12 +156,12 @@ const styles = StyleSheet.create({
     borderRadius: radii.md,
     padding: spacing.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,59,78,0.35)',
+    borderColor: 'rgba(232,25,44,0.25)',
   },
   errorText: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 13.5 },
   forgot: { alignSelf: 'flex-end', marginBottom: spacing.lg },
-  forgotText: { color: colors.accentBright, fontFamily: fonts.bold, fontSize: 13 },
+  forgotText: { color: colors.accent, fontFamily: fonts.semi, fontSize: 13 },
   footer: { flexDirection: 'row', justifyContent: 'center', marginTop: spacing.xxl },
   footerText: { color: colors.textMuted, fontFamily: fonts.medium, fontSize: 14 },
-  footerLink: { color: colors.accentBright, fontFamily: fonts.bold, fontSize: 14 },
+  footerLink: { color: colors.accent, fontFamily: fonts.semi, fontSize: 14 },
 });

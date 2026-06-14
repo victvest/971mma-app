@@ -51,10 +51,13 @@ function SplashScreen() {
 
 export function RootNavigator() {
   const { session, initializing } = useAuth();
+  const previewTabs = process.env.EXPO_PUBLIC_PREVIEW_TABS === '1';
 
   return (
     <NavigationContainer theme={navTheme}>
-      {initializing ? (
+      {previewTabs ? (
+        <TabNavigator />
+      ) : initializing ? (
         <SplashScreen />
       ) : session ? (
         <TabNavigator />
