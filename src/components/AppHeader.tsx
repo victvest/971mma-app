@@ -19,7 +19,7 @@ export function AppHeader({ title = '971 MMA', subtitle, showBell = true, onBell
       <View style={styles.row}>
         <View style={styles.left}>
           <View style={styles.logoBadge}>
-            <Logo size={24} tint="white" />
+            <Logo size={24} tint="black" />
           </View>
           <View>
             <Text style={styles.title}>{title}</Text>
@@ -59,7 +59,7 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: palette.glass08,
+    backgroundColor: palette.glass16,
     borderWidth: 1,
     borderColor: palette.greenLine,
     alignItems: 'center',
@@ -71,9 +71,9 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 14,
-    backgroundColor: palette.glass06,
+    backgroundColor: palette.glass16,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -86,6 +86,6 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: colors.danger,
     borderWidth: 1.5,
-    borderColor: palette.ink900,
+    borderColor: '#fff',
   },
 });

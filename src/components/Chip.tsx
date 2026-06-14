@@ -12,13 +12,13 @@ type Props = {
 
 export function Chip({ label, active, onPress, tone = 'green' }: Props) {
   const grad: readonly [string, string, ...string[]] =
-    tone === 'red' ? [palette.redBright, palette.red] : [palette.greenBright, palette.green];
+    tone === 'red' ? [palette.red, palette.redDeep] : [palette.green, palette.greenDeep];
 
   if (active) {
     return (
       <Pressable onPress={onPress} accessibilityRole="button" style={[styles.shell, glow.green]}>
         <LinearGradient colors={grad} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={styles.chip}>
-          <Text style={[styles.label, { color: '#04150C' }]}>{label}</Text>
+          <Text style={[styles.label, { color: '#fff' }]}>{label}</Text>
         </LinearGradient>
       </Pressable>
     );
@@ -41,9 +41,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   idle: {
-    backgroundColor: palette.glass06,
+    backgroundColor: palette.glass08,
     borderWidth: 1,
-    borderColor: colors.border,
+    borderColor: colors.borderStrong,
   },
   label: { fontFamily: fonts.semi, fontSize: 13.5, letterSpacing: 0.2 },
 });

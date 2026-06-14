@@ -73,10 +73,10 @@ export function LoginScreen({ navigation }: Props) {
           showsVerticalScrollIndicator={false}
         >
           <GlassSurface strong tone="green" radius={radii.xl} padding={spacing.xxl}>
-            <Text style={styles.kicker}>MEMBER ACCESS</Text>
+            <Text style={styles.kicker}>Member access</Text>
             <Text style={styles.title}>Welcome back</Text>
             <Text style={styles.subtitle}>
-              Sign in to check in, book classes, and track your progress.
+              Sign in to check in at the gym and track your training.
             </Text>
 
             {error ? (
@@ -153,7 +153,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.huge,
   },
-  kicker: { fontFamily: fonts.bold, color: colors.accentBright, fontSize: 11, letterSpacing: 2 },
+  kicker: { fontFamily: fonts.semi, color: colors.accent, fontSize: 13 },
   title: { ...typography.h1, color: colors.text, marginTop: 8 },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
   errorBox: {

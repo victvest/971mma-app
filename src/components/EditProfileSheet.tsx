@@ -119,7 +119,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 5,
     borderRadius: 3,
-    backgroundColor: palette.glass16,
+    backgroundColor: palette.insetStrong,
     marginBottom: spacing.lg,
   },
   header: {
@@ -133,7 +133,7 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: radii.pill,
-    backgroundColor: palette.glass08,
+    backgroundColor: palette.inset,
     borderWidth: 1,
     borderColor: colors.border,
     alignItems: 'center',

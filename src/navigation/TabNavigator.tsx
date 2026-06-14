@@ -16,8 +16,8 @@ export function TabNavigator() {
       tabBar={(props) => <GlassTabBar {...props} />}
     >
       <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Scan" component={ScanScreen} options={{ title: 'Scan' }} />
-      <Tab.Screen name="Classes" component={ClassesScreen} options={{ title: 'Classes' }} />
+      <Tab.Screen name="Scan" component={ScanScreen} options={{ title: 'Pass' }} />
+      <Tab.Screen name="Classes" component={ClassesScreen} options={{ title: 'Schedule' }} />
       <Tab.Screen name="Profile" component={ProfileScreen} options={{ title: 'Profile' }} />
     </Tab.Navigator>
   );

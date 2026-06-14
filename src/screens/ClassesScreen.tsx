@@ -2,9 +2,9 @@ import React, { useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fonts, glow, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { AppHeader } from '../components/AppHeader';
-import { AuroraBackground } from '../components/AuroraBackground';
+import { ScreenShell } from '../components/ScreenShell';
 import { ClassCard } from '../components/ClassCard';
 import { Chip } from '../components/Chip';
 import { GymClass } from '../data/mockData';
@@ -18,7 +18,7 @@ import { useClasses } from '../hooks/useClasses';
 type Range = 'today' | 'week';
 
 export function ClassesScreen() {
-  const { classes, loading, busyId, usingMock, book, cancel, refresh } = useClasses();
+  const { classes, loading, refresh } = useClasses();
   const [range, setRange] = useState<Range>('week');
   const [filter, setFilter] = useState<DisciplineFilter>('All');
 
@@ -38,15 +38,14 @@ export function ClassesScreen() {
   }, [filtered]);
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
-      <AuroraBackground tone="red" />
-      <AppHeader title="Schedule" subtitle="Book your mat time" />
+    <ScreenShell>
+      <StatusBar style="dark" />
+      <AppHeader title="Schedule" subtitle="Walk in anytime — just show up and train" />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.accentBright} />}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.accent} />}
       >
         <View style={styles.segment}>
           <SegBtn label="Today" active={range === 'today'} onPress={() => setRange('today')} />
@@ -64,43 +63,31 @@ export function ClassesScreen() {
           ))}
         </ScrollView>
 
-        {usingMock ? (
-          <View style={styles.demoBanner}>
-            <Text style={styles.demoText}>Showing sample schedule</Text>
-          </View>
-        ) : null}
-
         {loading ? (
           <View style={styles.empty}>
-            <ActivityIndicator color={colors.accentBright} />
+            <ActivityIndicator color={colors.accent} />
           </View>
         ) : grouped.length === 0 ? (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No {filter} classes in this range.</Text>
+            <Text style={styles.emptyText}>No {filter === 'All' ? '' : filter.toLowerCase() + ' '}classes in this range.</Text>
           </View>
         ) : (
           grouped.map(([day, items]) => (
             <View key={day} style={styles.group}>
               <View style={styles.dayHeader}>
                 <Text style={styles.dayTitle}>{day}</Text>
-                <Text style={styles.dayCount}>{items.length} classes</Text>
+                <Text style={styles.dayCount}>{items.length} sessions</Text>
               </View>
-              <View style={{ gap: spacing.md }}>
+              <View style={{ gap: spacing.sm }}>
                 {items.map((c) => (
-                  <ClassCard
-                    key={c.id}
-                    item={c}
-                    busy={busyId === c.id}
-                    onBook={() => book(c.id)}
-                    onCancel={() => cancel(c.id)}
-                  />
+                  <ClassCard key={c.id} item={c} />
                 ))}
               </View>
             </View>
           ))
         )}
       </ScrollView>
-    </View>
+    </ScreenShell>
   );
 }
 
@@ -112,9 +99,9 @@ function SegBtn({ label, active, onPress }: { label: string; active: boolean; on
           colors={[palette.greenBright, palette.green]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.segFill, glow.green]}
+          style={styles.segFill}
         >
-          <Text style={[styles.segText, { color: '#04150C' }]}>{label}</Text>
+          <Text style={[styles.segText, { color: '#fff' }]}>{label}</Text>
         </LinearGradient>
       ) : (
         <View style={styles.segIdle}>
@@ -126,38 +113,25 @@ function SegBtn({ label, active, onPress }: { label: string; active: boolean; on
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.abyss },
   scroll: { paddingTop: spacing.md, paddingBottom: 132 },
 
   segment: {
     flexDirection: 'row',
     marginHorizontal: spacing.xl,
-    backgroundColor: palette.glass06,
+    backgroundColor: palette.inset,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.pill,
-    padding: 5,
-    gap: 5,
+    padding: 4,
+    gap: 4,
   },
   segBtn: { flex: 1 },
-  segFill: { height: 42, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  segIdle: { height: 42, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
-  segText: { fontFamily: fonts.bold, fontSize: 14 },
+  segFill: { height: 40, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  segIdle: { height: 40, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  segText: { fontFamily: fonts.semi, fontSize: 14 },
 
   chipScroller: { marginTop: spacing.lg },
   chips: { paddingHorizontal: spacing.xl, gap: spacing.sm },
-
-  demoBanner: {
-    marginHorizontal: spacing.xl,
-    marginTop: spacing.lg,
-    backgroundColor: palette.glass06,
-    borderWidth: 1,
-    borderColor: colors.border,
-    borderRadius: radii.sm,
-    paddingVertical: 9,
-    alignItems: 'center',
-  },
-  demoText: { fontFamily: fonts.bold, fontSize: 12, color: colors.textMuted },
 
   group: { marginTop: spacing.xxl, paddingHorizontal: spacing.xl },
   dayHeader: {
@@ -167,7 +141,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   dayTitle: { ...typography.h2, color: colors.text },
-  dayCount: { fontFamily: fonts.bold, fontSize: 13, color: colors.textFaint },
+  dayCount: { fontFamily: fonts.medium, fontSize: 13, color: colors.textFaint },
 
   empty: { paddingTop: spacing.huge, alignItems: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },

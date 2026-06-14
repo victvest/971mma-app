@@ -16,11 +16,11 @@ const toneMap: Record<
   Tone,
   { bg: string; fg: string; border: string; solidBg: string; solidFg: string }
 > = {
-  green: { bg: palette.greenGlass, fg: palette.greenBright, border: palette.greenLine, solidBg: palette.green, solidFg: '#04150C' },
-  red: { bg: palette.redGlass, fg: palette.redBright, border: 'rgba(255,59,78,0.35)', solidBg: palette.red, solidFg: '#fff' },
-  ink: { bg: palette.glass08, fg: colors.text, border: colors.borderStrong, solidBg: '#F2F5F9', solidFg: palette.ink900 },
-  neutral: { bg: palette.glass06, fg: colors.textMuted, border: colors.border, solidBg: palette.glass16, solidFg: colors.text },
-  gold: { bg: palette.goldGlass, fg: palette.goldBright, border: 'rgba(231,199,122,0.38)', solidBg: palette.gold, solidFg: '#1B1403' },
+  green: { bg: palette.greenGlass, fg: palette.green, border: palette.greenLine, solidBg: palette.green, solidFg: '#fff' },
+  red: { bg: palette.redGlass, fg: palette.red, border: 'rgba(232,25,44,0.28)', solidBg: palette.red, solidFg: '#fff' },
+  ink: { bg: palette.inset, fg: colors.text, border: colors.borderStrong, solidBg: palette.black, solidFg: '#fff' },
+  neutral: { bg: palette.inset, fg: colors.textMuted, border: colors.border, solidBg: palette.insetStrong, solidFg: colors.text },
+  gold: { bg: palette.goldGlass, fg: palette.goldDeep, border: 'rgba(168,132,47,0.35)', solidBg: palette.goldBright, solidFg: '#3A2D08' },
 };
 
 export function Tag({
@@ -135,7 +135,7 @@ const styles = StyleSheet.create({
     borderRadius: radii.sm,
     borderWidth: 1,
   },
-  tagText: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase' },
+  tagText: { fontFamily: fonts.semi, fontSize: 12, letterSpacing: 0 },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: colors.accentBright },
   track: {
     width: '100%',
-    backgroundColor: palette.glass08,
+    backgroundColor: palette.insetStrong,
     overflow: 'hidden',
   },
   statBox: {

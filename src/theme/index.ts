@@ -30,63 +30,63 @@ export const radii = {
  */
 export const glass = {
   fill: palette.glass06,
-  fillStrong: palette.glass08,
+  fillStrong: palette.glass12,
   fillSubtle: palette.glass04,
   border: palette.hairline,
   borderStrong: palette.hairlineStrong,
-  sheenTop: 'rgba(255,255,255,0.16)',
+  sheenTop: 'rgba(255,255,255,0.75)',
   sheenBottom: 'rgba(255,255,255,0)',
-  tint: 'rgba(13,18,26,0.55)',
-  blur: Platform.select({ ios: 30, android: 24, default: 20 }) as number,
-  blurStrong: Platform.select({ ios: 50, android: 40, default: 34 }) as number,
+  tint: 'rgba(255,255,255,0.5)',
+  blur: Platform.select({ ios: 28, android: 22, default: 24 }) as number,
+  blurStrong: Platform.select({ ios: 48, android: 36, default: 32 }) as number,
 } as const;
 
-/** Colored glows used under primary actions, badges and highlights. */
+/** Soft tinted glows used under primary actions, badges and highlights. */
 export const glow = {
   green: {
     shadowColor: palette.green,
-    shadowOpacity: 0.5,
-    shadowRadius: 22,
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    elevation: 8,
   },
   red: {
     shadowColor: palette.red,
-    shadowOpacity: 0.5,
-    shadowRadius: 22,
+    shadowOpacity: 0.26,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 10 },
-    elevation: 12,
+    elevation: 8,
   },
   gold: {
     shadowColor: palette.gold,
-    shadowOpacity: 0.45,
-    shadowRadius: 20,
+    shadowOpacity: 0.3,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 10,
+    elevation: 8,
   },
 } as const;
 
 export const shadow = {
   card: {
-    shadowColor: '#000',
-    shadowOpacity: 0.5,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 18 },
-    elevation: 8,
+    shadowColor: '#16271D',
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 5,
   },
   floating: {
-    shadowColor: '#000',
-    shadowOpacity: 0.6,
-    shadowRadius: 34,
-    shadowOffset: { width: 0, height: 22 },
-    elevation: 18,
+    shadowColor: '#16271D',
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 20 },
+    elevation: 14,
   },
   soft: {
-    shadowColor: '#000',
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 4,
+    shadowColor: '#16271D',
+    shadowOpacity: 0.07,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
 } as const;
 
@@ -100,11 +100,10 @@ export const typography = {
   bodyStrong: { fontFamily: fonts.semi, fontSize: 15, lineHeight: 22 },
   small: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
   label: {
-    fontFamily: fonts.bold,
-    fontSize: 11,
-    lineHeight: 14,
-    letterSpacing: 1.6,
-    textTransform: 'uppercase' as const,
+    fontFamily: fonts.semi,
+    fontSize: 13,
+    lineHeight: 17,
+    letterSpacing: 0,
   },
   stat: { fontFamily: fonts.displayBlack, fontSize: 30, lineHeight: 32, letterSpacing: 0.3 },
 } as const;

@@ -24,7 +24,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 14) }]}>
       <View style={[styles.barShell, shadow.floating]}>
-        <BlurView intensity={glass.blurStrong} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={glass.blurStrong} tint="light" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, styles.tintFill]} />
         <LinearGradient
           colors={[glass.sheenTop, 'rgba(255,255,255,0)']}
@@ -69,7 +69,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                     end={{ x: 1, y: 1 }}
                     style={[styles.iconWrap, glow.green]}
                   >
-                    <Ionicons name={icons.active} size={21} color="#04150C" />
+                    <Ionicons name={icons.active} size={21} color="#fff" />
                   </LinearGradient>
                 ) : (
                   <View style={styles.iconWrap}>
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
     borderColor: palette.hairlineStrong,
   },
   tintFill: {
-    backgroundColor: Platform.OS === 'android' ? 'rgba(11,15,22,0.86)' : 'rgba(11,15,22,0.55)',
+    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)',
   },
   sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '60%' },
   barInner: {

@@ -19,7 +19,7 @@ import { colors, fonts, palette, radii, spacing, typography } from '../../theme'
 import { Logo } from '../../components/Logo';
 import { TextField } from '../../components/TextField';
 import { Button } from '../../components/Button';
-import { AuroraBackground } from '../../components/AuroraBackground';
+import { ScreenShell } from '../../components/ScreenShell';
 import { GlassSurface } from '../../components/GlassSurface';
 
 type Props = NativeStackScreenProps<AuthStackParamList, 'Signup'>;
@@ -60,15 +60,14 @@ export function SignupScreen({ navigation }: Props) {
   };
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
-      <AuroraBackground tone="green" />
+    <ScreenShell>
+      <StatusBar style="dark" />
 
       <View style={[styles.top, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => navigation.goBack()} style={styles.back} hitSlop={10} accessibilityLabel="Go back">
           <Ionicons name="chevron-back" size={22} color={colors.text} />
         </Pressable>
-        <Logo size={30} tint="white" />
+        <Logo size={30} tint="black" />
         <View style={{ width: 44 }} />
       </View>
 
@@ -81,10 +80,10 @@ export function SignupScreen({ navigation }: Props) {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.kicker}>JOIN THE ACADEMY</Text>
+          <Text style={styles.kicker}>Join the academy</Text>
           <Text style={styles.title}>Create your account</Text>
           <Text style={styles.subtitle}>
-            Book classes, check in by QR, and level up your game.
+            Check in with your pass, browse the schedule, and track your progress.
           </Text>
 
           <View style={{ height: spacing.xl }} />
@@ -138,12 +137,11 @@ export function SignupScreen({ navigation }: Props) {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </View>
+    </ScreenShell>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.abyss },
   top: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -166,7 +164,7 @@ const styles = StyleSheet.create({
     paddingTop: spacing.lg,
     paddingBottom: spacing.huge,
   },
-  kicker: { fontFamily: fonts.bold, color: colors.accentBright, fontSize: 11, letterSpacing: 2 },
+  kicker: { fontFamily: fonts.semi, color: colors.accent, fontSize: 13 },
   title: { ...typography.h1, color: colors.text, marginTop: 8 },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
   errorBox: {

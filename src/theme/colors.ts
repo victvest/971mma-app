@@ -1,64 +1,72 @@
 /**
- * 971 MMA — premium "liquid glass" dark color system.
+ * 971 MMA — premium light "liquid glass" color system.
  *
- * Deep near-black canvas, translucent frosted-glass surfaces, UAE-flag green as
- * the signature glow, brand red for live states, and gold for premium tiers.
+ * Clean near-white canvas with a faint cool cast, frosted translucent-white
+ * surfaces, UAE-flag deep green as the signature accent, brand red for live
+ * states, gold reserved for premium/Elite, and near-black ink for type.
+ *
  * The exported `colors` keys are kept stable so every screen/component keeps
- * compiling; only their values moved from the old white theme to dark glass.
+ * compiling; the values express the refined light theme.
  */
 export const palette = {
   white: '#FFFFFF',
-  black: '#05070B',
+  black: '#0B0B0C',
 
-  // Canvas (layered near-blacks with a faint cool cast)
-  abyss: '#04060A',
-  ink900: '#070A0F',
-  ink800: '#0B0F16',
-  ink700: '#11161F',
-  ink600: '#171D28',
+  // Canvas (near-whites with a faint green-cool cast for depth)
+  abyss: '#EAEFEC',
+  ink900: '#F1F4F2',
+  ink800: '#F8FAF9',
+  ink700: '#FFFFFF',
+  ink600: '#EFF3F0',
 
-  // UAE green — the brand glow (brightened for dark surfaces)
-  green: '#27D17C',
-  greenBright: '#4DE89A',
-  greenDeep: '#13643C',
-  greenCore: '#1F8B4C',
-  greenGlass: 'rgba(39,209,124,0.14)',
-  greenLine: 'rgba(39,209,124,0.32)',
+  // UAE green — primary brand accent
+  green: '#15633A',
+  greenBright: '#1F8B4C',
+  greenDeep: '#0F4A2B',
+  greenCore: '#15633A',
+  greenGlass: 'rgba(21,99,58,0.10)',
+  greenLine: 'rgba(21,99,58,0.22)',
 
   // 971 brand red — live / alert
-  red: '#FF3B4E',
-  redBright: '#FF6273',
+  red: '#E1182B',
+  redBright: '#E8192C',
   redDeep: '#B3121F',
-  redGlass: 'rgba(255,59,78,0.15)',
+  redGlass: 'rgba(232,25,44,0.10)',
 
-  // Gold — premium / elite tier
-  gold: '#E7C77A',
-  goldBright: '#F4DDA0',
-  goldDeep: '#C8A24B',
-  goldGlass: 'rgba(231,199,122,0.16)',
+  // Gold — premium / Elite tier
+  gold: '#A8842F',
+  goldBright: '#E7C77A',
+  goldDeep: '#8A6A1F',
+  goldGlass: 'rgba(200,162,75,0.16)',
 
-  // Frosted glass tints
-  glass04: 'rgba(255,255,255,0.04)',
-  glass06: 'rgba(255,255,255,0.06)',
-  glass08: 'rgba(255,255,255,0.08)',
-  glass12: 'rgba(255,255,255,0.12)',
-  glass16: 'rgba(255,255,255,0.16)',
-  hairline: 'rgba(255,255,255,0.10)',
-  hairlineStrong: 'rgba(255,255,255,0.18)',
-  sheen: 'rgba(255,255,255,0.22)',
+  // Frosted glass tints (translucent WHITE — sit over the tinted canvas)
+  glass04: 'rgba(255,255,255,0.50)',
+  glass06: 'rgba(255,255,255,0.66)',
+  glass08: 'rgba(255,255,255,0.80)',
+  glass12: 'rgba(255,255,255,0.88)',
+  glass16: 'rgba(255,255,255,0.94)',
+
+  // Inset tints (subtle ink — for chips/inputs nested on white surfaces)
+  inset: 'rgba(13,18,16,0.05)',
+  insetStrong: 'rgba(13,18,16,0.08)',
+  pressed: 'rgba(13,18,16,0.06)',
+
+  hairline: 'rgba(15,23,18,0.09)',
+  hairlineStrong: 'rgba(15,23,18,0.15)',
+  sheen: 'rgba(255,255,255,0.85)',
 
   // Ink / text
-  textHi: '#F5F8FC',
-  textMid: '#AAB3C0',
-  textLow: '#6E7886',
+  textHi: '#0B0F12',
+  textMid: '#5B6570',
+  textLow: '#97A0AA',
 } as const;
 
 export const colors = {
   bg: palette.ink900,
   bgDeep: palette.abyss,
   bgAlt: palette.ink800,
-  surfaceAlt: palette.glass06,
-  surfaceSunken: palette.glass04,
+  surfaceAlt: palette.inset,
+  surfaceSunken: palette.inset,
   card: palette.glass06,
   cardAlt: palette.glass04,
   header: palette.ink900,
@@ -76,7 +84,7 @@ export const colors = {
   text: palette.textHi,
   textMuted: palette.textMid,
   textFaint: palette.textLow,
-  onAccent: '#04150C',
+  onAccent: '#FFFFFF',
   onDark: palette.white,
 
   border: palette.hairline,

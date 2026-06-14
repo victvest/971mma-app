@@ -5,9 +5,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, glow, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { AppHeader } from '../components/AppHeader';
-import { AuroraBackground } from '../components/AuroraBackground';
+import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { QrCode } from '../components/QrCode';
 import { Button } from '../components/Button';
@@ -65,15 +65,14 @@ export function ScanScreen() {
   const seed = buildMemberQrToken(user?.id ?? membership.memberId, 'supabase');
 
   return (
-    <View style={styles.root}>
-      <StatusBar style="light" />
-      <AuroraBackground tone="green" />
-      <AppHeader title="Check in" subtitle="Scan to enter" showBell={false} />
+    <ScreenShell>
+      <StatusBar style="dark" />
+      <AppHeader title="Member pass" subtitle="Show at the front desk to check in" showBell={false} />
 
       <View style={styles.body}>
         <View style={styles.segment}>
-          <SegBtn label="My Pass" icon="qr-code-outline" active={mode === 'pass'} onPress={() => setMode('pass')} />
-          <SegBtn label="Scan" icon="scan-outline" active={mode === 'scan'} onPress={() => setMode('scan')} />
+          <SegBtn label="My pass" icon="qr-code-outline" active={mode === 'pass'} onPress={() => setMode('pass')} />
+          <SegBtn label="Scan code" icon="scan-outline" active={mode === 'scan'} onPress={() => setMode('scan')} />
         </View>
 
         {mode === 'pass' ? (
@@ -89,7 +88,7 @@ export function ScanScreen() {
           />
         )}
       </View>
-    </View>
+    </ScreenShell>
   );
 }
 
@@ -111,10 +110,10 @@ function SegBtn({
           colors={[palette.greenBright, palette.green]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
-          style={[styles.segFill, glow.green]}
+          style={styles.segFill}
         >
-          <Ionicons name={icon} size={16} color="#04150C" />
-          <Text style={[styles.segText, { color: '#04150C' }]}>{label}</Text>
+          <Ionicons name={icon} size={16} color="#fff" />
+          <Text style={[styles.segText, { color: '#fff' }]}>{label}</Text>
         </LinearGradient>
       ) : (
         <View style={styles.segIdle}>
@@ -129,10 +128,10 @@ function SegBtn({
 function PassView({ seed, name }: { seed: string; name?: string }) {
   return (
     <View style={styles.passWrap}>
-      <GlassSurface strong tone="green" radius={radii.xl} style={[styles.passCard, glow.green]} padding={spacing.xl}>
+      <GlassSurface strong tone="green" radius={radii.xl} style={styles.passCard} padding={spacing.xl}>
         <View style={styles.passHeader}>
           <View>
-            <Text style={styles.passLabel}>MEMBER PASS</Text>
+            <Text style={styles.passLabel}>Member pass</Text>
             <Text style={styles.passName}>{name ?? 'Member'}</Text>
           </View>
           <View style={styles.passStatus}>
@@ -145,7 +144,7 @@ function PassView({ seed, name }: { seed: string; name?: string }) {
           <QrCode seed={seed} size={196} />
         </View>
 
-        <Text style={styles.passHint}>Show this at the front desk to check in</Text>
+        <Text style={styles.passHint}>Hold this up at reception — walk in and train</Text>
 
         <View style={styles.passFooter}>
           <View style={styles.passFootCol}>
@@ -182,15 +181,15 @@ function ScanView({
     return (
       <View style={styles.permWrap}>
         <View style={styles.permIcon}>
-          <Ionicons name="camera-outline" size={32} color={colors.accentBright} />
+          <Ionicons name="camera-outline" size={32} color={colors.accent} />
         </View>
-        <Text style={styles.permTitle}>Camera access needed</Text>
+        <Text style={styles.permTitle}>Camera access</Text>
         <Text style={styles.permText}>
-          Allow camera access to scan the 971 MMA check-in code at the gym entrance.
+          Allow camera to scan the check-in QR at the gym entrance.
         </Text>
         <Button label="Enable camera" icon="camera" onPress={requestPermission} full={false} style={{ marginTop: spacing.xl }} />
         <Pressable onPress={onScanned} style={styles.simBtn} accessibilityRole="button">
-          <Text style={styles.simText}>Simulate a scan</Text>
+          <Text style={styles.simText}>Simulate scan</Text>
         </Pressable>
       </View>
     );
@@ -200,7 +199,7 @@ function ScanView({
 
   return (
     <View style={styles.scanWrap}>
-      <View style={[styles.scanFrame, glow.green]}>
+      <View style={styles.scanFrame}>
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
@@ -215,9 +214,9 @@ function ScanView({
           <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]} />
         </View>
       </View>
-      <Text style={styles.scanHint}>Point at the check-in QR code</Text>
+      <Text style={styles.scanHint}>Point at the gym check-in code</Text>
       <Pressable onPress={onScanned} style={styles.simBtn} accessibilityRole="button">
-        <Text style={styles.simText}>Simulate a scan</Text>
+        <Text style={styles.simText}>Simulate scan</Text>
       </Pressable>
     </View>
   );
@@ -230,21 +229,21 @@ function Corner({ pos, r }: { pos: object; r: object }) {
 function SuccessView({ onDone }: { onDone: () => void }) {
   return (
     <View style={styles.successWrap}>
-      <View style={[styles.successIcon, glow.green]}>
+      <View style={styles.successIcon}>
         <LinearGradient
           colors={[palette.greenBright, palette.green]}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={styles.successFill}
         >
-          <Ionicons name="checkmark" size={56} color="#04150C" />
+          <Ionicons name="checkmark" size={56} color="#fff" />
         </LinearGradient>
       </View>
       <Text style={styles.successTitle}>You're checked in</Text>
-      <Text style={styles.successText}>BJJ Fundamentals · 18:00 · Coach Tony</Text>
+      <Text style={styles.successText}>Walk onto the mat — see you on the floor.</Text>
       <View style={styles.successCard}>
         <Ionicons name="flame" size={18} color={palette.redBright} />
-        <Text style={styles.successStreak}>{membership.streakDays + 1} day streak · keep the momentum</Text>
+        <Text style={styles.successStreak}>{membership.streakDays + 1} day streak</Text>
       </View>
       <Button label="Done" onPress={onDone} style={{ marginTop: spacing.xxl }} full={false} />
     </View>
@@ -252,18 +251,17 @@ function SuccessView({ onDone }: { onDone: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: palette.abyss },
   body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
 
   segment: {
     flexDirection: 'row',
-    backgroundColor: palette.glass06,
+    backgroundColor: palette.inset,
     borderWidth: 1,
     borderColor: colors.border,
     borderRadius: radii.pill,
-    padding: 5,
+    padding: 4,
     marginBottom: spacing.xxl,
-    gap: 5,
+    gap: 4,
   },
   segBtn: { flex: 1 },
   segFill: {
@@ -282,7 +280,7 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: radii.pill,
   },
-  segText: { fontFamily: fonts.bold, fontSize: 14 },
+  segText: { fontFamily: fonts.semi, fontSize: 14 },
 
   passWrap: { alignItems: 'center' },
   passCard: { width: '100%', alignItems: 'center' },
@@ -293,7 +291,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: spacing.xl,
   },
-  passLabel: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.6, color: colors.textFaint },
+  passLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
   passName: { ...typography.h3, color: colors.text, marginTop: 4 },
   passStatus: {
     flexDirection: 'row',
@@ -306,14 +304,14 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: radii.pill,
   },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accentBright },
-  passStatusText: { color: colors.accentBright, fontFamily: fonts.bold, fontSize: 12 },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
+  passStatusText: { color: colors.accent, fontFamily: fonts.semi, fontSize: 12 },
   qrFrame: {
     padding: spacing.lg,
     backgroundColor: '#fff',
     borderRadius: radii.lg,
   },
-  passHint: { marginTop: spacing.lg, fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
+  passHint: { marginTop: spacing.lg, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted, textAlign: 'center' },
   passFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -327,8 +325,8 @@ const styles = StyleSheet.create({
   },
   passFootCol: { alignItems: 'center' },
   passDivider: { width: 1, height: 30, backgroundColor: colors.border },
-  passFootLabel: { fontFamily: fonts.semi, fontSize: 11, color: colors.textFaint, letterSpacing: 0.4 },
-  passFootValue: { fontFamily: fonts.bold, fontSize: 14, color: colors.text, marginTop: 2 },
+  passFootLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.textFaint },
+  passFootValue: { fontFamily: fonts.semi, fontSize: 14, color: colors.text, marginTop: 2 },
 
   scanWrap: { alignItems: 'center' },
   scanFrame: {
@@ -341,16 +339,13 @@ const styles = StyleSheet.create({
     borderColor: palette.greenLine,
   },
   scanOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, margin: 14 },
-  corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.accentBright, borderWidth: 4 },
+  corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.accent, borderWidth: 3 },
   scanLine: {
     position: 'absolute',
     left: 0,
     right: 0,
-    height: 2.5,
-    backgroundColor: colors.accentBright,
-    shadowColor: colors.accentBright,
-    shadowOpacity: 0.9,
-    shadowRadius: 8,
+    height: 2,
+    backgroundColor: colors.accent,
   },
   scanHint: { marginTop: spacing.xl, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
 
@@ -374,13 +369,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   simBtn: { marginTop: spacing.xl, padding: spacing.sm },
-  simText: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
+  simText: { color: colors.textFaint, fontFamily: fonts.semi, fontSize: 13, textDecorationLine: 'underline' },
 
   successWrap: { alignItems: 'center', paddingTop: spacing.xxl },
   successIcon: { width: 112, height: 112, borderRadius: 56, overflow: 'hidden' },
   successFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   successTitle: { ...typography.h1, color: colors.text, marginTop: spacing.xl },
-  successText: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
+  successText: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm, textAlign: 'center' },
   successCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -388,10 +383,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     backgroundColor: palette.redGlass,
     borderWidth: 1,
-    borderColor: 'rgba(255,59,78,0.35)',
+    borderColor: 'rgba(232,25,44,0.2)',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radii.pill,
   },
-  successStreak: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 13.5 },
+  successStreak: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 14 },
 });

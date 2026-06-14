@@ -6,13 +6,13 @@
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "scheme": "nine71mma",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
-    "backgroundColor": "#070A0F",
+    "backgroundColor": "#F1F4F2",
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#070A0F"
+      "backgroundColor": "#FFFFFF"
     },
     "ios": {
       "supportsTablet": true,

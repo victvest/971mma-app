@@ -1,13 +1,13 @@
 import 'react-native-gesture-handler';
 import React, { useCallback } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { AuthProvider } from './src/context/AuthContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { AuroraBackground } from './src/components/AuroraBackground';
+import { ScreenShell } from './src/components/ScreenShell';
 import { Logo } from './src/components/Logo';
 import { fontAssets, palette } from './src/theme';
 
@@ -17,10 +17,9 @@ export default function App() {
 
   const renderBoot = useCallback(
     () => (
-      <View style={styles.boot}>
-        <AuroraBackground tone="green" />
-        <Logo size={88} tint="white" />
-      </View>
+      <ScreenShell style={styles.boot}>
+        <Logo size={88} tint="black" />
+      </ScreenShell>
     ),
     [],
   );
@@ -28,7 +27,7 @@ export default function App() {
   return (
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         {ready ? (
           <AuthProvider>
             <RootNavigator />
@@ -47,6 +46,5 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: palette.abyss,
   },
 });

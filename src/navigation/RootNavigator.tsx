@@ -1,11 +1,11 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, View } from 'react-native';
-import { NavigationContainer, DarkTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { colors, palette } from '../theme';
 import { Logo } from '../components/Logo';
-import { AuroraBackground } from '../components/AuroraBackground';
+import { ScreenShell } from '../components/ScreenShell';
 import { AuthStackParamList } from './types';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
@@ -14,9 +14,9 @@ import { TabNavigator } from './TabNavigator';
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
 const navTheme = {
-  ...DarkTheme,
+  ...DefaultTheme,
   colors: {
-    ...DarkTheme.colors,
+    ...DefaultTheme.colors,
     background: palette.ink900,
     card: palette.ink900,
     text: colors.text,
@@ -42,11 +42,10 @@ function AuthNavigator() {
 
 function SplashScreen() {
   return (
-    <View style={styles.splash}>
-      <AuroraBackground tone="green" />
-      <Logo size={88} tint="white" />
-      <ActivityIndicator color={colors.accentBright} style={{ marginTop: 28 }} />
-    </View>
+    <ScreenShell style={styles.splash}>
+      <Logo size={88} tint="black" />
+      <ActivityIndicator color={colors.accent} style={{ marginTop: 28 }} />
+    </ScreenShell>
   );
 }
 
@@ -55,15 +54,19 @@ export function RootNavigator() {
 
   return (
     <NavigationContainer theme={navTheme}>
-      {initializing ? <SplashScreen /> : session ? <TabNavigator /> : <AuthNavigator />}
+      {initializing ? (
+        <SplashScreen />
+      ) : session ? (
+        <TabNavigator />
+      ) : (
+        <AuthNavigator />
+      )}
     </NavigationContainer>
   );
 }
 
 const styles = StyleSheet.create({
   splash: {
-    flex: 1,
-    backgroundColor: palette.abyss,
     alignItems: 'center',
     justifyContent: 'center',
   },

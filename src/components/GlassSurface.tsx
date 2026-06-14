@@ -1,35 +1,27 @@
 import React from 'react';
-import { StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
+import { Platform, StyleProp, StyleSheet, View, ViewStyle } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
-import { glass, palette, radii, spacing } from '../theme';
+import { glass, palette, radii, shadow, spacing } from '../theme';
 
 type Props = {
   children?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
-  /** Inner padding preset; pass a number for custom or false for none. */
   padding?: number | false;
   radius?: number;
-  /** Stronger frost + brighter fill for hero surfaces. */
   strong?: boolean;
-  /** Tinted hairline edge: signature glow color. */
   tone?: 'neutral' | 'green' | 'red' | 'gold';
-  /** Subtle top sheen highlight (on by default). */
   sheen?: boolean;
 };
 
-const TONE_BORDER: Record<NonNullable<Props['tone']>, string> = {
-  neutral: glass.border,
-  green: palette.greenLine,
-  red: 'rgba(255,59,78,0.35)',
-  gold: 'rgba(231,199,122,0.38)',
+const TONE_EDGE: Record<NonNullable<Props['tone']>, string> = {
+  neutral: 'rgba(255,255,255,0.9)',
+  green: 'rgba(21,99,58,0.24)',
+  red: 'rgba(225,24,43,0.2)',
+  gold: 'rgba(168,132,47,0.24)',
 };
 
-/**
- * Frosted "liquid glass" surface: real backdrop blur (expo-blur, incl. web via
- * backdrop-filter) layered with a translucent fill, a hairline edge and a top
- * sheen so it reads as glass even where blur is subtle.
- */
+/** Frosted liquid-glass panel — blur + translucent fill + specular rim. */
 export function GlassSurface({
   children,
   style,
@@ -40,50 +32,88 @@ export function GlassSurface({
   sheen = true,
 }: Props) {
   const pad = padding === false ? 0 : padding;
+  const blur = strong ? glass.blurStrong : glass.blur;
+  const bodyAlpha = strong ? 0.52 : 0.38;
+
   return (
-    <View
-      style={[
-        styles.clip,
-        { borderRadius: radius, borderColor: TONE_BORDER[tone] },
-        style,
-      ]}
-    >
-      <BlurView
-        intensity={strong ? glass.blurStrong : glass.blur}
-        tint="dark"
-        style={StyleSheet.absoluteFill}
-      />
+    <View style={[styles.shell, strong ? shadow.card : shadow.soft, { borderRadius: radius }, style]}>
       <View
         style={[
-          StyleSheet.absoluteFill,
-          { backgroundColor: strong ? glass.fillStrong : glass.fill },
+          styles.clip,
+          { borderRadius: radius, borderColor: TONE_EDGE[tone] },
+          Platform.OS === 'web' && ({ backdropFilter: `blur(${blur}px) saturate(180%)` } as any),
         ]}
-      />
-      {sheen ? (
+      >
+        <BlurView intensity={blur} tint="light" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: `rgba(255,255,255,${bodyAlpha})` }]} />
+        {sheen ? (
+          <>
+            <LinearGradient
+              colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.4)', 'rgba(255,255,255,0)']}
+              start={{ x: 0.5, y: 0 }}
+              end={{ x: 0.5, y: 0.55 }}
+              style={styles.specular}
+              pointerEvents="none"
+            />
+            <View style={styles.topRim} pointerEvents="none" />
+            <LinearGradient
+              colors={['rgba(255,255,255,0.6)', 'rgba(255,255,255,0)']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.sideSheen}
+              pointerEvents="none"
+            />
+          </>
+        ) : null}
         <LinearGradient
-          colors={[glass.sheenTop, glass.sheenBottom]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 0, y: 1 }}
-          style={styles.sheen}
+          colors={['rgba(255,255,255,0)', 'rgba(15,23,18,0.05)']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={styles.depth}
           pointerEvents="none"
         />
-      ) : null}
-      <View style={{ padding: pad }}>{children}</View>
+        <View style={{ padding: pad }}>{children}</View>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  shell: {},
   clip: {
     overflow: 'hidden',
     borderWidth: 1,
-    backgroundColor: 'rgba(11,15,22,0.35)',
+    borderBottomColor: 'rgba(15,23,18,0.1)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
   },
-  sheen: {
+  specular: {
     position: 'absolute',
     top: 0,
     left: 0,
     right: 0,
-    height: '55%',
+    height: '50%',
+  },
+  topRim: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    borderRadius: 1,
+  },
+  sideSheen: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    width: '40%',
+    bottom: 0,
+  },
+  depth: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: '30%',
   },
 });

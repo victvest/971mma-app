@@ -65,13 +65,13 @@ const styles = StyleSheet.create({
     height: 56,
     borderRadius: radii.md,
     borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: palette.glass06,
+    borderColor: colors.borderStrong,
+    backgroundColor: palette.glass12,
     paddingHorizontal: spacing.lg,
   },
   focused: {
-    borderColor: palette.greenLine,
-    backgroundColor: palette.glass08,
+    borderColor: palette.green,
+    backgroundColor: '#FFFFFF',
   },
   input: {
     flex: 1,

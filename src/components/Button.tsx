@@ -89,13 +89,13 @@ const VARIANTS: Record<
   { bg?: string; fg: string; border?: string; gradient?: readonly [string, string, ...string[]]; glow?: object }
 > = {
   primary: {
-    fg: '#04150C',
-    gradient: [palette.greenBright, palette.green, palette.greenCore],
+    fg: '#FFFFFF',
+    gradient: [palette.greenBright, palette.green, palette.greenDeep],
     glow: glow.green,
   },
-  dark: { bg: palette.glass08, fg: colors.text, border: colors.borderStrong },
+  dark: { bg: palette.black, fg: '#fff', border: palette.black },
   outline: { bg: 'transparent', fg: colors.text, border: colors.borderStrong },
-  soft: { bg: palette.greenGlass, fg: palette.greenBright, border: palette.greenLine },
+  soft: { bg: palette.greenGlass, fg: palette.green, border: palette.greenLine },
   danger: { fg: '#fff', gradient: [palette.redBright, palette.red, palette.redDeep], glow: glow.red },
 };
 
