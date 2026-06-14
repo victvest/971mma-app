@@ -8,8 +8,9 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radii, spacing } from '../theme';
+import { colors, fonts, glow, palette, radii, spacing } from '../theme';
 
 type Variant = 'primary' | 'dark' | 'outline' | 'soft' | 'danger';
 
@@ -37,19 +38,8 @@ export function Button({
   const v = VARIANTS[variant];
   const isDisabled = disabled || loading;
 
-  return (
-    <Pressable
-      onPress={onPress}
-      disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        full && styles.full,
-        { backgroundColor: v.bg, borderColor: v.border },
-        pressed && !isDisabled && styles.pressed,
-        isDisabled && styles.disabled,
-        style,
-      ]}
-    >
+  const content = (
+    <>
       {loading ? (
         <ActivityIndicator color={v.fg} />
       ) : (
@@ -58,31 +48,71 @@ export function Button({
           <Text style={[styles.label, { color: v.fg }]}>{label}</Text>
         </View>
       )}
+    </>
+  );
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={isDisabled}
+      accessibilityRole="button"
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
+      style={({ pressed }) => [
+        styles.shell,
+        full && styles.full,
+        v.glow && !isDisabled ? v.glow : null,
+        pressed && !isDisabled && styles.pressed,
+        isDisabled && styles.disabled,
+        style,
+      ]}
+    >
+      {v.gradient ? (
+        <LinearGradient
+          colors={v.gradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.base, full && styles.full]}
+        >
+          {content}
+        </LinearGradient>
+      ) : (
+        <View style={[styles.base, full && styles.full, { backgroundColor: v.bg, borderColor: v.border, borderWidth: v.border ? 1.5 : 0 }]}>
+          {content}
+        </View>
+      )}
     </Pressable>
   );
 }
 
-const VARIANTS: Record<Variant, { bg: string; fg: string; border: string }> = {
-  primary: { bg: colors.accent, fg: colors.onAccent, border: colors.accent },
-  dark: { bg: colors.text, fg: colors.onDark, border: colors.text },
+const VARIANTS: Record<
+  Variant,
+  { bg?: string; fg: string; border?: string; gradient?: readonly [string, string, ...string[]]; glow?: object }
+> = {
+  primary: {
+    fg: '#04150C',
+    gradient: [palette.greenBright, palette.green, palette.greenCore],
+    glow: glow.green,
+  },
+  dark: { bg: palette.glass08, fg: colors.text, border: colors.borderStrong },
   outline: { bg: 'transparent', fg: colors.text, border: colors.borderStrong },
-  soft: { bg: colors.accentSoft, fg: colors.accent, border: colors.accentSoft },
-  danger: { bg: colors.danger, fg: '#fff', border: colors.danger },
+  soft: { bg: palette.greenGlass, fg: palette.greenBright, border: palette.greenLine },
+  danger: { fg: '#fff', gradient: [palette.redBright, palette.red, palette.redDeep], glow: glow.red },
 };
 
 const styles = StyleSheet.create({
+  shell: { borderRadius: radii.md },
   base: {
-    height: 54,
+    height: 56,
     borderRadius: radii.md,
-    borderWidth: 1,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: spacing.xl,
+    overflow: 'hidden',
   },
   full: { alignSelf: 'stretch' },
-  pressed: { opacity: 0.85, transform: [{ scale: 0.99 }] },
-  disabled: { opacity: 0.5 },
+  pressed: { opacity: 0.92, transform: [{ scale: 0.985 }] },
+  disabled: { opacity: 0.45 },
   content: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   icon: { marginRight: spacing.sm },
-  label: { fontSize: 16, fontWeight: '700', letterSpacing: 0.2 },
+  label: { fontFamily: fonts.bold, fontSize: 16, letterSpacing: 0.2 },
 });

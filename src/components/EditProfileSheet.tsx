@@ -9,7 +9,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radii, spacing, typography } from '../theme';
+import { colors, palette, radii, spacing, typography } from '../theme';
 import type { MemberProfile, ProfilePatch } from '../types/models';
 import { TextField } from './TextField';
 import { Button } from './Button';
@@ -101,13 +101,15 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    backgroundColor: 'rgba(11,11,12,0.45)',
+    backgroundColor: 'rgba(2,4,7,0.7)',
   },
   sheetWrap: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: colors.bg,
-    borderTopLeftRadius: 28,
-    borderTopRightRadius: 28,
+    backgroundColor: palette.ink700,
+    borderTopLeftRadius: 30,
+    borderTopRightRadius: 30,
+    borderWidth: 1,
+    borderColor: colors.borderStrong,
     paddingHorizontal: spacing.xxl,
     paddingTop: spacing.md,
     paddingBottom: spacing.huge,
@@ -117,7 +119,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 5,
     borderRadius: 3,
-    backgroundColor: colors.borderStrong,
+    backgroundColor: palette.glass16,
     marginBottom: spacing.lg,
   },
   header: {
@@ -128,10 +130,12 @@ const styles = StyleSheet.create({
   },
   title: { ...typography.h2, color: colors.text },
   close: {
-    width: 36,
-    height: 36,
+    width: 38,
+    height: 38,
     borderRadius: radii.pill,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: palette.glass08,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },

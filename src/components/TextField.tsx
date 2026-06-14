@@ -8,7 +8,7 @@ import {
   View,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, radii, spacing } from '../theme';
+import { colors, fonts, palette, radii, spacing } from '../theme';
 
 type Props = TextInputProps & {
   label: string;
@@ -25,7 +25,7 @@ export function TextField({ label, icon, password, style, ...rest }: Props) {
       <Text style={styles.label}>{label}</Text>
       <View style={[styles.field, focused && styles.focused]}>
         {icon ? (
-          <Ionicons name={icon} size={18} color={focused ? colors.accent : colors.textFaint} />
+          <Ionicons name={icon} size={18} color={focused ? colors.accentBright : colors.textFaint} />
         ) : null}
         <TextInput
           style={[styles.input, style]}
@@ -36,7 +36,7 @@ export function TextField({ label, icon, password, style, ...rest }: Props) {
           {...rest}
         />
         {password ? (
-          <Pressable onPress={() => setHidden((v) => !v)} hitSlop={8}>
+          <Pressable onPress={() => setHidden((v) => !v)} hitSlop={8} accessibilityRole="button">
             <Ionicons
               name={hidden ? 'eye-outline' : 'eye-off-outline'}
               size={18}
@@ -52,28 +52,31 @@ export function TextField({ label, icon, password, style, ...rest }: Props) {
 const styles = StyleSheet.create({
   wrap: { marginBottom: spacing.lg },
   label: {
+    fontFamily: fonts.semi,
     fontSize: 12.5,
-    fontWeight: '700',
     color: colors.textMuted,
     marginBottom: spacing.sm,
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    height: 54,
+    height: 56,
     borderRadius: radii.md,
     borderWidth: 1.5,
     borderColor: colors.border,
-    backgroundColor: colors.card,
+    backgroundColor: palette.glass06,
     paddingHorizontal: spacing.lg,
   },
-  focused: { borderColor: colors.accent, backgroundColor: '#fff' },
+  focused: {
+    borderColor: palette.greenLine,
+    backgroundColor: palette.glass08,
+  },
   input: {
     flex: 1,
+    fontFamily: fonts.medium,
     fontSize: 15.5,
-    fontWeight: '600',
     color: colors.text,
     paddingVertical: 0,
   },

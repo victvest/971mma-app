@@ -3,16 +3,17 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, palette, radii, shadow, spacing, typography } from '../theme';
+import { colors, fonts, glow, palette, radii, spacing, typography } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { AppHeader } from '../components/AppHeader';
-import { Card } from '../components/Card';
+import { AuroraBackground } from '../components/AuroraBackground';
+import { GlassSurface } from '../components/GlassSurface';
 import { Tag, ProgressBar, Label, Divider } from '../components/primitives';
 import { membership, progress } from '../data/mockData';
 import { useProfile } from '../hooks/useProfile';
 import { EditProfileSheet } from '../components/EditProfileSheet';
 
-const SETTINGS: { icon: keyof typeof Ionicons.glyphMap; label: string; tint?: string }[] = [
+const SETTINGS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
   { icon: 'card-outline', label: 'Membership & billing' },
   { icon: 'barbell-outline', label: 'Training preferences' },
   { icon: 'notifications-outline', label: 'Notifications' },
@@ -44,10 +45,18 @@ export function ProfileScreen() {
   const [editing, setEditing] = useState(false);
 
   const display = profile?.fullName || user?.email?.split('@')[0] || 'Member';
-  const tierLabel = TIER_LABEL[profile?.membershipTier ?? 'elite'] ?? 'Elite';
+  const tier = profile?.membershipTier ?? 'elite';
+  const tierLabel = TIER_LABEL[tier] ?? 'Elite';
   const statusLabel = STATUS_LABEL[profile?.membershipStatus ?? 'active'] ?? 'Active';
   const beltRank = profile?.beltRank ?? progress.rank;
   const beltStripes = profile?.beltStripes ?? progress.stripes;
+
+  const isElite = tier === 'elite';
+  const cardGradient: readonly [string, string, ...string[]] = isElite
+    ? [palette.goldDeep, palette.gold, palette.goldBright]
+    : [palette.greenDeep, palette.greenCore, palette.green];
+  const onCard = isElite ? '#1B1403' : '#EAFBF1';
+  const onCardMuted = isElite ? 'rgba(27,20,3,0.7)' : 'rgba(234,251,241,0.75)';
 
   const confirmSignOut = () => {
     Alert.alert('Sign out', 'Are you sure you want to sign out?', [
@@ -59,60 +68,75 @@ export function ProfileScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+      <AuroraBackground tone="gold" />
       <AppHeader title="Profile" showBell={false} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Identity */}
-        <Card style={styles.identityCard}>
-          <Pressable style={styles.editBtn} onPress={() => setEditing(true)} hitSlop={8}>
-            <Ionicons name="create-outline" size={18} color={colors.accent} />
+        <GlassSurface style={styles.identityCard}>
+          <Pressable style={styles.editBtn} onPress={() => setEditing(true)} hitSlop={8} accessibilityLabel="Edit profile">
+            <Ionicons name="create-outline" size={18} color={colors.accentBright} />
           </Pressable>
-          <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{initials(profile?.fullName, user?.email)}</Text>
+          <View style={[styles.avatar, glow.green]}>
+            <LinearGradient
+              colors={[palette.greenBright, palette.green]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.avatarFill}
+            >
+              <Text style={styles.avatarText}>{initials(profile?.fullName, user?.email)}</Text>
+            </LinearGradient>
           </View>
           <Text style={styles.name}>{display}</Text>
           <Text style={styles.email}>{user?.email}</Text>
           <View style={styles.idRow}>
-            <Tag label={`${tierLabel} member`} tone="ink" />
+            <Tag label={`${tierLabel} member`} tone={isElite ? 'gold' : 'green'} />
             {profile?.phone ? <Tag label={profile.phone} tone="neutral" /> : null}
           </View>
-        </Card>
+        </GlassSurface>
 
-        {/* Membership */}
-        <View style={styles.membershipCard}>
+        {/* Membership card */}
+        <View style={[styles.membershipCard, isElite ? glow.gold : glow.green]}>
           <LinearGradient
-            colors={[palette.greenDeep, palette.green]}
+            colors={cardGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={StyleSheet.absoluteFill}
           />
+          <LinearGradient
+            colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 0, y: 1 }}
+            style={styles.memSheen}
+            pointerEvents="none"
+          />
           <View style={styles.memTop}>
             <View>
-              <Text style={styles.memLabel}>MEMBERSHIP</Text>
-              <Text style={styles.memPlan}>{tierLabel}</Text>
+              <Text style={[styles.memLabel, { color: onCardMuted }]}>971 MEMBERSHIP</Text>
+              <Text style={[styles.memPlan, { color: onCard }]}>{tierLabel}</Text>
             </View>
-            <View style={styles.memBadge}>
-              <View style={styles.memDot} />
-              <Text style={styles.memBadgeText}>{statusLabel}</Text>
+            <View style={[styles.memBadge, { backgroundColor: isElite ? 'rgba(27,20,3,0.18)' : 'rgba(255,255,255,0.2)' }]}>
+              <View style={[styles.memDot, { backgroundColor: onCard }]} />
+              <Text style={[styles.memBadgeText, { color: onCard }]}>{statusLabel}</Text>
             </View>
           </View>
           <View style={styles.memFooter}>
             <View>
-              <Text style={styles.memFootLabel}>Expires</Text>
-              <Text style={styles.memFootValue}>{formatDate(profile?.membershipExpiresAt ?? null)}</Text>
+              <Text style={[styles.memFootLabel, { color: onCardMuted }]}>Expires</Text>
+              <Text style={[styles.memFootValue, { color: onCard }]}>{formatDate(profile?.membershipExpiresAt ?? null)}</Text>
             </View>
             <View>
-              <Text style={styles.memFootLabel}>Check-ins</Text>
-              <Text style={styles.memFootValue}>{membership.checkInsThisMonth} this month</Text>
+              <Text style={[styles.memFootLabel, { color: onCardMuted }]}>Check-ins</Text>
+              <Text style={[styles.memFootValue, { color: onCard }]}>{membership.checkInsThisMonth} this month</Text>
             </View>
           </View>
         </View>
 
         {/* Belt progress */}
-        <Card style={{ marginTop: spacing.lg }}>
+        <GlassSurface tone="green" style={{ marginTop: spacing.lg }}>
           <View style={styles.beltHead}>
             <View style={styles.beltBadge}>
-              <Ionicons name="ribbon" size={22} color={colors.accent} />
+              <Ionicons name="ribbon" size={22} color={colors.accentBright} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.beltRank}>{beltRank}</Text>
@@ -132,23 +156,24 @@ export function ProfileScreen() {
                 <Ionicons
                   name={r.done ? 'checkmark-circle' : 'ellipse-outline'}
                   size={20}
-                  color={r.done ? colors.accent : colors.textFaint}
+                  color={r.done ? colors.accentBright : colors.textFaint}
                 />
                 <Text style={[styles.reqText, !r.done && { color: colors.textMuted }]}>{r.label}</Text>
               </View>
             ))}
           </View>
-        </Card>
+        </GlassSurface>
 
         {/* Settings */}
-        <Card style={{ marginTop: spacing.lg }} padded={false}>
+        <GlassSurface style={{ marginTop: spacing.lg }} padding={false}>
           {SETTINGS.map((s, i) => (
             <Pressable
               key={s.label}
+              accessibilityRole="button"
               style={({ pressed }) => [
                 styles.settingRow,
                 i < SETTINGS.length - 1 && styles.settingBorder,
-                pressed && { backgroundColor: colors.surfaceAlt },
+                pressed && { backgroundColor: palette.glass08 },
               ]}
             >
               <View style={styles.settingIcon}>
@@ -158,53 +183,44 @@ export function ProfileScreen() {
               <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
             </Pressable>
           ))}
-        </Card>
+        </GlassSurface>
 
         {/* Sign out */}
-        <Pressable onPress={confirmSignOut} style={styles.signOut}>
-          <Ionicons name="log-out-outline" size={19} color={colors.danger} />
+        <Pressable onPress={confirmSignOut} style={styles.signOut} accessibilityRole="button">
+          <Ionicons name="log-out-outline" size={19} color={palette.redBright} />
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
 
         <Text style={styles.version}>971 MMA · v1.0.0</Text>
       </ScrollView>
 
-      <EditProfileSheet
-        visible={editing}
-        profile={profile}
-        onClose={() => setEditing(false)}
-        onSave={save}
-      />
+      <EditProfileSheet visible={editing} profile={profile} onClose={() => setEditing(false)} onSave={save} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.xl, paddingBottom: 120 },
+  root: { flex: 1, backgroundColor: palette.abyss },
+  scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: 132 },
 
   identityCard: { alignItems: 'center' },
   editBtn: {
     position: 'absolute',
     top: spacing.lg,
     right: spacing.lg,
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: colors.accentSoft,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: palette.greenGlass,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 2,
   },
-  avatar: {
-    width: 84,
-    height: 84,
-    borderRadius: 42,
-    backgroundColor: colors.text,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarText: { color: '#fff', fontSize: 30, fontWeight: '800' },
+  avatar: { width: 86, height: 86, borderRadius: 43, overflow: 'hidden' },
+  avatarFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { color: '#04150C', fontFamily: fonts.displayBlack, fontSize: 32 },
   name: { ...typography.h2, color: colors.text, marginTop: spacing.lg },
   email: { ...typography.small, color: colors.textMuted, marginTop: 2 },
   idRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
@@ -214,43 +230,44 @@ const styles = StyleSheet.create({
     borderRadius: radii.xl,
     overflow: 'hidden',
     padding: spacing.xl,
-    minHeight: 150,
+    minHeight: 156,
     justifyContent: 'space-between',
-    ...shadow.card,
   },
+  memSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '55%' },
   memTop: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
-  memLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '800', letterSpacing: 1.4 },
-  memPlan: { color: '#fff', fontSize: 24, fontWeight: '800', marginTop: 6, letterSpacing: -0.4 },
+  memLabel: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.6 },
+  memPlan: { fontFamily: fonts.displayBlack, fontSize: 30, marginTop: 6, letterSpacing: 0.4 },
   memBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: radii.pill,
   },
-  memDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
-  memBadgeText: { color: '#fff', fontWeight: '800', fontSize: 12 },
+  memDot: { width: 7, height: 7, borderRadius: 4 },
+  memBadgeText: { fontFamily: fonts.bold, fontSize: 12 },
   memFooter: { flexDirection: 'row', gap: spacing.huge, marginTop: spacing.xl },
-  memFootLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
-  memFootValue: { color: '#fff', fontSize: 15, fontWeight: '800', marginTop: 3 },
+  memFootLabel: { fontFamily: fonts.semi, fontSize: 11, letterSpacing: 0.4 },
+  memFootValue: { fontFamily: fonts.bold, fontSize: 15, marginTop: 3 },
 
   beltHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.lg },
   beltBadge: {
-    width: 44,
-    height: 44,
-    borderRadius: 13,
-    backgroundColor: colors.accentSoft,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    backgroundColor: palette.greenGlass,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
   beltRank: { ...typography.h3, color: colors.text },
-  beltTrack: { fontSize: 13, color: colors.textMuted, fontWeight: '600', marginTop: 2 },
-  beltPct: { ...typography.h2, color: colors.accent },
-  beltNext: { marginTop: spacing.md, fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  beltTrack: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, marginTop: 2 },
+  beltPct: { fontFamily: fonts.displayBlack, fontSize: 22, color: colors.accentBright },
+  beltNext: { marginTop: spacing.md, fontFamily: fonts.semi, fontSize: 13, color: colors.textMuted },
   reqRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  reqText: { fontSize: 14.5, fontWeight: '600', color: colors.text },
+  reqText: { fontFamily: fonts.semi, fontSize: 14.5, color: colors.text },
 
   settingRow: {
     flexDirection: 'row',
@@ -261,14 +278,16 @@ const styles = StyleSheet.create({
   },
   settingBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
   settingIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 11,
-    backgroundColor: colors.surfaceAlt,
+    width: 40,
+    height: 40,
+    borderRadius: 13,
+    backgroundColor: palette.glass08,
+    borderWidth: 1,
+    borderColor: colors.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingLabel: { flex: 1, fontSize: 15, fontWeight: '700', color: colors.text },
+  settingLabel: { flex: 1, fontFamily: fonts.bold, fontSize: 15, color: colors.text },
 
   signOut: {
     flexDirection: 'row',
@@ -276,12 +295,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: spacing.sm,
     marginTop: spacing.xl,
-    height: 52,
+    height: 54,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: colors.dangerSoft,
-    backgroundColor: colors.dangerSoft,
+    borderColor: 'rgba(255,59,78,0.35)',
+    backgroundColor: palette.redGlass,
   },
-  signOutText: { color: colors.danger, fontWeight: '800', fontSize: 15 },
-  version: { textAlign: 'center', color: colors.textFaint, fontSize: 12, marginTop: spacing.xl, fontWeight: '600' },
+  signOutText: { color: palette.redBright, fontFamily: fonts.bold, fontSize: 15 },
+  version: { textAlign: 'center', color: colors.textFaint, fontFamily: fonts.medium, fontSize: 12, marginTop: spacing.xl },
 });

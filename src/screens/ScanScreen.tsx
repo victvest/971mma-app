@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, palette, radii, shadow, spacing, typography } from '../theme';
+import { colors, fonts, glow, palette, radii, spacing, typography } from '../theme';
 import { AppHeader } from '../components/AppHeader';
+import { AuroraBackground } from '../components/AuroraBackground';
+import { GlassSurface } from '../components/GlassSurface';
 import { QrCode } from '../components/QrCode';
 import { Button } from '../components/Button';
 import { membership } from '../data/mockData';
@@ -51,8 +54,6 @@ export function ScanScreen() {
     scanLock.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setCheckedIn(true);
-    // Persist the check-in. Failures (e.g. mock/offline) are non-blocking so the
-    // success UI still shows during review.
     checkIns.recordCheckIn({ classId: null, method: 'qr' }).catch(() => {});
   };
 
@@ -66,10 +67,10 @@ export function ScanScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+      <AuroraBackground tone="green" />
       <AppHeader title="Check in" subtitle="Scan to enter" showBell={false} />
 
       <View style={styles.body}>
-        {/* Segmented toggle */}
         <View style={styles.segment}>
           <SegBtn label="My Pass" icon="qr-code-outline" active={mode === 'pass'} onPress={() => setMode('pass')} />
           <SegBtn label="Scan" icon="scan-outline" active={mode === 'scan'} onPress={() => setMode('scan')} />
@@ -104,9 +105,23 @@ function SegBtn({
   onPress: () => void;
 }) {
   return (
-    <Pressable onPress={onPress} style={[styles.segBtn, active && styles.segBtnActive]}>
-      <Ionicons name={icon} size={16} color={active ? '#fff' : colors.textMuted} />
-      <Text style={[styles.segText, active && { color: '#fff' }]}>{label}</Text>
+    <Pressable onPress={onPress} accessibilityRole="button" style={styles.segBtn}>
+      {active ? (
+        <LinearGradient
+          colors={[palette.greenBright, palette.green]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.segFill, glow.green]}
+        >
+          <Ionicons name={icon} size={16} color="#04150C" />
+          <Text style={[styles.segText, { color: '#04150C' }]}>{label}</Text>
+        </LinearGradient>
+      ) : (
+        <View style={styles.segIdle}>
+          <Ionicons name={icon} size={16} color={colors.textMuted} />
+          <Text style={[styles.segText, { color: colors.textMuted }]}>{label}</Text>
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -114,7 +129,7 @@ function SegBtn({
 function PassView({ seed, name }: { seed: string; name?: string }) {
   return (
     <View style={styles.passWrap}>
-      <View style={styles.passCard}>
+      <GlassSurface strong tone="green" radius={radii.xl} style={[styles.passCard, glow.green]} padding={spacing.xl}>
         <View style={styles.passHeader}>
           <View>
             <Text style={styles.passLabel}>MEMBER PASS</Text>
@@ -133,17 +148,17 @@ function PassView({ seed, name }: { seed: string; name?: string }) {
         <Text style={styles.passHint}>Show this at the front desk to check in</Text>
 
         <View style={styles.passFooter}>
-          <View>
+          <View style={styles.passFootCol}>
             <Text style={styles.passFootLabel}>Member ID</Text>
             <Text style={styles.passFootValue}>{membership.memberId}</Text>
           </View>
           <View style={styles.passDivider} />
-          <View>
+          <View style={styles.passFootCol}>
             <Text style={styles.passFootLabel}>Plan</Text>
             <Text style={styles.passFootValue}>{membership.plan}</Text>
           </View>
         </View>
-      </View>
+      </GlassSurface>
     </View>
   );
 }
@@ -167,14 +182,14 @@ function ScanView({
     return (
       <View style={styles.permWrap}>
         <View style={styles.permIcon}>
-          <Ionicons name="camera-outline" size={32} color={colors.accent} />
+          <Ionicons name="camera-outline" size={32} color={colors.accentBright} />
         </View>
         <Text style={styles.permTitle}>Camera access needed</Text>
         <Text style={styles.permText}>
           Allow camera access to scan the 971 MMA check-in code at the gym entrance.
         </Text>
         <Button label="Enable camera" icon="camera" onPress={requestPermission} full={false} style={{ marginTop: spacing.xl }} />
-        <Pressable onPress={onScanned} style={styles.simBtn}>
+        <Pressable onPress={onScanned} style={styles.simBtn} accessibilityRole="button">
           <Text style={styles.simText}>Simulate a scan</Text>
         </Pressable>
       </View>
@@ -185,7 +200,7 @@ function ScanView({
 
   return (
     <View style={styles.scanWrap}>
-      <View style={styles.scanFrame}>
+      <View style={[styles.scanFrame, glow.green]}>
         <CameraView
           style={StyleSheet.absoluteFill}
           facing="back"
@@ -201,7 +216,7 @@ function ScanView({
         </View>
       </View>
       <Text style={styles.scanHint}>Point at the check-in QR code</Text>
-      <Pressable onPress={onScanned} style={styles.simBtn}>
+      <Pressable onPress={onScanned} style={styles.simBtn} accessibilityRole="button">
         <Text style={styles.simText}>Simulate a scan</Text>
       </Pressable>
     </View>
@@ -215,56 +230,62 @@ function Corner({ pos, r }: { pos: object; r: object }) {
 function SuccessView({ onDone }: { onDone: () => void }) {
   return (
     <View style={styles.successWrap}>
-      <View style={styles.successIcon}>
-        <Ionicons name="checkmark" size={56} color="#fff" />
+      <View style={[styles.successIcon, glow.green]}>
+        <LinearGradient
+          colors={[palette.greenBright, palette.green]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={styles.successFill}
+        >
+          <Ionicons name="checkmark" size={56} color="#04150C" />
+        </LinearGradient>
       </View>
       <Text style={styles.successTitle}>You're checked in</Text>
       <Text style={styles.successText}>BJJ Fundamentals · 18:00 · Coach Tony</Text>
       <View style={styles.successCard}>
-        <Ionicons name="flame" size={18} color={colors.danger} />
-        <Text style={styles.successStreak}>
-          {membership.streakDays + 1} day streak · keep the momentum
-        </Text>
+        <Ionicons name="flame" size={18} color={palette.redBright} />
+        <Text style={styles.successStreak}>{membership.streakDays + 1} day streak · keep the momentum</Text>
       </View>
-      <Button label="Done" onPress={onDone} style={{ marginTop: spacing.xxl }} />
+      <Button label="Done" onPress={onDone} style={{ marginTop: spacing.xxl }} full={false} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.xl },
+  root: { flex: 1, backgroundColor: palette.abyss },
+  body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
 
   segment: {
     flexDirection: 'row',
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: palette.glass06,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radii.pill,
-    padding: 4,
+    padding: 5,
     marginBottom: spacing.xxl,
+    gap: 5,
   },
-  segBtn: {
-    flex: 1,
+  segBtn: { flex: 1 },
+  segFill: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 42,
+    height: 44,
     borderRadius: radii.pill,
   },
-  segBtnActive: { backgroundColor: colors.accent, ...shadow.soft },
-  segText: { fontSize: 14, fontWeight: '700', color: colors.textMuted },
+  segIdle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    height: 44,
+    borderRadius: radii.pill,
+  },
+  segText: { fontFamily: fonts.bold, fontSize: 14 },
 
   passWrap: { alignItems: 'center' },
-  passCard: {
-    width: '100%',
-    backgroundColor: colors.card,
-    borderRadius: radii.xl,
-    borderWidth: 1,
-    borderColor: colors.border,
-    padding: spacing.xl,
-    alignItems: 'center',
-    ...shadow.card,
-  },
+  passCard: { width: '100%', alignItems: 'center' },
   passHeader: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -272,27 +293,27 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: spacing.xl,
   },
-  passLabel: { fontSize: 11, fontWeight: '800', letterSpacing: 1.4, color: colors.textFaint },
+  passLabel: { fontFamily: fonts.bold, fontSize: 11, letterSpacing: 1.6, color: colors.textFaint },
   passName: { ...typography.h3, color: colors.text, marginTop: 4 },
   passStatus: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
-    backgroundColor: colors.accentSoft,
-    paddingHorizontal: 10,
+    backgroundColor: palette.greenGlass,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
+    paddingHorizontal: 11,
     paddingVertical: 6,
     borderRadius: radii.pill,
   },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
-  passStatusText: { color: colors.accent, fontWeight: '800', fontSize: 12 },
+  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accentBright },
+  passStatusText: { color: colors.accentBright, fontFamily: fonts.bold, fontSize: 12 },
   qrFrame: {
     padding: spacing.lg,
     backgroundColor: '#fff',
     borderRadius: radii.lg,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
-  passHint: { marginTop: spacing.lg, fontSize: 13, color: colors.textMuted, fontWeight: '600' },
+  passHint: { marginTop: spacing.lg, fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
   passFooter: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -304,17 +325,20 @@ const styles = StyleSheet.create({
     borderTopColor: colors.border,
     width: '100%',
   },
+  passFootCol: { alignItems: 'center' },
   passDivider: { width: 1, height: 30, backgroundColor: colors.border },
-  passFootLabel: { fontSize: 11, color: colors.textFaint, fontWeight: '700', letterSpacing: 0.4 },
-  passFootValue: { fontSize: 14, color: colors.text, fontWeight: '800', marginTop: 2 },
+  passFootLabel: { fontFamily: fonts.semi, fontSize: 11, color: colors.textFaint, letterSpacing: 0.4 },
+  passFootValue: { fontFamily: fonts.bold, fontSize: 14, color: colors.text, marginTop: 2 },
 
   scanWrap: { alignItems: 'center' },
   scanFrame: {
     width: 260,
     height: 260,
-    borderRadius: 22,
+    borderRadius: 24,
     overflow: 'hidden',
     backgroundColor: palette.black,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
   },
   scanOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, margin: 14 },
   corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.accentBright, borderWidth: 4 },
@@ -325,17 +349,19 @@ const styles = StyleSheet.create({
     height: 2.5,
     backgroundColor: colors.accentBright,
     shadowColor: colors.accentBright,
-    shadowOpacity: 0.8,
+    shadowOpacity: 0.9,
     shadowRadius: 8,
   },
-  scanHint: { marginTop: spacing.xl, fontSize: 14, color: colors.textMuted, fontWeight: '600' },
+  scanHint: { marginTop: spacing.xl, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
 
   permWrap: { alignItems: 'center', paddingTop: spacing.huge },
   permIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: colors.accentSoft,
+    width: 74,
+    height: 74,
+    borderRadius: 24,
+    backgroundColor: palette.greenGlass,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -348,18 +374,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xl,
   },
   simBtn: { marginTop: spacing.xl, padding: spacing.sm },
-  simText: { color: colors.textFaint, fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' },
+  simText: { color: colors.textFaint, fontFamily: fonts.bold, fontSize: 13, textDecorationLine: 'underline' },
 
   successWrap: { alignItems: 'center', paddingTop: spacing.xxl },
-  successIcon: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    backgroundColor: colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...shadow.card,
-  },
+  successIcon: { width: 112, height: 112, borderRadius: 56, overflow: 'hidden' },
+  successFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   successTitle: { ...typography.h1, color: colors.text, marginTop: spacing.xl },
   successText: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },
   successCard: {
@@ -367,10 +386,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing.sm,
     marginTop: spacing.xl,
-    backgroundColor: colors.dangerSoft,
+    backgroundColor: palette.redGlass,
+    borderWidth: 1,
+    borderColor: 'rgba(255,59,78,0.35)',
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radii.pill,
   },
-  successStreak: { color: colors.danger, fontWeight: '700', fontSize: 13.5 },
+  successStreak: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 13.5 },
 });

@@ -1,13 +1,17 @@
 import React from 'react';
 import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
-import { colors, radii, shadow } from '../theme';
+import { colors, fonts, glass, glow, palette, radii, shadow } from '../theme';
 
-const ICONS: Record<string, { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }> = {
+const ICONS: Record<
+  string,
+  { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }
+> = {
   Home: { active: 'home', inactive: 'home-outline' },
   Scan: { active: 'qr-code', inactive: 'qr-code-outline' },
   Classes: { active: 'calendar', inactive: 'calendar-outline' },
@@ -18,8 +22,17 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-      <BlurView intensity={Platform.OS === 'ios' ? 40 : 24} tint="light" style={styles.bar}>
+    <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 14) }]}>
+      <View style={[styles.barShell, shadow.floating]}>
+        <BlurView intensity={glass.blurStrong} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={[StyleSheet.absoluteFill, styles.tintFill]} />
+        <LinearGradient
+          colors={[glass.sheenTop, 'rgba(255,255,255,0)']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          style={styles.sheen}
+          pointerEvents="none"
+        />
         <View style={styles.barInner}>
           {state.routes.map((route, index) => {
             const { options } = descriptors[route.key];
@@ -40,20 +53,35 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
             };
 
             return (
-              <Pressable key={route.key} onPress={onPress} style={styles.tab} hitSlop={6}>
-                <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
-                  <Ionicons
-                    name={isFocused ? icons.active : icons.inactive}
-                    size={22}
-                    color={isFocused ? '#fff' : colors.textMuted}
-                  />
-                </View>
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                style={styles.tab}
+                hitSlop={6}
+                accessibilityRole="button"
+                accessibilityState={{ selected: isFocused }}
+                accessibilityLabel={label}
+              >
+                {isFocused ? (
+                  <LinearGradient
+                    colors={[palette.greenBright, palette.green]}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}
+                    style={[styles.iconWrap, glow.green]}
+                  >
+                    <Ionicons name={icons.active} size={21} color="#04150C" />
+                  </LinearGradient>
+                ) : (
+                  <View style={styles.iconWrap}>
+                    <Ionicons name={icons.inactive} size={21} color={colors.textMuted} />
+                  </View>
+                )}
                 <Text style={[styles.label, isFocused && styles.labelActive]}>{label}</Text>
               </Pressable>
             );
           })}
         </View>
-      </BlurView>
+      </View>
     </View>
   );
 }
@@ -68,14 +96,16 @@ const styles = StyleSheet.create({
     paddingTop: 6,
     backgroundColor: 'transparent',
   },
-  bar: {
+  barShell: {
     borderRadius: radii.xl,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(11,11,12,0.06)',
-    backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.96)' : 'rgba(255,255,255,0.72)',
-    ...shadow.floating,
+    borderColor: palette.hairlineStrong,
   },
+  tintFill: {
+    backgroundColor: Platform.OS === 'android' ? 'rgba(11,15,22,0.86)' : 'rgba(11,15,22,0.55)',
+  },
+  sheen: { position: 'absolute', top: 0, left: 0, right: 0, height: '60%' },
   barInner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -83,15 +113,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     paddingHorizontal: 6,
   },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
   iconWrap: {
-    width: 46,
-    height: 34,
+    width: 48,
+    height: 36,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconWrapActive: { backgroundColor: colors.accent },
-  label: { fontSize: 11, fontWeight: '700', color: colors.textMuted },
-  labelActive: { color: colors.text },
+  label: { fontFamily: fonts.semi, fontSize: 11, color: colors.textFaint },
+  labelActive: { fontFamily: fonts.bold, color: colors.text },
 });

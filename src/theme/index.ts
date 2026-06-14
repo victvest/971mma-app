@@ -1,7 +1,8 @@
 import { Platform } from 'react-native';
 import { colors, palette } from './colors';
+import { fonts, fontAssets } from './fonts';
 
-export { colors, palette };
+export { colors, palette, fonts, fontAssets };
 
 export const spacing = {
   xs: 4,
@@ -15,57 +16,98 @@ export const spacing = {
 } as const;
 
 export const radii = {
-  sm: 10,
-  md: 14,
-  lg: 18,
-  xl: 24,
+  sm: 12,
+  md: 16,
+  lg: 22,
+  xl: 28,
+  xxl: 34,
   pill: 999,
 } as const;
 
-const heavy = Platform.select({ ios: '800', android: '800', default: '800' }) as '800';
-const bold = Platform.select({ ios: '700', android: '700', default: '700' }) as '700';
+/**
+ * Liquid-glass surface tokens. Pair `fill` + `border` with a `BlurView` (see
+ * `GlassSurface`) to get the frosted look; `sheen` is a top highlight gradient.
+ */
+export const glass = {
+  fill: palette.glass06,
+  fillStrong: palette.glass08,
+  fillSubtle: palette.glass04,
+  border: palette.hairline,
+  borderStrong: palette.hairlineStrong,
+  sheenTop: 'rgba(255,255,255,0.16)',
+  sheenBottom: 'rgba(255,255,255,0)',
+  tint: 'rgba(13,18,26,0.55)',
+  blur: Platform.select({ ios: 30, android: 24, default: 20 }) as number,
+  blurStrong: Platform.select({ ios: 50, android: 40, default: 34 }) as number,
+} as const;
 
-export const typography = {
-  display: { fontSize: 40, lineHeight: 42, fontWeight: heavy, letterSpacing: -1 },
-  h1: { fontSize: 30, lineHeight: 34, fontWeight: heavy, letterSpacing: -0.6 },
-  h2: { fontSize: 22, lineHeight: 27, fontWeight: bold, letterSpacing: -0.3 },
-  h3: { fontSize: 18, lineHeight: 23, fontWeight: bold, letterSpacing: -0.2 },
-  body: { fontSize: 15, lineHeight: 22, fontWeight: '500' as const },
-  bodyStrong: { fontSize: 15, lineHeight: 22, fontWeight: '700' as const },
-  small: { fontSize: 13, lineHeight: 18, fontWeight: '500' as const },
-  label: {
-    fontSize: 11,
-    lineHeight: 14,
-    fontWeight: '700' as const,
-    letterSpacing: 1.4,
-    textTransform: 'uppercase' as const,
+/** Colored glows used under primary actions, badges and highlights. */
+export const glow = {
+  green: {
+    shadowColor: palette.green,
+    shadowOpacity: 0.5,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
   },
-  stat: { fontSize: 26, lineHeight: 28, fontWeight: heavy, letterSpacing: -0.5 },
+  red: {
+    shadowColor: palette.red,
+    shadowOpacity: 0.5,
+    shadowRadius: 22,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 12,
+  },
+  gold: {
+    shadowColor: palette.gold,
+    shadowOpacity: 0.45,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 10,
+  },
 } as const;
 
 export const shadow = {
   card: {
-    shadowColor: '#0B1A12',
-    shadowOpacity: 0.06,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.5,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 18 },
+    elevation: 8,
   },
   floating: {
     shadowColor: '#000',
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 10,
+    shadowOpacity: 0.6,
+    shadowRadius: 34,
+    shadowOffset: { width: 0, height: 22 },
+    elevation: 18,
   },
   soft: {
-    shadowColor: '#0B1A12',
-    shadowOpacity: 0.04,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.35,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
   },
 } as const;
 
-export const theme = { colors, palette, spacing, radii, typography, shadow };
+export const typography = {
+  display: { fontFamily: fonts.displayBlack, fontSize: 46, lineHeight: 48, letterSpacing: 0.2 },
+  h1: { fontFamily: fonts.displayBlack, fontSize: 34, lineHeight: 36, letterSpacing: 0.2 },
+  h2: { fontFamily: fonts.bold, fontSize: 22, lineHeight: 27, letterSpacing: -0.3 },
+  h3: { fontFamily: fonts.bold, fontSize: 17, lineHeight: 22, letterSpacing: -0.2 },
+  title: { fontFamily: fonts.bold, fontSize: 16, lineHeight: 21, letterSpacing: -0.1 },
+  body: { fontFamily: fonts.medium, fontSize: 15, lineHeight: 22 },
+  bodyStrong: { fontFamily: fonts.semi, fontSize: 15, lineHeight: 22 },
+  small: { fontFamily: fonts.medium, fontSize: 13, lineHeight: 18 },
+  label: {
+    fontFamily: fonts.bold,
+    fontSize: 11,
+    lineHeight: 14,
+    letterSpacing: 1.6,
+    textTransform: 'uppercase' as const,
+  },
+  stat: { fontFamily: fonts.displayBlack, fontSize: 30, lineHeight: 32, letterSpacing: 0.3 },
+} as const;
+
+export const theme = { colors, palette, spacing, radii, typography, shadow, glass, glow, fonts };
 export type Theme = typeof theme;

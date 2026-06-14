@@ -1,8 +1,10 @@
 import React, { useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { colors, radii, shadow, spacing, typography } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, glow, palette, radii, spacing, typography } from '../theme';
 import { AppHeader } from '../components/AppHeader';
+import { AuroraBackground } from '../components/AuroraBackground';
 import { ClassCard } from '../components/ClassCard';
 import { Chip } from '../components/Chip';
 import { GymClass } from '../data/mockData';
@@ -38,12 +40,13 @@ export function ClassesScreen() {
   return (
     <View style={styles.root}>
       <StatusBar style="light" />
+      <AuroraBackground tone="red" />
       <AppHeader title="Schedule" subtitle="Book your mat time" />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.accent} />}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={refresh} tintColor={colors.accentBright} />}
       >
         <View style={styles.segment}>
           <SegBtn label="Today" active={range === 'today'} onPress={() => setRange('today')} />
@@ -57,12 +60,7 @@ export function ClassesScreen() {
           style={styles.chipScroller}
         >
           {disciplineFilters.map((d) => (
-            <Chip
-              key={d.value}
-              label={d.label}
-              active={filter === d.value}
-              onPress={() => setFilter(d.value)}
-            />
+            <Chip key={d.value} label={d.label} active={filter === d.value} onPress={() => setFilter(d.value)} />
           ))}
         </ScrollView>
 
@@ -74,7 +72,7 @@ export function ClassesScreen() {
 
         {loading ? (
           <View style={styles.empty}>
-            <ActivityIndicator color={colors.accent} />
+            <ActivityIndicator color={colors.accentBright} />
           </View>
         ) : grouped.length === 0 ? (
           <View style={styles.empty}>
@@ -108,38 +106,43 @@ export function ClassesScreen() {
 
 function SegBtn({ label, active, onPress }: { label: string; active: boolean; onPress: () => void }) {
   return (
-    <Text
-      onPress={onPress}
-      style={[styles.segBtn, active && styles.segBtnActive]}
-      suppressHighlighting
-    >
-      {label}
-    </Text>
+    <Pressable onPress={onPress} accessibilityRole="button" style={styles.segBtn}>
+      {active ? (
+        <LinearGradient
+          colors={[palette.greenBright, palette.green]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={[styles.segFill, glow.green]}
+        >
+          <Text style={[styles.segText, { color: '#04150C' }]}>{label}</Text>
+        </LinearGradient>
+      ) : (
+        <View style={styles.segIdle}>
+          <Text style={[styles.segText, { color: colors.textMuted }]}>{label}</Text>
+        </View>
+      )}
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: colors.bg },
-  scroll: { paddingTop: spacing.xl, paddingBottom: 120 },
+  root: { flex: 1, backgroundColor: palette.abyss },
+  scroll: { paddingTop: spacing.md, paddingBottom: 132 },
 
   segment: {
     flexDirection: 'row',
     marginHorizontal: spacing.xl,
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: palette.glass06,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radii.pill,
-    padding: 4,
+    padding: 5,
+    gap: 5,
   },
-  segBtn: {
-    flex: 1,
-    textAlign: 'center',
-    paddingVertical: 11,
-    borderRadius: radii.pill,
-    fontSize: 14,
-    fontWeight: '700',
-    color: colors.textMuted,
-    overflow: 'hidden',
-  },
-  segBtnActive: { backgroundColor: colors.accent, color: '#fff', ...shadow.soft },
+  segBtn: { flex: 1 },
+  segFill: { height: 42, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  segIdle: { height: 42, borderRadius: radii.pill, alignItems: 'center', justifyContent: 'center' },
+  segText: { fontFamily: fonts.bold, fontSize: 14 },
 
   chipScroller: { marginTop: spacing.lg },
   chips: { paddingHorizontal: spacing.xl, gap: spacing.sm },
@@ -147,12 +150,14 @@ const styles = StyleSheet.create({
   demoBanner: {
     marginHorizontal: spacing.xl,
     marginTop: spacing.lg,
-    backgroundColor: colors.surfaceAlt,
+    backgroundColor: palette.glass06,
+    borderWidth: 1,
+    borderColor: colors.border,
     borderRadius: radii.sm,
-    paddingVertical: 8,
+    paddingVertical: 9,
     alignItems: 'center',
   },
-  demoText: { fontSize: 12, fontWeight: '700', color: colors.textMuted },
+  demoText: { fontFamily: fonts.bold, fontSize: 12, color: colors.textMuted },
 
   group: { marginTop: spacing.xxl, paddingHorizontal: spacing.xl },
   dayHeader: {
@@ -162,7 +167,7 @@ const styles = StyleSheet.create({
     marginBottom: spacing.md,
   },
   dayTitle: { ...typography.h2, color: colors.text },
-  dayCount: { fontSize: 13, color: colors.textFaint, fontWeight: '700' },
+  dayCount: { fontFamily: fonts.bold, fontSize: 13, color: colors.textFaint },
 
   empty: { paddingTop: spacing.huge, alignItems: 'center' },
   emptyText: { ...typography.body, color: colors.textMuted },

@@ -7,15 +7,20 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
-import { colors, radii, spacing, typography } from '../theme';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 
-type Tone = 'green' | 'red' | 'ink' | 'neutral';
+type Tone = 'green' | 'red' | 'ink' | 'neutral' | 'gold';
 
-const toneMap: Record<Tone, { bg: string; fg: string }> = {
-  green: { bg: colors.accentSoft, fg: colors.accent },
-  red: { bg: colors.dangerSoft, fg: colors.danger },
-  ink: { bg: '#EEF0F2', fg: colors.text },
-  neutral: { bg: colors.bgAlt, fg: colors.textMuted },
+const toneMap: Record<
+  Tone,
+  { bg: string; fg: string; border: string; solidBg: string; solidFg: string }
+> = {
+  green: { bg: palette.greenGlass, fg: palette.greenBright, border: palette.greenLine, solidBg: palette.green, solidFg: '#04150C' },
+  red: { bg: palette.redGlass, fg: palette.redBright, border: 'rgba(255,59,78,0.35)', solidBg: palette.red, solidFg: '#fff' },
+  ink: { bg: palette.glass08, fg: colors.text, border: colors.borderStrong, solidBg: '#F2F5F9', solidFg: palette.ink900 },
+  neutral: { bg: palette.glass06, fg: colors.textMuted, border: colors.border, solidBg: palette.glass16, solidFg: colors.text },
+  gold: { bg: palette.goldGlass, fg: palette.goldBright, border: 'rgba(231,199,122,0.38)', solidBg: palette.gold, solidFg: '#1B1403' },
 };
 
 export function Tag({
@@ -30,11 +35,17 @@ export function Tag({
   solid?: boolean;
 }) {
   const t = toneMap[tone];
-  const bg = solid ? t.fg : t.bg;
-  const fg = solid ? '#fff' : t.fg;
   return (
-    <View style={[styles.tag, { backgroundColor: bg }, style]}>
-      <Text style={[styles.tagText, { color: fg }]}>{label}</Text>
+    <View
+      style={[
+        styles.tag,
+        solid
+          ? { backgroundColor: t.solidBg, borderColor: t.solidBg }
+          : { backgroundColor: t.bg, borderColor: t.border },
+        style,
+      ]}
+    >
+      <Text style={[styles.tagText, { color: solid ? t.solidFg : t.fg }]}>{label}</Text>
     </View>
   );
 }
@@ -56,7 +67,7 @@ export function SectionHeader({
     <View style={styles.sectionHeader}>
       <Text style={[typography.h3, { color: colors.text }]}>{title}</Text>
       {action ? (
-        <Text onPress={onAction} style={styles.sectionAction}>
+        <Text onPress={onAction} suppressHighlighting style={styles.sectionAction}>
           {action}
         </Text>
       ) : null}
@@ -67,22 +78,26 @@ export function SectionHeader({
 export function ProgressBar({
   percent,
   tone = 'green',
-  height = 8,
+  height = 9,
 }: {
   percent: number;
-  tone?: 'green' | 'red';
+  tone?: 'green' | 'red' | 'gold';
   height?: number;
 }) {
-  const fill = tone === 'red' ? colors.danger : colors.accent;
+  const grad: readonly [string, string, ...string[]] =
+    tone === 'red'
+      ? [palette.redBright, palette.red]
+      : tone === 'gold'
+      ? [palette.goldBright, palette.gold]
+      : [palette.greenBright, palette.green];
+  const pct = Math.min(100, Math.max(0, percent));
   return (
     <View style={[styles.track, { height, borderRadius: height }]}>
-      <View
-        style={{
-          width: `${Math.min(100, Math.max(0, percent))}%`,
-          height,
-          borderRadius: height,
-          backgroundColor: fill,
-        }}
+      <LinearGradient
+        colors={grad}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={{ width: `${pct}%`, height, borderRadius: height }}
       />
     </View>
   );
@@ -115,38 +130,34 @@ export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
 const styles = StyleSheet.create({
   tag: {
     alignSelf: 'flex-start',
-    paddingHorizontal: 10,
+    paddingHorizontal: 11,
     paddingVertical: 5,
     borderRadius: radii.sm,
+    borderWidth: 1,
   },
-  tagText: { fontSize: 11, fontWeight: '800', letterSpacing: 0.5, textTransform: 'uppercase' },
+  tagText: { fontFamily: fonts.bold, fontSize: 10.5, letterSpacing: 0.8, textTransform: 'uppercase' },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
   },
-  sectionAction: { fontSize: 13, fontWeight: '700', color: colors.accent },
+  sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: colors.accentBright },
   track: {
     width: '100%',
-    backgroundColor: colors.surfaceSunken,
+    backgroundColor: palette.glass08,
     overflow: 'hidden',
   },
   statBox: {
     flex: 1,
-    backgroundColor: colors.card,
+    backgroundColor: palette.glass06,
     borderRadius: radii.md,
     borderWidth: 1,
     borderColor: colors.border,
     paddingVertical: spacing.lg,
     paddingHorizontal: spacing.lg,
   },
-  statLabel: {
-    marginTop: 6,
-    fontSize: 12,
-    fontWeight: '700',
-    color: colors.text,
-  },
-  statSub: { marginTop: 1, fontSize: 11, color: colors.textFaint, fontWeight: '600' },
+  statLabel: { marginTop: 6, fontFamily: fonts.bold, fontSize: 12, color: colors.text },
+  statSub: { marginTop: 1, fontFamily: fonts.medium, fontSize: 11, color: colors.textFaint },
   divider: { height: 1, backgroundColor: colors.border },
 });
