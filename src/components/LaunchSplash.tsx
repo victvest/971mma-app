@@ -112,7 +112,7 @@ export function LaunchSplash({ message = 'Preparing your member hub…' }: Props
         <View style={styles.track}>
           <Animated.View style={[styles.shimmerWrap, { transform: [{ translateX: shimmerX }] }]}>
             <LinearGradient
-              colors={['transparent', palette.greenBright, palette.green, palette.red, 'transparent']}
+              colors={['transparent', palette.greenBright, palette.green, 'transparent']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.shimmer}

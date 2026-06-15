@@ -153,7 +153,7 @@ export function QrCode({ seed, size = 200, animated = true }: Props) {
               pointerEvents="none"
             >
               <LinearGradient
-                colors={['transparent', 'rgba(21,99,58,0.12)', palette.greenBright, palette.red, 'rgba(139,30,34,0.12)', 'transparent']}
+                colors={['transparent', 'rgba(21,99,58,0.1)', palette.greenBright, 'rgba(21,99,58,0.1)', 'transparent']}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={styles.scanGrad}

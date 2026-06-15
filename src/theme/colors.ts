@@ -62,12 +62,12 @@ export const palette = {
   textLow: '#97A0AA',
 } as const;
 
-/** UAE-inspired duo gradients — green leads, blood red closes (never neon). */
+/** Premium gradients — green depth only. Red is a separate solid accent, never blended. */
 export const brand = {
-  cta: [palette.greenBright, palette.green, palette.red] as const,
-  ctaSoft: [palette.greenBright, palette.green, '#1A6B42'] as const,
-  sheen: [palette.greenBright, palette.green, palette.redBright, palette.green] as const,
-  progress: [palette.greenBright, palette.green, palette.red] as const,
+  cta: [palette.greenBright, palette.green, palette.greenDeep] as const,
+  ctaSoft: [palette.greenBright, palette.green] as const,
+  sheen: [palette.greenBright, palette.green, palette.greenDeep] as const,
+  progress: [palette.greenBright, palette.green] as const,
 } as const;
 
 export const colors = {

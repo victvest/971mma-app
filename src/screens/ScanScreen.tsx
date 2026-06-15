@@ -205,7 +205,7 @@ function ScanView({
           <Corner pos={{ bottom: 0, right: 0 }} r={{ borderBottomRightRadius: 18 }} />
           <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]}>
             <LinearGradient
-              colors={['transparent', palette.greenBright, palette.red, palette.greenBright, 'transparent']}
+              colors={['transparent', palette.greenBright, palette.green, 'transparent']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.scanGrad}

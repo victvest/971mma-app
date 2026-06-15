@@ -150,7 +150,7 @@ const styles = StyleSheet.create({
     borderRadius: 2,
     overflow: 'hidden',
   },
-  sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: palette.red },
+  sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: colors.accent },
   track: {
     width: '100%',
     backgroundColor: palette.insetStrong,

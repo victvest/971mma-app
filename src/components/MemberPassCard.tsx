@@ -18,8 +18,8 @@ type Props = {
 };
 
 const TIER_GRAD: Record<NonNullable<Props['tier']>, readonly [string, string, ...string[]]> = {
-  standard: [palette.greenDeep, palette.green, palette.greenBright, palette.red],
-  pro: [palette.greenDeep, '#1A5C40', palette.greenBright, palette.red],
+  standard: [palette.greenDeep, palette.green, palette.greenBright],
+  pro: [palette.greenDeep, '#1A5C40', palette.greenBright],
   elite: [palette.goldDeep, palette.gold, palette.goldBright],
 };
 
@@ -127,7 +127,7 @@ export function MemberPassCard({
           <View style={styles.qrStage}>
             <Animated.View style={[styles.qrRing, { transform: [{ rotate: ringRotate }] }]}>
               <LinearGradient
-                colors={[palette.greenBright, palette.red, palette.green, 'transparent']}
+                colors={[palette.greenBright, palette.green, 'transparent']}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
                 style={styles.qrRingGrad}

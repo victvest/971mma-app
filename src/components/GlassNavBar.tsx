@@ -180,7 +180,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
     borderWidth: 1,
     borderColor: palette.greenLine,
-    borderLeftColor: palette.redLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
