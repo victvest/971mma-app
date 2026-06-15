@@ -7,22 +7,14 @@ import { StatusBar } from 'expo-status-bar';
 import { useFonts } from 'expo-font';
 import { AuthProvider } from './src/context/AuthContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
-import { ScreenShell } from './src/components/ScreenShell';
-import { Logo } from './src/components/Logo';
+import { LaunchSplash } from './src/components/LaunchSplash';
 import { fontAssets, palette } from './src/theme';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts(fontAssets);
   const ready = fontsLoaded || !!fontError;
 
-  const renderBoot = useCallback(
-    () => (
-      <ScreenShell style={styles.boot}>
-        <Logo size={88} tint="black" />
-      </ScreenShell>
-    ),
-    [],
-  );
+  const renderBoot = useCallback(() => <LaunchSplash message="Preparing 971 MMA…" />, []);
 
   return (
     <GestureHandlerRootView style={styles.root}>
@@ -42,9 +34,4 @@ export default function App() {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: palette.ink900 },
-  boot: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

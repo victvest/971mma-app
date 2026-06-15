@@ -17,7 +17,7 @@ const toneMap: Record<
   { bg: string; fg: string; border: string; solidBg: string; solidFg: string }
 > = {
   green: { bg: palette.greenGlass, fg: palette.green, border: palette.greenLine, solidBg: palette.green, solidFg: '#fff' },
-  red: { bg: palette.redGlass, fg: palette.red, border: 'rgba(232,25,44,0.28)', solidBg: palette.red, solidFg: '#fff' },
+  red: { bg: palette.redGlass, fg: palette.red, border: palette.redLine, solidBg: palette.red, solidFg: '#fff' },
   ink: { bg: palette.inset, fg: colors.text, border: colors.borderStrong, solidBg: palette.black, solidFg: '#fff' },
   neutral: { bg: palette.inset, fg: colors.textMuted, border: colors.border, solidBg: palette.insetStrong, solidFg: colors.text },
   gold: { bg: palette.goldGlass, fg: palette.goldDeep, border: 'rgba(168,132,47,0.35)', solidBg: palette.goldBright, solidFg: '#3A2D08' },
@@ -86,7 +86,7 @@ export function ProgressBar({
 }) {
   const grad: readonly [string, string, ...string[]] =
     tone === 'red'
-      ? [palette.redBright, palette.red]
+      ? [palette.redBright, palette.redDeep]
       : tone === 'gold'
       ? [palette.goldBright, palette.gold]
       : [palette.greenBright, palette.green];

@@ -148,7 +148,7 @@ export function ProfileScreen() {
         </Pressable>
 
         <Pressable onPress={confirmSignOut} style={styles.signOut} accessibilityRole="button">
-          <Ionicons name="log-out-outline" size={19} color={palette.redBright} />
+          <Ionicons name="log-out-outline" size={19} color={palette.red} />
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
 
@@ -247,9 +247,9 @@ const styles = StyleSheet.create({
     height: 52,
     borderRadius: radii.md,
     borderWidth: 1,
-    borderColor: 'rgba(232,25,44,0.25)',
+    borderColor: palette.redLine,
     backgroundColor: palette.redGlass,
   },
-  signOutText: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 15 },
+  signOutText: { color: palette.red, fontFamily: fonts.semi, fontSize: 15 },
   version: { textAlign: 'center', color: colors.textFaint, fontFamily: fonts.medium, fontSize: 12, marginTop: spacing.xl },
 });

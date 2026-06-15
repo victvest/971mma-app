@@ -45,7 +45,7 @@ export function TrainingScreen() {
 
         <View style={styles.rowCards}>
           <GlassSurface padding={spacing.lg} style={{ flex: 1 }}>
-            <Ionicons name="flame-outline" size={20} color={palette.redBright} />
+            <Ionicons name="flame-outline" size={20} color={palette.red} />
             <Text style={styles.cardValue}>{trainingStats.disciplineScore}</Text>
             <Text style={styles.cardLabel}>Discipline score</Text>
           </GlassSurface>

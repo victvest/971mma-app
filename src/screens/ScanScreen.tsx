@@ -242,7 +242,7 @@ function SuccessView({ onDone }: { onDone: () => void }) {
       <Text style={styles.successTitle}>You're checked in</Text>
       <Text style={styles.successText}>Walk onto the mat — see you on the floor.</Text>
       <View style={styles.successCard}>
-        <Ionicons name="flame" size={18} color={palette.redBright} />
+        <Ionicons name="flame" size={18} color={palette.red} />
         <Text style={styles.successStreak}>{membership.streakDays + 1} day streak</Text>
       </View>
       <Button label="Done" onPress={onDone} style={{ marginTop: spacing.xxl }} full={false} />
@@ -307,9 +307,11 @@ const styles = StyleSheet.create({
   statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
   passStatusText: { color: colors.accent, fontFamily: fonts.semi, fontSize: 12 },
   qrFrame: {
-    padding: spacing.lg,
+    padding: spacing.md,
     backgroundColor: '#fff',
     borderRadius: radii.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   passHint: { marginTop: spacing.lg, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted, textAlign: 'center' },
   passFooter: {
@@ -383,10 +385,10 @@ const styles = StyleSheet.create({
     marginTop: spacing.xl,
     backgroundColor: palette.redGlass,
     borderWidth: 1,
-    borderColor: 'rgba(232,25,44,0.2)',
+    borderColor: palette.redLine,
     paddingHorizontal: spacing.lg,
     paddingVertical: spacing.md,
     borderRadius: radii.pill,
   },
-  successStreak: { color: palette.redBright, fontFamily: fonts.semi, fontSize: 14 },
+  successStreak: { color: palette.red, fontFamily: fonts.semi, fontSize: 14 },
 });

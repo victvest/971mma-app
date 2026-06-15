@@ -196,7 +196,7 @@ function StatTile({
   sub: string;
   accent?: 'red';
 }) {
-  const color = accent === 'red' ? palette.redBright : colors.accent;
+  const color = accent === 'red' ? palette.red : colors.accent;
   return (
     <GlassSurface style={styles.statCard} padding={spacing.lg}>
       <Text style={[styles.statValue, { color }]}>{value}</Text>

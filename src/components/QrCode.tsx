@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View } from 'react-native';
-import { colors } from '../theme';
+import React, { useEffect, useMemo, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
+import { colors, palette } from '../theme';
 
 /**
- * Dependency-free deterministic QR-style visual.
- * Renders a stable pseudo-random matrix from a seed plus the 3 finder squares,
- * so it looks like a real scannable code for the demo without a QR library.
+ * Deterministic QR-style visual with a live scan-line and soft pulse —
+ * reads like an active member pass, not a static placeholder.
  */
 function seededMatrix(seed: string, size: number) {
   let h = 2166136261;
@@ -36,33 +36,135 @@ function inFinder(r: number, c: number, size: number) {
   return tl || tr || bl;
 }
 
-export function QrCode({ seed, size = 200 }: { seed: string; size?: number }) {
+type Props = {
+  seed: string;
+  size?: number;
+  animated?: boolean;
+};
+
+export function QrCode({ seed, size = 200, animated = true }: Props) {
   const dims = 21;
   const grid = useMemo(() => seededMatrix(seed, dims), [seed]);
   const cell = size / dims;
 
+  const reveal = useRef(new Animated.Value(0)).current;
+  const scan = useRef(new Animated.Value(0)).current;
+  const pulse = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (!animated) return;
+
+    Animated.timing(reveal, {
+      toValue: 1,
+      duration: 680,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+
+    const scanLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(scan, {
+          toValue: 1,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.delay(320),
+        Animated.timing(scan, {
+          toValue: 0,
+          duration: 2200,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1800,
+          easing: Easing.inOut(Easing.sin),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+
+    scanLoop.start();
+    pulseLoop.start();
+    return () => {
+      scanLoop.stop();
+      pulseLoop.stop();
+    };
+  }, [animated, pulse, reveal, scan]);
+
+  const scanY = scan.interpolate({
+    inputRange: [0, 1],
+    outputRange: [4, size - 8],
+  });
+  const frameOpacity = pulse.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.35, 0.85],
+  });
+  const gridOpacity = reveal.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.15, 1],
+  });
+
   return (
-    <View style={[styles.wrap, { width: size, height: size }]}>
-      {grid.map((row, r) => (
-        <View key={r} style={{ flexDirection: 'row' }}>
-          {row.map((on, c) => {
-            const finder = inFinder(r, c, dims);
-            return (
-              <View
-                key={c}
-                style={{
-                  width: cell,
-                  height: cell,
-                  backgroundColor: finder ? 'transparent' : on ? colors.text : 'transparent',
-                }}
+    <View style={[styles.outer, { width: size + 16, height: size + 16 }]}>
+      {animated ? (
+        <Animated.View style={[styles.frameGlow, { opacity: frameOpacity }]} pointerEvents="none" />
+      ) : null}
+
+      <Animated.View style={[styles.wrap, { width: size, height: size, opacity: gridOpacity }]}>
+        {grid.map((row, r) => (
+          <View key={r} style={{ flexDirection: 'row' }}>
+            {row.map((on, c) => {
+              const finder = inFinder(r, c, dims);
+              return (
+                <View
+                  key={c}
+                  style={{
+                    width: cell,
+                    height: cell,
+                    backgroundColor: finder ? 'transparent' : on ? colors.text : 'transparent',
+                  }}
+                />
+              );
+            })}
+          </View>
+        ))}
+        <Finder style={{ top: 0, left: 0 }} cell={cell} />
+        <Finder style={{ top: 0, right: 0 }} cell={cell} />
+        <Finder style={{ bottom: 0, left: 0 }} cell={cell} />
+
+        {animated ? (
+          <>
+            <Animated.View
+              style={[styles.scanLine, { transform: [{ translateY: scanY }] }]}
+              pointerEvents="none"
+            >
+              <LinearGradient
+                colors={['transparent', 'rgba(21,99,58,0.15)', palette.greenBright, 'rgba(21,99,58,0.15)', 'transparent']}
+                start={{ x: 0, y: 0.5 }}
+                end={{ x: 1, y: 0.5 }}
+                style={styles.scanGrad}
               />
-            );
-          })}
-        </View>
-      ))}
-      <Finder style={{ top: 0, left: 0 }} cell={cell} />
-      <Finder style={{ top: 0, right: 0 }} cell={cell} />
-      <Finder style={{ bottom: 0, left: 0 }} cell={cell} />
+            </Animated.View>
+            <CornerBracket style={{ top: 6, left: 6 }} />
+            <CornerBracket style={{ top: 6, right: 6 }} flipH />
+            <CornerBracket style={{ bottom: 6, left: 6 }} flipV />
+            <CornerBracket style={{ bottom: 6, right: 6 }} flipH flipV />
+          </>
+        ) : null}
+      </Animated.View>
     </View>
   );
 }
@@ -76,13 +178,75 @@ function Finder({ style, cell }: { style: object; cell: number }) {
   );
 }
 
+function CornerBracket({
+  style,
+  flipH,
+  flipV,
+}: {
+  style: object;
+  flipH?: boolean;
+  flipV?: boolean;
+}) {
+  const transform = [];
+  if (flipH) transform.push({ scaleX: -1 });
+  if (flipV) transform.push({ scaleY: -1 });
+
+  return (
+    <View
+      style={[styles.bracket, style, transform.length ? { transform } : null]}
+      pointerEvents="none"
+    />
+  );
+}
+
 const styles = StyleSheet.create({
-  wrap: { backgroundColor: '#fff', position: 'relative' },
+  outer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+  },
+  frameGlow: {
+    ...StyleSheet.absoluteFill,
+    borderRadius: 18,
+    borderWidth: 2,
+    borderColor: palette.greenLine,
+    backgroundColor: palette.greenGlass,
+  },
+  wrap: {
+    backgroundColor: '#fff',
+    position: 'relative',
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   finder: {
     position: 'absolute',
     borderColor: colors.text,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#fff',
+  },
+  scanLine: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    height: 3,
+    zIndex: 4,
+  },
+  scanGrad: {
+    flex: 1,
+    shadowColor: palette.greenBright,
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  bracket: {
+    position: 'absolute',
+    width: 18,
+    height: 18,
+    borderColor: palette.green,
+    borderTopWidth: 2.5,
+    borderLeftWidth: 2.5,
+    borderRadius: 3,
+    zIndex: 3,
   },
 });

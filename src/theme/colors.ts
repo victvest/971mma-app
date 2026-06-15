@@ -27,11 +27,12 @@ export const palette = {
   greenGlass: 'rgba(21,99,58,0.10)',
   greenLine: 'rgba(21,99,58,0.22)',
 
-  // 971 brand red — live / alert
-  red: '#E1182B',
-  redBright: '#E8192C',
-  redDeep: '#B3121F',
-  redGlass: 'rgba(232,25,44,0.10)',
+  // Blood red — live / alert (deep, not neon)
+  red: '#8B1E22',
+  redBright: '#A0282C',
+  redDeep: '#5E1014',
+  redGlass: 'rgba(139,30,34,0.12)',
+  redLine: 'rgba(139,30,34,0.28)',
 
   // Gold — premium / Elite tier
   gold: '#A8842F',

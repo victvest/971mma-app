@@ -1,11 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useAuth } from '../context/AuthContext';
 import { colors, palette } from '../theme';
-import { Logo } from '../components/Logo';
-import { ScreenShell } from '../components/ScreenShell';
+import { LaunchSplash } from '../components/LaunchSplash';
 import { AuthStackParamList } from './types';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
@@ -41,12 +39,7 @@ function AuthNavigator() {
 }
 
 function SplashScreen() {
-  return (
-    <ScreenShell style={styles.splash}>
-      <Logo size={88} tint="black" />
-      <ActivityIndicator color={colors.accent} style={{ marginTop: 28 }} />
-    </ScreenShell>
-  );
+  return <LaunchSplash message="Signing you in…" />;
 }
 
 export function RootNavigator() {
@@ -67,10 +60,3 @@ export function RootNavigator() {
     </NavigationContainer>
   );
 }
-
-const styles = StyleSheet.create({
-  splash: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});
