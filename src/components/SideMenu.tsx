@@ -47,6 +47,7 @@ const PRIMARY: Item[] = [
   { label: 'Member pass', icon: 'pass', tone: 'ink', route: 'Tabs', tab: 'Scan' },
   { label: 'Schedule', icon: 'schedule', tone: 'green', route: 'Tabs', tab: 'Classes' },
   { label: 'Training log', icon: 'training', tone: 'green', route: 'Training', badge: `${membership.checkInsThisMonth}` },
+  { label: 'Know your history', icon: 'time', tone: 'red', route: 'Training' },
   { label: 'Rewards', icon: 'rewards', tone: 'gold', route: 'Rewards', badge: `${rewardsProfile.points}` },
   { label: 'Belt journey', icon: 'belt', tone: 'red', route: 'BeltJourney' },
   { label: 'Profile', icon: 'profile', tone: 'ink', route: 'Tabs', tab: 'Profile' },

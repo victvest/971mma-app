@@ -20,7 +20,7 @@ import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { ClassCard } from '../components/ClassCard';
 import { AppIcon, type AppIconName } from '../components/icons/FeatureIcon';
-import { ActivityFeed } from '../components/tracking/ActivityFeed';
+import { KnowYourHistory } from '../components/KnowYourHistory';
 import { Tag, SectionHeader, ProgressBar } from '../components/primitives';
 import { membership, announcement, heroImage } from '../data/mockData';
 import { rewardsProfile } from '../data/memberFeatures';
@@ -141,16 +141,15 @@ export function HomeScreen() {
           </Text>
         </GlassSurface>
 
-        {/* Recent history */}
+        {/* Know Your History — v3 signature block */}
         <View style={styles.section}>
-          <SectionHeader
-            title="Recent history"
-            action="View all"
-            onAction={() => stackNav?.navigate('Training')}
+          <KnowYourHistory
+            memberName={name}
+            beltRank={profile?.beltRank ?? undefined}
+            beltStripes={profile?.beltStripes}
+            onTrainingLog={() => stackNav?.navigate('Training')}
+            onBeltJourney={() => stackNav?.navigate('BeltJourney')}
           />
-          <GlassSurface padding={spacing.md}>
-            <ActivityFeed onViewAll={() => stackNav?.navigate('Training')} />
-          </GlassSurface>
         </View>
 
         {/* Today's schedule — browse only */}

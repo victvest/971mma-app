@@ -29,7 +29,7 @@ export function TrainingScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Training log" subtitle="Earn Your Level · every session counts" showBell={false} />
+      <GlassNavBar title="Training log" subtitle="Know Your History · every session counts" showBell={false} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}

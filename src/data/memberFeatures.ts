@@ -40,6 +40,14 @@ export type PromotionEvent = {
   note?: string;
 };
 
+/** Milestone chip shape for Know Your History (v3). */
+export type JourneyMilestone = {
+  id: string;
+  label: string;
+  value: string;
+  tone: 'green' | 'red' | 'gold' | 'ink';
+};
+
 export const trainingStats = {
   sessionsThisMonth: 14,
   monthlyGoal: 20,
