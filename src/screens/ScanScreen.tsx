@@ -6,7 +6,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
-import { AppHeader } from '../components/AppHeader';
+import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { QrCode } from '../components/QrCode';
@@ -67,7 +67,7 @@ export function ScanScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <AppHeader title="Member pass" subtitle="Show at the front desk to check in" showBell={false} />
+      <GlassNavBar title="Member pass" subtitle="Show at reception to check in" showBell={false} />
 
       <View style={styles.body}>
         <View style={styles.segment}>

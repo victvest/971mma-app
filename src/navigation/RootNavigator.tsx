@@ -9,7 +9,7 @@ import { ScreenShell } from '../components/ScreenShell';
 import { AuthStackParamList } from './types';
 import { LoginScreen } from '../screens/auth/LoginScreen';
 import { SignupScreen } from '../screens/auth/SignupScreen';
-import { TabNavigator } from './TabNavigator';
+import { MainStack } from './MainStack';
 
 const AuthStack = createNativeStackNavigator<AuthStackParamList>();
 
@@ -56,11 +56,11 @@ export function RootNavigator() {
   return (
     <NavigationContainer theme={navTheme}>
       {previewTabs ? (
-        <TabNavigator />
+        <MainStack />
       ) : initializing ? (
         <SplashScreen />
       ) : session ? (
-        <TabNavigator />
+        <MainStack />
       ) : (
         <AuthNavigator />
       )}

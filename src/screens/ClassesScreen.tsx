@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
-import { AppHeader } from '../components/AppHeader';
+import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { ClassCard } from '../components/ClassCard';
 import { Chip } from '../components/Chip';
@@ -40,7 +40,7 @@ export function ClassesScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <AppHeader title="Schedule" subtitle="Walk in anytime — just show up and train" />
+      <GlassNavBar title="Schedule" subtitle="Walk in anytime — just show up" />
 
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -3,22 +3,20 @@ import { Alert, Pressable, ScrollView, StyleSheet, Text, View } from 'react-nati
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { AppHeader } from '../components/AppHeader';
+import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { Tag, ProgressBar } from '../components/primitives';
 import { membership, progress } from '../data/mockData';
+import { beltJourney, rewardsProfile } from '../data/memberFeatures';
 import { useProfile } from '../hooks/useProfile';
 import { EditProfileSheet } from '../components/EditProfileSheet';
-
-const SETTINGS: { icon: keyof typeof Ionicons.glyphMap; label: string }[] = [
-  { icon: 'card-outline', label: 'Membership & billing' },
-  { icon: 'notifications-outline', label: 'Notifications' },
-  { icon: 'shield-checkmark-outline', label: 'Privacy & security' },
-  { icon: 'help-circle-outline', label: 'Help & support' },
-];
+import type { MainStackParamList, TabsParamList } from '../navigation/types';
 
 const TIER_LABEL: Record<string, string> = { standard: 'Standard', pro: 'Pro', elite: 'Elite' };
 const STATUS_LABEL: Record<string, string> = { active: 'Active', paused: 'Paused', expired: 'Expired' };
@@ -41,6 +39,8 @@ function formatDate(iso: string | null): string {
 export function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, save } = useProfile();
+  const tabNav = useNavigation<BottomTabNavigationProp<TabsParamList, 'Profile'>>();
+  const stackNav = tabNav.getParent<NativeStackNavigationProp<MainStackParamList>>();
   const [editing, setEditing] = useState(false);
 
   const display = profile?.fullName || user?.email?.split('@')[0] || 'Member';
@@ -67,38 +67,42 @@ export function ProfileScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <AppHeader title="Profile" showBell={false} />
+      <GlassNavBar title="Profile" subtitle={membership.memberId} showBell={false} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <GlassSurface style={styles.identityCard}>
-          <Pressable style={styles.editBtn} onPress={() => setEditing(true)} hitSlop={8} accessibilityLabel="Edit profile">
-            <Ionicons name="create-outline" size={18} color={colors.accent} />
-          </Pressable>
-          <View style={styles.avatar}>
-            <LinearGradient
-              colors={[palette.greenBright, palette.green]}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.avatarFill}
-            >
-              <Text style={styles.avatarText}>{initials(profile?.fullName, user?.email)}</Text>
-            </LinearGradient>
+        {/* Horizontal member ID — not centered avatar card */}
+        <GlassSurface strong padding={spacing.lg}>
+          <View style={styles.identityRow}>
+            <View style={styles.avatarRing}>
+              <LinearGradient colors={[palette.greenBright, palette.green]} style={styles.avatarFill}>
+                <Text style={styles.avatarText}>{initials(profile?.fullName, user?.email)}</Text>
+              </LinearGradient>
+            </View>
+            <View style={styles.identityBody}>
+              <View style={styles.identityTop}>
+                <Text style={styles.displayName} numberOfLines={1}>{display}</Text>
+                <Pressable onPress={() => setEditing(true)} hitSlop={8} accessibilityLabel="Edit profile">
+                  <Ionicons name="create-outline" size={18} color={colors.accent} />
+                </Pressable>
+              </View>
+              <Text style={styles.email} numberOfLines={1}>{user?.email}</Text>
+              <View style={styles.metaRow}>
+                <Tag label={tierLabel} tone={isElite ? 'gold' : 'green'} />
+                <Tag label={statusLabel} tone="neutral" />
+                <Tag label={`${beltRank}`} tone="green" />
+              </View>
+            </View>
           </View>
-          <Text style={styles.name}>{display}</Text>
-          <Text style={styles.email}>{user?.email}</Text>
-          <View style={styles.idRow}>
-            <Tag label={tierLabel} tone={isElite ? 'gold' : 'green'} />
-            <Tag label={statusLabel} tone="neutral" />
+
+          <View style={styles.quickStats}>
+            <QuickStat label="Sessions" value={String(membership.checkInsThisMonth)} onPress={() => stackNav?.navigate('Training')} />
+            <QuickStat label="Points" value={String(rewardsProfile.points)} onPress={() => stackNav?.navigate('Rewards')} />
+            <QuickStat label="Belt" value={`${beltStripes} stripes`} onPress={() => stackNav?.navigate('BeltJourney')} />
           </View>
         </GlassSurface>
 
         <View style={styles.membershipCard}>
-          <LinearGradient
-            colors={cardGradient}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFill}
-          />
+          <LinearGradient colors={cardGradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFill} />
           <LinearGradient
             colors={['rgba(255,255,255,0.22)', 'rgba(255,255,255,0)']}
             start={{ x: 0, y: 0 }}
@@ -122,44 +126,26 @@ export function ProfileScreen() {
               <Text style={[styles.memFootValue, { color: onCard }]}>{formatDate(profile?.membershipExpiresAt ?? null)}</Text>
             </View>
             <View>
-              <Text style={[styles.memFootLabel, { color: onCardMuted }]}>Check-ins</Text>
-              <Text style={[styles.memFootValue, { color: onCard }]}>{membership.checkInsThisMonth} this month</Text>
+              <Text style={[styles.memFootLabel, { color: onCardMuted }]}>Member since</Text>
+              <Text style={[styles.memFootValue, { color: onCard }]}>{membership.memberSince}</Text>
             </View>
           </View>
         </View>
 
-        <GlassSurface tone="green" style={{ marginTop: spacing.lg }}>
-          <View style={styles.beltHead}>
-            <Ionicons name="ribbon-outline" size={22} color={colors.accent} />
-            <View style={{ flex: 1, marginLeft: spacing.md }}>
-              <Text style={styles.beltRank}>{beltRank} · {beltStripes} stripes</Text>
-              <Text style={styles.beltTrack}>{progress.track}</Text>
-            </View>
-            <Text style={styles.beltPct}>{progress.percent}%</Text>
-          </View>
-          <ProgressBar percent={progress.percent} />
-          <Text style={styles.beltNext}>Next: {progress.nextRank}</Text>
-        </GlassSurface>
-
-        <GlassSurface style={{ marginTop: spacing.lg }} padding={false}>
-          {SETTINGS.map((s, i) => (
-            <Pressable
-              key={s.label}
-              accessibilityRole="button"
-              style={({ pressed }) => [
-                styles.settingRow,
-                i < SETTINGS.length - 1 && styles.settingBorder,
-                pressed && { backgroundColor: palette.glass08 },
-              ]}
-            >
-              <View style={styles.settingIcon}>
-                <Ionicons name={s.icon} size={19} color={colors.text} />
+        <Pressable onPress={() => stackNav?.navigate('BeltJourney')}>
+          <GlassSurface tone="green" style={{ marginTop: spacing.lg }}>
+            <View style={styles.beltHead}>
+              <Ionicons name="ribbon-outline" size={22} color={colors.accent} />
+              <View style={{ flex: 1, marginLeft: spacing.md }}>
+                <Text style={styles.beltRank}>{beltRank} · {beltStripes} stripes</Text>
+                <Text style={styles.beltTrack}>{beltJourney.track}</Text>
               </View>
-              <Text style={styles.settingLabel}>{s.label}</Text>
-              <Ionicons name="chevron-forward" size={18} color={colors.textFaint} />
-            </Pressable>
-          ))}
-        </GlassSurface>
+              <Text style={styles.beltPct}>{beltJourney.percent}%</Text>
+            </View>
+            <ProgressBar percent={beltJourney.percent} />
+            <Text style={styles.beltNext}>Coach assessment · {beltJourney.coachAssessment.date}</Text>
+          </GlassSurface>
+        </Pressable>
 
         <Pressable onPress={confirmSignOut} style={styles.signOut} accessibilityRole="button">
           <Ionicons name="log-out-outline" size={19} color={palette.redBright} />
@@ -174,30 +160,51 @@ export function ProfileScreen() {
   );
 }
 
+function QuickStat({ label, value, onPress }: { label: string; value: string; onPress: () => void }) {
+  return (
+    <Pressable style={styles.quickStat} onPress={onPress} accessibilityRole="button">
+      <Text style={styles.quickValue}>{value}</Text>
+      <Text style={styles.quickLabel}>{label}</Text>
+    </Pressable>
+  );
+}
+
 const styles = StyleSheet.create({
   scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.sm, paddingBottom: 132 },
 
-  identityCard: { alignItems: 'center' },
-  editBtn: {
-    position: 'absolute',
-    top: spacing.lg,
-    right: spacing.lg,
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: palette.greenGlass,
-    borderWidth: 1,
+  identityRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.lg },
+  avatarRing: {
+    width: 64,
+    height: 64,
+    borderRadius: 20,
+    overflow: 'hidden',
+    borderWidth: 2,
     borderColor: palette.greenLine,
-    alignItems: 'center',
-    justifyContent: 'center',
-    zIndex: 2,
   },
-  avatar: { width: 86, height: 86, borderRadius: 43, overflow: 'hidden' },
   avatarFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { color: '#fff', fontFamily: fonts.displayBlack, fontSize: 32 },
-  name: { ...typography.h2, color: colors.text, marginTop: spacing.lg },
+  avatarText: { color: '#fff', fontFamily: fonts.displayBold, fontSize: 22 },
+  identityBody: { flex: 1, minWidth: 0 },
+  identityTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  displayName: { ...typography.h2, color: colors.text, flex: 1 },
   email: { ...typography.small, color: colors.textMuted, marginTop: 2 },
-  idRow: { flexDirection: 'row', gap: spacing.sm, marginTop: spacing.lg },
+  metaRow: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginTop: spacing.sm },
+  quickStats: {
+    flexDirection: 'row',
+    marginTop: spacing.lg,
+    paddingTop: spacing.lg,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+    gap: spacing.sm,
+  },
+  quickStat: {
+    flex: 1,
+    backgroundColor: palette.inset,
+    borderRadius: radii.md,
+    paddingVertical: spacing.md,
+    alignItems: 'center',
+  },
+  quickValue: { fontFamily: fonts.displayBold, fontSize: 18, color: colors.text },
+  quickLabel: { fontFamily: fonts.medium, fontSize: 11, color: colors.textMuted, marginTop: 2 },
 
   membershipCard: {
     marginTop: spacing.lg,
@@ -230,26 +237,6 @@ const styles = StyleSheet.create({
   beltTrack: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, marginTop: 2 },
   beltPct: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.accent },
   beltNext: { marginTop: spacing.md, fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
-
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.md,
-    paddingVertical: spacing.lg,
-    paddingHorizontal: spacing.xl,
-  },
-  settingBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  settingIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 13,
-    backgroundColor: palette.glass08,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  settingLabel: { flex: 1, fontFamily: fonts.semi, fontSize: 15, color: colors.text },
 
   signOut: {
     flexDirection: 'row',

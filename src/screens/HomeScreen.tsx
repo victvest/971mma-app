@@ -11,16 +11,20 @@ import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { AppHeader } from '../components/AppHeader';
+import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { ClassCard } from '../components/ClassCard';
 import { Tag, SectionHeader, ProgressBar } from '../components/primitives';
 import { membership, announcement, heroImage } from '../data/mockData';
+import { rewardsProfile } from '../data/memberFeatures';
 import { useClasses } from '../hooks/useClasses';
 import { useProfile } from '../hooks/useProfile';
+import type { MainStackParamList, TabsParamList } from '../navigation/types';
 
 function firstName(email?: string | null, full?: string) {
   if (full) return full.split(' ')[0];
@@ -31,7 +35,8 @@ function firstName(email?: string | null, full?: string) {
 
 export function HomeScreen() {
   const { user } = useAuth();
-  const navigation = useNavigation<any>();
+  const tabNav = useNavigation<BottomTabNavigationProp<TabsParamList, 'Home'>>();
+  const stackNav = tabNav.getParent<NativeStackNavigationProp<MainStackParamList>>();
   const { classes } = useClasses();
   const { profile } = useProfile();
 
@@ -43,7 +48,7 @@ export function HomeScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <AppHeader title="971 MMA" />
+      <GlassNavBar title="971 MMA" subtitle="Member hub" />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.greetRow}>
@@ -54,9 +59,30 @@ export function HomeScreen() {
           <Tag label={membership.plan} tone="green" />
         </View>
 
+        <View style={styles.featureGrid}>
+          <FeatureTile
+            icon="pulse-outline"
+            label="Training"
+            value={`${membership.checkInsThisMonth} sessions`}
+            onPress={() => stackNav?.navigate('Training')}
+          />
+          <FeatureTile
+            icon="gift-outline"
+            label="Rewards"
+            value={`${rewardsProfile.points} pts`}
+            onPress={() => stackNav?.navigate('Rewards')}
+          />
+          <FeatureTile
+            icon="ribbon-outline"
+            label="Belt journey"
+            value="68% to stripe 3"
+            onPress={() => stackNav?.navigate('BeltJourney')}
+          />
+        </View>
+
         {/* Primary action — walk in, show pass, train */}
         <Pressable
-          onPress={() => navigation.navigate('Scan')}
+          onPress={() => tabNav.navigate('Scan')}
           accessibilityRole="button"
           style={({ pressed }) => [styles.checkInBtn, pressed && { opacity: 0.92 }]}
         >
@@ -112,7 +138,7 @@ export function HomeScreen() {
 
         {/* Today's schedule — browse only */}
         <View style={styles.section}>
-          <SectionHeader title="Today's schedule" action="Full week" onAction={() => navigation.navigate('Classes')} />
+          <SectionHeader title="Today's schedule" action="Full week" onAction={() => tabNav.navigate('Classes')} />
           <View style={{ gap: spacing.sm }}>
             {todayList.length ? (
               todayList.map((c) => <ClassCard key={c.id} item={c} compact />)
@@ -134,6 +160,28 @@ export function HomeScreen() {
         </View>
       </ScrollView>
     </ScreenShell>
+  );
+}
+
+function FeatureTile({
+  icon,
+  label,
+  value,
+  onPress,
+}: {
+  icon: keyof typeof Ionicons.glyphMap;
+  label: string;
+  value: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.featureTileWrap, pressed && { opacity: 0.92 }]}>
+      <GlassSurface padding={spacing.md} style={styles.featureTile}>
+        <Ionicons name={icon} size={18} color={colors.accent} />
+        <Text style={styles.featureLabel}>{label}</Text>
+        <Text style={styles.featureValue} numberOfLines={1}>{value}</Text>
+      </GlassSurface>
+    </Pressable>
   );
 }
 
@@ -164,6 +212,12 @@ const styles = StyleSheet.create({
   greetRow: { flexDirection: 'row', alignItems: 'center', marginBottom: spacing.lg },
   hello: { fontFamily: fonts.medium, fontSize: 15, color: colors.textMuted },
   name: { ...typography.h1, color: colors.text, marginTop: 2 },
+
+  featureGrid: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.lg },
+  featureTileWrap: { flex: 1 },
+  featureTile: { minHeight: 88 },
+  featureLabel: { fontFamily: fonts.semi, fontSize: 12, color: colors.text, marginTop: spacing.sm },
+  featureValue: { fontFamily: fonts.medium, fontSize: 11, color: colors.textMuted, marginTop: 2 },
 
   checkInBtn: { borderRadius: radii.xl, overflow: 'hidden' },
   checkInFill: {
