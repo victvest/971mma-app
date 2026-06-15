@@ -103,7 +103,9 @@ export function LaunchSplash({ message = 'Preparing your member hub…' }: Props
         ]}
       >
         <Animated.View style={{ transform: [{ scale: taglineScale }] }}>
-          <Text style={styles.earn}>Earn Your Level</Text>
+          <Text style={styles.earn}>
+            Earn Your <Text style={styles.earnAccent}>Level</Text>
+          </Text>
           <Text style={styles.earnSub}>Show up. Train hard. Rise through the ranks.</Text>
         </Animated.View>
 
@@ -112,7 +114,7 @@ export function LaunchSplash({ message = 'Preparing your member hub…' }: Props
         <View style={styles.track}>
           <Animated.View style={[styles.shimmerWrap, { transform: [{ translateX: shimmerX }] }]}>
             <LinearGradient
-              colors={['transparent', palette.greenBright, palette.green, 'transparent']}
+              colors={['transparent', palette.greenBright, palette.green, palette.red, 'transparent']}
               start={{ x: 0, y: 0.5 }}
               end={{ x: 1, y: 0.5 }}
               style={styles.shimmer}
@@ -171,6 +173,9 @@ const styles = StyleSheet.create({
     color: colors.text,
     letterSpacing: 0.4,
     lineHeight: 40,
+  },
+  earnAccent: {
+    color: palette.red,
   },
   earnSub: {
     fontFamily: fonts.medium,

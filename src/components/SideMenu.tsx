@@ -19,7 +19,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, glass, palette, radii, shadow, spacing } from '../theme';
 import { Logo } from './Logo';
-import { FeatureIcon } from './icons/FeatureIcon';
+import { AppIcon, type AppIconName } from './icons/FeatureIcon';
+import { UaeFlagStripe } from './UaeAccent';
 import { useMenu } from '../context/MenuContext';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -34,8 +35,8 @@ type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 type Item = {
   label: string;
-  icon: React.ComponentProps<typeof FeatureIcon>['name'];
-  tone?: React.ComponentProps<typeof FeatureIcon>['tone'];
+  icon: AppIconName;
+  tone?: 'green' | 'gold' | 'red' | 'ink' | 'neutral';
   route: keyof MainStackParamList | 'Tabs';
   tab?: keyof import('../navigation/types').TabsParamList;
   badge?: string;
@@ -52,9 +53,9 @@ const PRIMARY: Item[] = [
 ];
 
 const SECONDARY: Item[] = [
-  { label: 'Membership', icon: 'profile', tone: 'gold', route: 'Tabs', tab: 'Profile' },
-  { label: 'Notifications', icon: 'schedule', tone: 'ink', route: 'Tabs', tab: 'Home' },
-  { label: 'Help & support', icon: 'home', tone: 'ink', route: 'Tabs', tab: 'Profile' },
+  { label: 'Membership', icon: 'membership', tone: 'gold', route: 'Tabs', tab: 'Profile' },
+  { label: 'Notifications', icon: 'notifications', tone: 'neutral', route: 'Tabs', tab: 'Home' },
+  { label: 'Help & support', icon: 'help', tone: 'neutral', route: 'Tabs', tab: 'Profile' },
 ];
 
 export function SideMenu() {
@@ -109,6 +110,7 @@ export function SideMenu() {
         </Animated.View>
 
         <Animated.View style={[styles.panel, { transform: [{ translateX: slide }] }]}>
+          <UaeFlagStripe orientation="vertical" thickness={3} style={styles.flagEdge} />
           <BlurView intensity={glass.blurStrong} tint="light" style={StyleSheet.absoluteFill} />
           <View style={styles.panelTint} />
 
@@ -128,7 +130,9 @@ export function SideMenu() {
                   <Logo size={22} tint="white" />
                   <Text style={styles.heroBrandText}>971 MMA</Text>
                 </View>
-                <Text style={styles.heroTagline}>Earn Your Level</Text>
+                <Text style={styles.heroTagline}>
+                  Earn Your <Text style={styles.heroAccent}>Level</Text>
+                </Text>
                 <Text style={styles.heroSub}>Train · Track · Rise</Text>
               </View>
             </Animated.View>
@@ -139,7 +143,7 @@ export function SideMenu() {
                 <Text style={styles.memberMeta}>{membership.plan} · {membership.memberId}</Text>
                 <View style={styles.memberStats}>
                   <MiniStat label="Points" value={String(rewardsProfile.points)} />
-                  <MiniStat label="Streak" value={`${membership.streakDays}d`} />
+                  <MiniStat label="Streak" value={`${membership.streakDays}d`} accent="red" />
                   <MiniStat label="Sessions" value={String(membership.checkInsThisMonth)} />
                 </View>
               </View>
@@ -194,7 +198,7 @@ function MenuRow({
   return (
     <Animated.View style={{ opacity: anim, transform: [{ translateX }] }}>
       <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} accessibilityRole="button">
-        <FeatureIcon name={item.icon} size={42} tone={item.tone ?? 'green'} />
+        <AppIcon name={item.icon} size={40} tone={item.tone ?? 'green'} />
         <Text style={[styles.rowLabel, muted && { color: colors.textMuted }]}>{item.label}</Text>
         {item.badge ? (
           <View style={styles.badge}>
@@ -207,10 +211,10 @@ function MenuRow({
   );
 }
 
-function MiniStat({ label, value }: { label: string; value: string }) {
+function MiniStat({ label, value, accent }: { label: string; value: string; accent?: 'red' }) {
   return (
     <View style={styles.miniStat}>
-      <Text style={styles.miniValue}>{value}</Text>
+      <Text style={[styles.miniValue, accent === 'red' && { color: palette.red }]}>{value}</Text>
       <Text style={styles.miniLabel}>{label}</Text>
     </View>
   );
@@ -230,6 +234,13 @@ const styles = StyleSheet.create({
     ...shadow.floating,
     overflow: 'hidden',
   },
+  flagEdge: {
+    position: 'absolute',
+    right: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 3,
+  },
   panelTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.78)' },
   heroStrip: { height: 168, overflow: 'hidden' },
   heroImg: { width: '100%', height: '100%' },
@@ -237,12 +248,14 @@ const styles = StyleSheet.create({
   heroBrand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
   heroBrandText: { fontFamily: fonts.displayBold, fontSize: 16, color: '#fff', letterSpacing: 0.4 },
   heroTagline: { fontFamily: fonts.displayBlack, fontSize: 26, color: '#fff', letterSpacing: 0.3 },
+  heroAccent: { color: palette.redBright },
   heroSub: { fontFamily: fonts.medium, fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
   body: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   memberCard: {
     backgroundColor: palette.greenGlass,
     borderWidth: 1,
     borderColor: palette.greenLine,
+    borderBottomColor: palette.redLine,
     borderRadius: radii.lg,
     padding: spacing.lg,
     marginBottom: spacing.xl,

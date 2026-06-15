@@ -8,7 +8,8 @@ import {
   ViewStyle,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { colors, fonts, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, radii, spacing, typography, brand } from '../theme';
+import { UaeFlagStripe } from './UaeAccent';
 
 type Tone = 'green' | 'red' | 'ink' | 'neutral' | 'gold';
 
@@ -65,7 +66,8 @@ export function SectionHeader({
 }) {
   return (
     <View style={styles.sectionHeader}>
-      <Text style={[typography.h3, { color: colors.text }]}>{title}</Text>
+      <UaeFlagStripe orientation="vertical" thickness={3} style={styles.sectionAccent} />
+      <Text style={[typography.h3, { color: colors.text, flex: 1 }]}>{title}</Text>
       {action ? (
         <Text onPress={onAction} suppressHighlighting style={styles.sectionAction}>
           {action}
@@ -89,7 +91,7 @@ export function ProgressBar({
       ? [palette.redBright, palette.redDeep]
       : tone === 'gold'
       ? [palette.goldBright, palette.gold]
-      : [palette.greenBright, palette.green];
+      : [...brand.progress];
   const pct = Math.min(100, Math.max(0, percent));
   return (
     <View style={[styles.track, { height, borderRadius: height }]}>
@@ -141,8 +143,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     marginBottom: spacing.md,
+    gap: spacing.sm,
   },
-  sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: colors.accentBright },
+  sectionAccent: {
+    height: 20,
+    borderRadius: 2,
+    overflow: 'hidden',
+  },
+  sectionAction: { fontFamily: fonts.bold, fontSize: 13, color: palette.red },
   track: {
     width: '100%',
     backgroundColor: palette.insetStrong,

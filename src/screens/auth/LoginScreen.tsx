@@ -71,7 +71,9 @@ export function LoginScreen({ navigation }: Props) {
               <Text style={styles.brand}>971 MMA</Text>
             </View>
             <View style={styles.heroBottom}>
-              <Text style={styles.earn}>Earn Your Level</Text>
+              <Text style={styles.earn}>
+                Earn Your <Text style={styles.earnAccent}>Level</Text>
+              </Text>
               <Text style={styles.earnSub}>Train on the mat. Track every session. Rise.</Text>
             </View>
           </View>
@@ -179,6 +181,9 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(0,0,0,0.4)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 8,
+  },
+  earnAccent: {
+    color: palette.redBright,
   },
   earnSub: {
     fontFamily: fonts.medium,

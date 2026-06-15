@@ -9,7 +9,7 @@ import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
-import { FeatureIcon } from '../components/icons/FeatureIcon';
+import { AppIcon, type AppIconName } from '../components/icons/FeatureIcon';
 import { StatRing } from '../components/tracking/StatRing';
 import { ProgressBar, SectionHeader } from '../components/primitives';
 import { recentRewardEvents, rewardCatalog, rewardsProfile, type RewardItem } from '../data/memberFeatures';
@@ -17,11 +17,11 @@ import type { MainStackParamList } from '../navigation/types';
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
-const ICON_MAP: Record<RewardItem['icon'], React.ComponentProps<typeof FeatureIcon>['name']> = {
+const ICON_MAP: Record<RewardItem['icon'], AppIconName> = {
   gift: 'gift',
   shirt: 'rewards',
   ticket: 'pass',
-  coffee: 'rewards',
+  coffee: 'gift',
 };
 
 export function RewardsScreen() {
@@ -68,7 +68,7 @@ export function RewardsScreen() {
             {rewardCatalog.map((item) => (
               <GlassSurface key={item.id} padding={spacing.lg} tone={item.available ? 'gold' : 'neutral'}>
                 <View style={styles.rewardRow}>
-                  <FeatureIcon name={ICON_MAP[item.icon]} size={44} tone={item.available ? 'gold' : 'ink'} />
+                  <AppIcon name={ICON_MAP[item.icon]} size={40} tone={item.available ? 'gold' : 'neutral'} />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.rewardTitle}>{item.title}</Text>
                     <Text style={styles.rewardDesc}>{item.description}</Text>

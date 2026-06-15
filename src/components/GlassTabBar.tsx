@@ -6,7 +6,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
-import { colors, fonts, glass, glow, palette, radii, shadow } from '../theme';
+import { colors, fonts, glass, glow, palette, radii, shadow, brand } from '../theme';
+import { UaeFlagStripe } from './UaeAccent';
 
 const ICONS: Record<
   string,
@@ -24,6 +25,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
   return (
     <View style={[styles.wrap, { paddingBottom: Math.max(insets.bottom, 14) }]}>
       <View style={[styles.barShell, shadow.floating]}>
+        <UaeFlagStripe thickness={2} style={styles.flagTop} />
         <BlurView intensity={glass.blurStrong} tint="light" style={StyleSheet.absoluteFill} />
         <View style={[StyleSheet.absoluteFill, styles.tintFill]} />
         <LinearGradient
@@ -64,7 +66,7 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
               >
                 {isFocused ? (
                   <LinearGradient
-                    colors={[palette.greenBright, palette.green]}
+                    colors={[...brand.cta]}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 1 }}
                     style={[styles.iconWrap, glow.green]}
@@ -101,6 +103,13 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: palette.hairlineStrong,
+  },
+  flagTop: {
+    position: 'absolute',
+    top: 0,
+    left: 16,
+    right: 16,
+    zIndex: 2,
   },
   tintFill: {
     backgroundColor: Platform.OS === 'android' ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.7)',

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, palette, radii, spacing } from '../../theme';
-import { FeatureIcon } from '../icons/FeatureIcon';
+import { AppIcon } from '../icons/FeatureIcon';
 import { GlassSurface } from '../GlassSurface';
 import type { TrainingSession } from '../../data/memberFeatures';
 
@@ -59,7 +59,7 @@ function SessionRow({
         </View>
         <GlassSurface padding={spacing.lg} style={{ flex: 1, marginBottom: spacing.sm }}>
           <View style={styles.cardRow}>
-            <FeatureIcon name="training" size={44} tone="green" />
+            <AppIcon name="training" size={40} tone="green" />
             <View style={{ flex: 1 }}>
               <Text style={styles.title}>{session.className}</Text>
               <Text style={styles.meta}>

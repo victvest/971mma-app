@@ -134,7 +134,8 @@ export function QrCode({ seed, size = 200, animated = true }: Props) {
                   style={{
                     width: cell,
                     height: cell,
-                    backgroundColor: finder ? 'transparent' : on ? colors.text : 'transparent',
+                    backgroundColor: finder ? 'transparent' : on ? palette.black : 'transparent',
+                    borderRadius: on && cell > 3 ? 1 : 0,
                   }}
                 />
               );
@@ -152,7 +153,7 @@ export function QrCode({ seed, size = 200, animated = true }: Props) {
               pointerEvents="none"
             >
               <LinearGradient
-                colors={['transparent', 'rgba(21,99,58,0.15)', palette.greenBright, 'rgba(21,99,58,0.15)', 'transparent']}
+                colors={['transparent', 'rgba(21,99,58,0.12)', palette.greenBright, palette.red, 'rgba(139,30,34,0.12)', 'transparent']}
                 start={{ x: 0, y: 0.5 }}
                 end={{ x: 1, y: 0.5 }}
                 style={styles.scanGrad}
@@ -215,8 +216,10 @@ const styles = StyleSheet.create({
   wrap: {
     backgroundColor: '#fff',
     position: 'relative',
-    borderRadius: 12,
+    borderRadius: 14,
     overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(15,23,18,0.06)',
   },
   finder: {
     position: 'absolute',

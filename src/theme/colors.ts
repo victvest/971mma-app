@@ -62,6 +62,14 @@ export const palette = {
   textLow: '#97A0AA',
 } as const;
 
+/** UAE-inspired duo gradients — green leads, blood red closes (never neon). */
+export const brand = {
+  cta: [palette.greenBright, palette.green, palette.red] as const,
+  ctaSoft: [palette.greenBright, palette.green, '#1A6B42'] as const,
+  sheen: [palette.greenBright, palette.green, palette.redBright, palette.green] as const,
+  progress: [palette.greenBright, palette.green, palette.red] as const,
+} as const;
+
 export const colors = {
   bg: palette.ink900,
   bgDeep: palette.abyss,

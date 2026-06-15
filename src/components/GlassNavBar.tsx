@@ -7,6 +7,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, glass, palette, radii, shadow, spacing } from '../theme';
 import { Logo } from './Logo';
 import { useMenu } from '../context/MenuContext';
+import { UaeFlagStripe } from './UaeAccent';
 
 type Props = {
   title?: string;
@@ -31,6 +32,7 @@ export function GlassNavBar({
   return (
     <View style={[styles.outer, { paddingTop: insets.top + 6 }]}>
       <View style={[styles.bar, shadow.soft]}>
+        <UaeFlagStripe orientation="vertical" thickness={3} style={styles.flagEdge} />
         <BlurView intensity={glass.blurStrong} tint="light" style={StyleSheet.absoluteFill} />
         <View style={styles.tint} />
         <LinearGradient
@@ -69,7 +71,14 @@ export function GlassNavBar({
               </Text>
               {subtitle ? (
                 <Text style={styles.subtitle} numberOfLines={1}>
-                  {subtitle}
+                  {subtitle.includes('Level') ? (
+                    <>
+                      {subtitle.replace(' Level', '')}
+                      <Text style={styles.subtitleAccent}> Level</Text>
+                    </>
+                  ) : (
+                    subtitle
+                  )}
                 </Text>
               ) : null}
             </View>
@@ -110,6 +119,15 @@ const styles = StyleSheet.create({
       web: { backdropFilter: 'blur(28px) saturate(180%)' as any },
       default: {},
     }),
+  },
+  flagEdge: {
+    position: 'absolute',
+    left: 0,
+    top: 12,
+    bottom: 12,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
+    zIndex: 2,
   },
   tint: {
     ...StyleSheet.absoluteFill,
@@ -162,6 +180,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.5)',
     borderWidth: 1,
     borderColor: palette.greenLine,
+    borderLeftColor: palette.redLine,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -176,6 +195,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: colors.textMuted,
     marginTop: 1,
+  },
+  subtitleAccent: {
+    color: palette.red,
+    fontFamily: fonts.semi,
   },
   dot: {
     position: 'absolute',

@@ -13,13 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, fonts, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, radii, spacing, typography, brand } from '../theme';
 import { useAuth } from '../context/AuthContext';
 import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { ClassCard } from '../components/ClassCard';
-import { FeatureIcon } from '../components/icons/FeatureIcon';
+import { AppIcon, type AppIconName } from '../components/icons/FeatureIcon';
 import { Tag, SectionHeader, ProgressBar } from '../components/primitives';
 import { membership, announcement, heroImage } from '../data/mockData';
 import { rewardsProfile } from '../data/memberFeatures';
@@ -91,7 +91,7 @@ export function HomeScreen() {
           style={({ pressed }) => [styles.checkInBtn, pressed && { opacity: 0.92 }]}
         >
           <LinearGradient
-            colors={[palette.greenBright, palette.green]}
+            colors={[...brand.cta]}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.checkInFill}
@@ -174,8 +174,8 @@ function FeatureTile({
   value,
   onPress,
 }: {
-  icon: React.ComponentProps<typeof FeatureIcon>['name'];
-  tone: React.ComponentProps<typeof FeatureIcon>['tone'];
+  icon: AppIconName;
+  tone: 'green' | 'gold' | 'red' | 'ink' | 'neutral';
   label: string;
   value: string;
   onPress: () => void;
@@ -183,7 +183,7 @@ function FeatureTile({
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.featureTileWrap, pressed && { opacity: 0.92 }]}>
       <GlassSurface padding={spacing.md} style={styles.featureTile}>
-        <FeatureIcon name={icon} size={36} tone={tone} />
+        <AppIcon name={icon} size={40} tone={tone} />
         <Text style={styles.featureLabel}>{label}</Text>
         <Text style={styles.featureValue} numberOfLines={1}>{value}</Text>
       </GlassSurface>
@@ -257,7 +257,7 @@ const styles = StyleSheet.create({
 
   goalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.md },
   goalTitle: { fontFamily: fonts.semi, fontSize: 15, color: colors.text },
-  goalPct: { fontFamily: fonts.displayBold, fontSize: 22, color: colors.accent },
+  goalPct: { fontFamily: fonts.displayBold, fontSize: 22, color: palette.red },
   goalHint: { marginTop: spacing.md, fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
 
   section: { marginTop: spacing.xxl },

@@ -1,8 +1,8 @@
 import { Platform } from 'react-native';
-import { colors, palette } from './colors';
+import { brand, colors, palette } from './colors';
 import { fonts, fontAssets } from './fonts';
 
-export { colors, palette, fonts, fontAssets };
+export { brand, colors, palette, fonts, fontAssets };
 
 export const spacing = {
   xs: 4,

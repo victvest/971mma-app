@@ -24,7 +24,7 @@ export function ScreenShell({ children, style }: Props) {
       />
       {/* Faint brand wash — gives glass something to blur, not circles */}
       <LinearGradient
-        colors={['rgba(21,99,58,0.06)', 'rgba(21,99,58,0)', 'rgba(139,30,34,0.04)']}
+        colors={['rgba(21,99,58,0.07)', 'rgba(21,99,58,0)', 'rgba(139,30,34,0.07)']}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}

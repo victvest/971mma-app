@@ -11,7 +11,7 @@ import { GlassSurface } from '../components/GlassSurface';
 import { SectionHeader } from '../components/primitives';
 import { StatRing } from '../components/tracking/StatRing';
 import { SessionTimeline } from '../components/tracking/SessionTimeline';
-import { FeatureIcon } from '../components/icons/FeatureIcon';
+import { AppIcon } from '../components/icons/FeatureIcon';
 import { trainingSessions, trainingStats } from '../data/memberFeatures';
 import type { MainStackParamList } from '../navigation/types';
 
@@ -46,12 +46,12 @@ export function TrainingScreen() {
 
         <View style={styles.insightRow}>
           <GlassSurface padding={spacing.lg} style={{ flex: 1 }}>
-            <FeatureIcon name="flame" size={40} tone="red" />
+            <AppIcon name="flame" size={40} tone="red" />
             <Text style={styles.insightVal}>{trainingStats.disciplineScore}</Text>
             <Text style={styles.insightLbl}>Discipline score</Text>
           </GlassSurface>
           <GlassSurface padding={spacing.lg} style={{ flex: 1 }}>
-            <FeatureIcon name="time" size={40} tone="green" />
+            <AppIcon name="time" size={40} tone="green" />
             <Text style={styles.insightVal}>{trainingStats.lastCheckIn}</Text>
             <Text style={styles.insightLbl}>Last check-in</Text>
           </GlassSurface>

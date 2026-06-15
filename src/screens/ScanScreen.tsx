@@ -1,25 +1,33 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, radii, spacing, typography, brand } from '../theme';
 import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
-import { GlassSurface } from '../components/GlassSurface';
-import { QrCode } from '../components/QrCode';
+import { MemberPassCard } from '../components/MemberPassCard';
 import { Button } from '../components/Button';
 import { membership } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../hooks/useProfile';
 import { checkIns } from '../services/integrations';
 import { buildMemberQrToken } from '../services/qrToken';
 
 type Mode = 'pass' | 'scan';
 
+function formatExpiry(iso: string | null): string {
+  if (!iso) return membership.renewsOn;
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return membership.renewsOn;
+  return d.toLocaleDateString(undefined, { month: 'short', year: 'numeric' });
+}
+
 export function ScanScreen() {
   const { user } = useAuth();
+  const { profile } = useProfile();
   const [mode, setMode] = useState<Mode>('pass');
   const [permission, requestPermission] = useCameraPermissions();
   const [checkedIn, setCheckedIn] = useState(false);
@@ -30,18 +38,8 @@ export function ScanScreen() {
     if (mode === 'scan' && !checkedIn) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(scanAnim, {
-            toValue: 1,
-            duration: 1800,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
-          Animated.timing(scanAnim, {
-            toValue: 0,
-            duration: 1800,
-            easing: Easing.inOut(Easing.quad),
-            useNativeDriver: true,
-          }),
+          Animated.timing(scanAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(scanAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
         ]),
       );
       loop.start();
@@ -63,20 +61,37 @@ export function ScanScreen() {
   };
 
   const seed = buildMemberQrToken(user?.id ?? membership.memberId, 'supabase');
+  const displayName =
+    profile?.fullName || (user?.user_metadata as any)?.full_name || user?.email?.split('@')[0] || 'Member';
+  const tier = (profile?.membershipTier ?? 'elite') as 'standard' | 'pro' | 'elite';
 
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Member pass" subtitle="Show at reception to check in" showBell={false} />
+      <GlassNavBar title="Member pass" subtitle="Earn Your Level · show at reception" showBell={false} />
 
-      <View style={styles.body}>
+      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.segment}>
-          <SegBtn label="My pass" icon="qr-code-outline" active={mode === 'pass'} onPress={() => setMode('pass')} />
-          <SegBtn label="Scan code" icon="scan-outline" active={mode === 'scan'} onPress={() => setMode('scan')} />
+          <SegBtn label="My pass" icon="qr-code" active={mode === 'pass'} onPress={() => setMode('pass')} />
+          <SegBtn label="Scan gym code" icon="scan" active={mode === 'scan'} onPress={() => setMode('scan')} />
         </View>
 
         {mode === 'pass' ? (
-          <PassView seed={seed} name={(user?.user_metadata as any)?.full_name ?? user?.email} />
+          <>
+            <MemberPassCard
+              seed={seed}
+              name={displayName}
+              memberId={membership.memberId}
+              plan={membership.plan}
+              status={membership.status}
+              tier={tier}
+              expiresLabel={formatExpiry(profile?.membershipExpiresAt ?? null)}
+            />
+            <View style={styles.tips}>
+              <Tip icon="sunny-outline" text="Increase screen brightness for faster scanning" />
+              <Tip icon="walk-outline" text="Walk in anytime — no class booking needed" />
+            </View>
+          </>
         ) : checkedIn ? (
           <SuccessView onDone={reset} />
         ) : (
@@ -87,7 +102,7 @@ export function ScanScreen() {
             scanAnim={scanAnim}
           />
         )}
-      </View>
+      </ScrollView>
     </ScreenShell>
   );
 }
@@ -106,18 +121,13 @@ function SegBtn({
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={styles.segBtn}>
       {active ? (
-        <LinearGradient
-          colors={[palette.greenBright, palette.green]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.segFill}
-        >
-          <Ionicons name={icon} size={16} color="#fff" />
+        <LinearGradient colors={[...brand.cta]} style={styles.segFill}>
+          <Ionicons name={icon} size={17} color="#fff" />
           <Text style={[styles.segText, { color: '#fff' }]}>{label}</Text>
         </LinearGradient>
       ) : (
         <View style={styles.segIdle}>
-          <Ionicons name={icon} size={16} color={colors.textMuted} />
+          <Ionicons name={icon} size={17} color={colors.textMuted} />
           <Text style={[styles.segText, { color: colors.textMuted }]}>{label}</Text>
         </View>
       )}
@@ -125,39 +135,11 @@ function SegBtn({
   );
 }
 
-function PassView({ seed, name }: { seed: string; name?: string }) {
+function Tip({ icon, text }: { icon: keyof typeof Ionicons.glyphMap; text: string }) {
   return (
-    <View style={styles.passWrap}>
-      <GlassSurface strong tone="green" radius={radii.xl} style={styles.passCard} padding={spacing.xl}>
-        <View style={styles.passHeader}>
-          <View>
-            <Text style={styles.passLabel}>Member pass</Text>
-            <Text style={styles.passName}>{name ?? 'Member'}</Text>
-          </View>
-          <View style={styles.passStatus}>
-            <View style={styles.statusDot} />
-            <Text style={styles.passStatusText}>{membership.status}</Text>
-          </View>
-        </View>
-
-        <View style={styles.qrFrame}>
-          <QrCode seed={seed} size={196} />
-        </View>
-
-        <Text style={styles.passHint}>Hold this up at reception — walk in and train</Text>
-
-        <View style={styles.passFooter}>
-          <View style={styles.passFootCol}>
-            <Text style={styles.passFootLabel}>Member ID</Text>
-            <Text style={styles.passFootValue}>{membership.memberId}</Text>
-          </View>
-          <View style={styles.passDivider} />
-          <View style={styles.passFootCol}>
-            <Text style={styles.passFootLabel}>Plan</Text>
-            <Text style={styles.passFootValue}>{membership.plan}</Text>
-          </View>
-        </View>
-      </GlassSurface>
+    <View style={styles.tip}>
+      <Ionicons name={icon} size={16} color={colors.accent} />
+      <Text style={styles.tipText}>{text}</Text>
     </View>
   );
 }
@@ -173,9 +155,7 @@ function ScanView({
   onScanned: () => void;
   scanAnim: Animated.Value;
 }) {
-  if (!permission) {
-    return <View style={styles.scanFrame} />;
-  }
+  if (!permission) return <View style={styles.scanFrame} />;
 
   if (!permission.granted) {
     return (
@@ -184,9 +164,7 @@ function ScanView({
           <Ionicons name="camera-outline" size={32} color={colors.accent} />
         </View>
         <Text style={styles.permTitle}>Camera access</Text>
-        <Text style={styles.permText}>
-          Allow camera to scan the check-in QR at the gym entrance.
-        </Text>
+        <Text style={styles.permText}>Allow camera to scan the check-in QR at the gym entrance.</Text>
         <Button label="Enable camera" icon="camera" onPress={requestPermission} full={false} style={{ marginTop: spacing.xl }} />
         <Pressable onPress={onScanned} style={styles.simBtn} accessibilityRole="button">
           <Text style={styles.simText}>Simulate scan</Text>
@@ -230,12 +208,7 @@ function SuccessView({ onDone }: { onDone: () => void }) {
   return (
     <View style={styles.successWrap}>
       <View style={styles.successIcon}>
-        <LinearGradient
-          colors={[palette.greenBright, palette.green]}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={styles.successFill}
-        >
+        <LinearGradient colors={[...brand.cta]} style={styles.successFill}>
           <Ionicons name="checkmark" size={56} color="#fff" />
         </LinearGradient>
       </View>
@@ -251,8 +224,7 @@ function SuccessView({ onDone }: { onDone: () => void }) {
 }
 
 const styles = StyleSheet.create({
-  body: { flex: 1, paddingHorizontal: spacing.xl, paddingTop: spacing.md },
-
+  scroll: { paddingHorizontal: spacing.xl, paddingTop: spacing.md, paddingBottom: 140 },
   segment: {
     flexDirection: 'row',
     backgroundColor: palette.inset,
@@ -260,7 +232,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     borderRadius: radii.pill,
     padding: 4,
-    marginBottom: spacing.xxl,
+    marginBottom: spacing.xl,
     gap: 4,
   },
   segBtn: { flex: 1 },
@@ -269,7 +241,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 44,
+    height: 46,
     borderRadius: radii.pill,
   },
   segIdle: {
@@ -277,64 +249,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    height: 44,
+    height: 46,
     borderRadius: radii.pill,
   },
   segText: { fontFamily: fonts.semi, fontSize: 14 },
-
-  passWrap: { alignItems: 'center' },
-  passCard: { width: '100%', alignItems: 'center' },
-  passHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    width: '100%',
-    marginBottom: spacing.xl,
-  },
-  passLabel: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted },
-  passName: { ...typography.h3, color: colors.text, marginTop: 4 },
-  passStatus: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: palette.greenGlass,
-    borderWidth: 1,
-    borderColor: palette.greenLine,
-    paddingHorizontal: 11,
-    paddingVertical: 6,
-    borderRadius: radii.pill,
-  },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: colors.accent },
-  passStatusText: { color: colors.accent, fontFamily: fonts.semi, fontSize: 12 },
-  qrFrame: {
-    padding: spacing.md,
-    backgroundColor: '#fff',
-    borderRadius: radii.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  passHint: { marginTop: spacing.lg, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted, textAlign: 'center' },
-  passFooter: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: spacing.xl,
-    marginTop: spacing.xl,
-    paddingTop: spacing.lg,
-    borderTopWidth: 1,
-    borderTopColor: colors.border,
-    width: '100%',
-  },
-  passFootCol: { alignItems: 'center' },
-  passDivider: { width: 1, height: 30, backgroundColor: colors.border },
-  passFootLabel: { fontFamily: fonts.medium, fontSize: 12, color: colors.textFaint },
-  passFootValue: { fontFamily: fonts.semi, fontSize: 14, color: colors.text, marginTop: 2 },
-
-  scanWrap: { alignItems: 'center' },
+  tips: { marginTop: spacing.xl, gap: spacing.md },
+  tip: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  tipText: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, flex: 1 },
+  scanWrap: { alignItems: 'center', paddingTop: spacing.lg },
   scanFrame: {
-    width: 260,
-    height: 260,
-    borderRadius: 24,
+    width: 280,
+    height: 280,
+    borderRadius: 28,
     overflow: 'hidden',
     backgroundColor: palette.black,
     borderWidth: 1,
@@ -342,15 +268,8 @@ const styles = StyleSheet.create({
   },
   scanOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, margin: 14 },
   corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.accent, borderWidth: 3 },
-  scanLine: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    height: 2,
-    backgroundColor: colors.accent,
-  },
+  scanLine: { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: colors.accent },
   scanHint: { marginTop: spacing.xl, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
-
   permWrap: { alignItems: 'center', paddingTop: spacing.huge },
   permIcon: {
     width: 74,
@@ -363,16 +282,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   permTitle: { ...typography.h2, color: colors.text, marginTop: spacing.xl },
-  permText: {
-    ...typography.body,
-    color: colors.textMuted,
-    textAlign: 'center',
-    marginTop: spacing.sm,
-    paddingHorizontal: spacing.xl,
-  },
+  permText: { ...typography.body, color: colors.textMuted, textAlign: 'center', marginTop: spacing.sm, paddingHorizontal: spacing.xl },
   simBtn: { marginTop: spacing.xl, padding: spacing.sm },
   simText: { color: colors.textFaint, fontFamily: fonts.semi, fontSize: 13, textDecorationLine: 'underline' },
-
   successWrap: { alignItems: 'center', paddingTop: spacing.xxl },
   successIcon: { width: 112, height: 112, borderRadius: 56, overflow: 'hidden' },
   successFill: { flex: 1, alignItems: 'center', justifyContent: 'center' },
