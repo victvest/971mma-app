@@ -8,6 +8,7 @@ import { useFonts } from 'expo-font';
 import { AuthProvider } from './src/context/AuthContext';
 import { RootNavigator } from './src/navigation/RootNavigator';
 import { LaunchSplash } from './src/components/LaunchSplash';
+import { AppProviders } from './src/ui';
 import { fontAssets, palette } from './src/theme';
 
 export default function App() {
@@ -21,9 +22,11 @@ export default function App() {
       <SafeAreaProvider>
         <StatusBar style="dark" />
         {ready ? (
-          <AuthProvider>
-            <RootNavigator />
-          </AuthProvider>
+          <AppProviders>
+            <AuthProvider>
+              <RootNavigator />
+            </AuthProvider>
+          </AppProviders>
         ) : (
           renderBoot()
         )}

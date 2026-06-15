@@ -1,17 +1,10 @@
 import React from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { colors, fonts, palette, radii, spacing, typography } from '../theme';
+import { colors, fonts, palette, spacing, typography } from '../theme';
 import { AcademyHeader } from '../components/AcademyHeader';
 import { ScreenShell } from '../components/ScreenShell';
 import { LiveClassCard } from '../components/home/LiveClassCard';

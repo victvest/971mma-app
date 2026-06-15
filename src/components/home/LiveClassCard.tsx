@@ -1,8 +1,8 @@
 import React from 'react';
 import { Image, ImageSourcePropType, Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, palette, radii, shadow, spacing } from '../../theme';
+import { BrandButton } from '../../ui';
+import { fonts, palette, radii, shadow, spacing } from '../../theme';
 
 type Props = {
   image: ImageSourcePropType;
@@ -48,10 +48,9 @@ export function LiveClassCard({
         <Text style={styles.title}>{title}</Text>
         <Text style={styles.focus}>{focus} · {coach}</Text>
         <View style={styles.actions}>
-          <Pressable onPress={onCheckIn} style={styles.checkBtn} accessibilityRole="button">
-            <Ionicons name="qr-code" size={16} color="#fff" />
-            <Text style={styles.checkText}>Check in</Text>
-          </Pressable>
+          <BrandButton icon="qrcode" onPress={onCheckIn} style={styles.checkBtn}>
+            Check in
+          </BrandButton>
           <View style={styles.walkHint}>
             <Text style={styles.walkText}>Walk in · no booking</Text>
           </View>
@@ -90,15 +89,7 @@ const styles = StyleSheet.create({
   title: { fontFamily: fonts.displayBlack, fontSize: 28, color: '#fff', marginTop: 6, letterSpacing: 0.2 },
   focus: { fontFamily: fonts.medium, fontSize: 13, color: 'rgba(255,255,255,0.82)', marginTop: 6 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginTop: spacing.lg },
-  checkBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    backgroundColor: palette.green,
-    paddingHorizontal: spacing.lg,
-    height: 44,
-    borderRadius: radii.pill,
-  },
+  checkBtn: { flexGrow: 0 },
   checkText: { fontFamily: fonts.bold, fontSize: 14, color: '#fff' },
   walkHint: {
     paddingHorizontal: spacing.md,
