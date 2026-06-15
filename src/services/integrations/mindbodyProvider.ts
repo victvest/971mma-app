@@ -78,4 +78,10 @@ export class MindbodyProvider implements IntegrationProvider {
     // TODO: POST /class/addclienttoclass or the arrivals/check-in endpoint.
     throw new Error(NOT_CONFIGURED);
   }
+
+  async listCheckIns(_input?: { limit?: number }): Promise<CheckInResult[]> {
+    await this.ensureAuth();
+    // TODO: GET client visit / attendance history from Mindbody.
+    return [];
+  }
 }

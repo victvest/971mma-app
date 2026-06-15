@@ -1,14 +1,14 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, palette, spacing } from '../theme';
+import { colors, fonts, motion, palette, spacing } from '../theme';
 import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { SectionHeader } from '../components/primitives';
 import { AnimatedBeltTrack } from '../components/tracking/AnimatedBeltTrack';
-import { beltJourney } from '../data/memberFeatures';
+import { beltJourney, type PromotionEvent } from '../data/memberFeatures';
 import { useProfile } from '../hooks/useProfile';
 
 export function BeltJourneyScreen() {
@@ -69,17 +69,41 @@ export function BeltJourneyScreen() {
         <View style={styles.section}>
           <SectionHeader title="Promotion history" />
           <View style={{ gap: spacing.sm }}>
-            {beltJourney.history.map((h) => (
-              <GlassSurface key={h.id} padding={spacing.lg}>
-                <Text style={styles.histRank}>{h.rank}</Text>
-                <Text style={styles.histMeta}>{h.date} · {h.coach}</Text>
-                {h.note ? <Text style={styles.histNote}>{h.note}</Text> : null}
-              </GlassSurface>
+            {beltJourney.history.map((h, i) => (
+              <PromotionRow key={h.id} item={h} index={i} />
             ))}
           </View>
         </View>
       </ScrollView>
     </ScreenShell>
+  );
+}
+
+function PromotionRow({ item, index }: { item: PromotionEvent; index: number }) {
+  const slide = useRef(new Animated.Value(20)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.spring(slide, { toValue: 0, delay: index * motion.stagger, ...motion.springSoft }),
+      Animated.timing(fade, {
+        toValue: 1,
+        duration: motion.duration.normal,
+        delay: index * motion.stagger,
+        easing: motion.easing.out,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [fade, index, slide]);
+
+  return (
+    <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
+      <GlassSurface padding={spacing.lg}>
+        <Text style={styles.histRank}>{item.rank}</Text>
+        <Text style={styles.histMeta}>{item.date} · {item.coach}</Text>
+        {item.note ? <Text style={styles.histNote}>{item.note}</Text> : null}
+      </GlassSurface>
+    </Animated.View>
   );
 }
 

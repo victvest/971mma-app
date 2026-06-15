@@ -1,7 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import Svg, { Circle } from 'react-native-svg';
-import { colors, fonts, palette } from '../../theme';
+import * as Haptics from 'expo-haptics';
+import { colors, fonts, motion, palette } from '../../theme';
+import { AnimatedNumber } from '../AnimatedNumber';
 
 const AnimatedCircle = Animated.createAnimatedComponent(Circle);
 
@@ -20,7 +22,7 @@ const TONE_COLOR = {
   gold: palette.gold,
 };
 
-/** Animated ring stat — sessions, streak, points. */
+/** Animated ring stat with count-up center value and completion haptic. */
 export function StatRing({ value, max = 100, label, sub, size = 108, tone = 'green' }: Props) {
   const anim = useRef(new Animated.Value(0)).current;
   const pct = Math.min(1, Math.max(0, value / max));
@@ -28,15 +30,26 @@ export function StatRing({ value, max = 100, label, sub, size = 108, tone = 'gre
   const r = (size - stroke) / 2;
   const circ = 2 * Math.PI * r;
   const color = TONE_COLOR[tone];
+  const fired = useRef(false);
 
   useEffect(() => {
+    fired.current = false;
     anim.setValue(0);
+    const listener = anim.addListener(({ value: v }) => {
+      if (!fired.current && v >= pct * 0.98 && pct > 0) {
+        fired.current = true;
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+      }
+    });
+
     Animated.timing(anim, {
       toValue: pct,
-      duration: 1200,
-      easing: Easing.out(Easing.cubic),
+      duration: motion.duration.slow + 200,
+      easing: motion.easing.expoOut,
       useNativeDriver: false,
     }).start();
+
+    return () => anim.removeListener(listener);
   }, [anim, pct]);
 
   const dashOffset = anim.interpolate({
@@ -70,7 +83,11 @@ export function StatRing({ value, max = 100, label, sub, size = 108, tone = 'gre
         />
       </Svg>
       <View style={styles.center}>
-        <Text style={styles.value}>{value}</Text>
+        <AnimatedNumber
+          value={value}
+          duration={motion.duration.slow + 200}
+          style={[styles.value, tone === 'red' && { color: palette.red }]}
+        />
         <Text style={styles.label}>{label}</Text>
         {sub ? <Text style={styles.sub}>{sub}</Text> : null}
       </View>

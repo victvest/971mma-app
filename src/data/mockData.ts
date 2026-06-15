@@ -167,8 +167,10 @@ export const stats = [
 
 export const recentActivity = [
   { id: 'a1', title: 'Checked in', detail: 'BJJ Fundamentals · Coach Tony', time: '2h ago', accent: 'green' as const },
-  { id: 'a2', title: 'Stripe progress', detail: 'Guard retention reviewed', time: 'Yesterday', accent: 'red' as const },
-  { id: 'a3', title: 'Booked', detail: 'Muay Thai Striking · Fri 19:15', time: '2d ago', accent: 'ink' as const },
+  { id: 'a2', title: 'Streak bonus', detail: '6-day attendance streak unlocked', time: '2h ago', accent: 'red' as const },
+  { id: 'a3', title: 'Session logged', detail: 'Muay Thai Striking · Coach Rilion', time: 'Yesterday', accent: 'green' as const },
+  { id: 'a4', title: 'Stripe progress', detail: 'Guard retention reviewed by coach', time: 'Yesterday', accent: 'red' as const },
+  { id: 'a5', title: 'Points earned', detail: '+80 pts · No-Gi Grappling', time: 'Wed', accent: 'gold' as const },
 ];
 
 export const coaches = [

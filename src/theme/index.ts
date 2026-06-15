@@ -3,6 +3,7 @@ import { brand, colors, palette } from './colors';
 import { fonts, fontAssets } from './fonts';
 
 export { brand, colors, palette, fonts, fontAssets };
+export { motion } from './motion';
 
 export const spacing = {
   xs: 4,

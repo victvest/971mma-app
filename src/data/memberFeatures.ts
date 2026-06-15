@@ -1,5 +1,6 @@
 export type TrainingSession = {
   id: string;
+  checkedInAt: string;
   date: string;
   className: string;
   discipline: string;
@@ -49,12 +50,41 @@ export const trainingStats = {
 };
 
 export const trainingSessions: TrainingSession[] = [
-  { id: 's1', date: 'Today · 18:02', className: 'BJJ Fundamentals', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
-  { id: 's2', date: 'Yesterday · 19:10', className: 'Muay Thai Striking', discipline: 'Muay Thai', coach: 'Coach Rilion', durationMin: 60, pointsEarned: 80 },
-  { id: 's3', date: 'Wed · 07:05', className: 'No-Gi Grappling', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
-  { id: 's4', date: 'Tue · 20:35', className: 'MMA Conditioning', discipline: 'Conditioning', coach: 'Coach Maeda', durationMin: 45, pointsEarned: 60 },
-  { id: 's5', date: 'Mon · 18:00', className: 'BJJ Fundamentals', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
-];
+  { id: 's1', checkedInAt: hoursAgo(2), date: '', className: 'BJJ Fundamentals', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
+  { id: 's2', checkedInAt: daysAgo(1, 19, 10), date: '', className: 'Muay Thai Striking', discipline: 'Muay Thai', coach: 'Coach Rilion', durationMin: 60, pointsEarned: 80 },
+  { id: 's3', checkedInAt: daysAgo(2, 7, 5), date: '', className: 'No-Gi Grappling', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
+  { id: 's4', checkedInAt: daysAgo(3, 20, 35), date: '', className: 'MMA Conditioning', discipline: 'Conditioning', coach: 'Coach Maeda', durationMin: 45, pointsEarned: 60 },
+  { id: 's5', checkedInAt: daysAgo(4, 18, 0), date: '', className: 'BJJ Fundamentals', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
+  { id: 's6', checkedInAt: daysAgo(6, 19, 15), date: '', className: 'Open Mat', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 90, pointsEarned: 100 },
+  { id: 's7', checkedInAt: daysAgo(8, 18, 30), date: '', className: 'Muay Thai Clinch', discipline: 'Muay Thai', coach: 'Coach Rilion', durationMin: 60, pointsEarned: 80 },
+  { id: 's8', checkedInAt: daysAgo(12, 7, 0), date: '', className: 'Morning MMA', discipline: 'MMA', coach: 'Coach Maeda', durationMin: 60, pointsEarned: 80 },
+  { id: 's9', checkedInAt: daysAgo(18, 20, 10), date: '', className: 'BJJ Drilling', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
+  { id: 's10', checkedInAt: daysAgo(25, 18, 45), date: '', className: 'Strength & Mobility', discipline: 'Conditioning', coach: 'Coach Maeda', durationMin: 45, pointsEarned: 60 },
+  { id: 's11', checkedInAt: daysAgo(32, 19, 0), date: '', className: 'Muay Thai Fundamentals', discipline: 'Muay Thai', coach: 'Coach Rilion', durationMin: 60, pointsEarned: 80 },
+  { id: 's12', checkedInAt: daysAgo(40, 18, 15), date: '', className: 'BJJ Fundamentals', discipline: 'BJJ', coach: 'Coach Tony', durationMin: 60, pointsEarned: 80 },
+].map((s) => ({ ...s, date: formatMockDate(s.checkedInAt) }));
+
+function hoursAgo(h: number) {
+  return new Date(Date.now() - h * 3_600_000).toISOString();
+}
+
+function daysAgo(d: number, hour = 18, min = 0) {
+  const t = new Date();
+  t.setDate(t.getDate() - d);
+  t.setHours(hour, min, 0, 0);
+  return t.toISOString();
+}
+
+function formatMockDate(iso: string) {
+  const d = new Date(iso);
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+  const now = new Date();
+  if (d.toDateString() === now.toDateString()) return `Today · ${time}`;
+  const y = new Date(now);
+  y.setDate(now.getDate() - 1);
+  if (d.toDateString() === y.toDateString()) return `Yesterday · ${time}`;
+  return `${d.toLocaleDateString(undefined, { weekday: 'short' })} · ${time}`;
+}
 
 export const rewardsProfile = {
   points: 1240,

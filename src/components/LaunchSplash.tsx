@@ -3,7 +3,7 @@ import { Animated, Easing, Image, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Logo } from './Logo';
-import { colors, fonts, palette, radii, spacing } from '../theme';
+import { colors, fonts, motion, palette, radii, spacing } from '../theme';
 
 const heroImg = require('../../assets/images/hero-bjj.jpg');
 
@@ -37,9 +37,9 @@ export function LaunchSplash({ message = 'Preparing your member hub…' }: Props
       }),
       Animated.spring(cardSlide, {
         toValue: 0,
-        damping: 18,
-        stiffness: 140,
-        delay: 320,
+        damping: motion.spring.damping,
+        stiffness: motion.spring.stiffness,
+        delay: 280,
         useNativeDriver: true,
       }),
       Animated.timing(cardOpacity, {
@@ -50,18 +50,16 @@ export function LaunchSplash({ message = 'Preparing your member hub…' }: Props
       }),
       Animated.spring(taglineScale, {
         toValue: 1,
-        damping: 12,
-        stiffness: 100,
-        delay: 520,
-        useNativeDriver: true,
+        ...motion.springBounce,
+        delay: 480,
       }),
     ]).start();
 
     const shimmerLoop = Animated.loop(
       Animated.timing(shimmer, {
         toValue: 1,
-        duration: 1800,
-        easing: Easing.inOut(Easing.quad),
+        duration: 2200,
+        easing: motion.easing.inOut,
         useNativeDriver: true,
       }),
     );

@@ -20,6 +20,7 @@ import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { ClassCard } from '../components/ClassCard';
 import { AppIcon, type AppIconName } from '../components/icons/FeatureIcon';
+import { ActivityFeed } from '../components/tracking/ActivityFeed';
 import { Tag, SectionHeader, ProgressBar } from '../components/primitives';
 import { membership, announcement, heroImage } from '../data/mockData';
 import { rewardsProfile } from '../data/memberFeatures';
@@ -139,6 +140,18 @@ export function HomeScreen() {
             {membership.checkInsThisMonth} of {membership.monthlyGoal} sessions
           </Text>
         </GlassSurface>
+
+        {/* Recent history */}
+        <View style={styles.section}>
+          <SectionHeader
+            title="Recent history"
+            action="View all"
+            onAction={() => stackNav?.navigate('Training')}
+          />
+          <GlassSurface padding={spacing.md}>
+            <ActivityFeed onViewAll={() => stackNav?.navigate('Training')} />
+          </GlassSurface>
+        </View>
 
         {/* Today's schedule — browse only */}
         <View style={styles.section}>

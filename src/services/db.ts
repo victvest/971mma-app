@@ -152,6 +152,24 @@ export async function recordCheckIn(args: {
   };
 }
 
+export type CheckInWithClass = CheckInRow & { classes: ClassRow | null };
+
+export async function listMyCheckIns(limit = 60): Promise<CheckInWithClass[]> {
+  const { data: userData } = await supabase.auth.getUser();
+  const uid = userData.user?.id;
+  if (!uid) return [];
+
+  const { data, error } = await supabase
+    .from('check_ins')
+    .select('*, classes(*)')
+    .eq('user_id', uid)
+    .order('checked_in_at', { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+  return (data ?? []) as CheckInWithClass[];
+}
+
 /* ----------------------------- profile ----------------------------- */
 
 export async function getMyProfile(): Promise<MemberProfile | null> {

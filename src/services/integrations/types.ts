@@ -40,6 +40,8 @@ export interface CheckInProvider {
     classId?: string | null;
     method?: string;
   }): Promise<CheckInResult>;
+
+  listCheckIns(input?: { limit?: number }): Promise<CheckInResult[]>;
 }
 
 /** A single object can satisfy both roles (Supabase + Mindbody do). */

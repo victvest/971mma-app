@@ -4,6 +4,7 @@
  */
 import {
   getMyProfile,
+  listMyCheckIns,
   recordCheckIn as dbRecordCheckIn,
   updateMyProfile,
 } from '../db';
@@ -59,5 +60,15 @@ export class SupabaseProvider implements IntegrationProvider {
       method: input.method ?? 'qr',
       userId: input.memberId,
     });
+  }
+
+  async listCheckIns(input?: { limit?: number }): Promise<CheckInResult[]> {
+    const rows = await listMyCheckIns(input?.limit ?? 60);
+    return rows.map((row) => ({
+      id: row.id,
+      classId: row.class_id,
+      checkedInAt: row.checked_in_at,
+      method: row.method,
+    }));
   }
 }

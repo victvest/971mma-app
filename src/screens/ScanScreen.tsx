@@ -1,14 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { Animated, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, palette, radii, spacing, typography, brand } from '../theme';
+import { colors, fonts, motion, palette, radii, spacing, typography, brand } from '../theme';
 import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { MemberPassCard } from '../components/MemberPassCard';
+import { AnimatedNumber } from '../components/AnimatedNumber';
 import { Button } from '../components/Button';
 import { membership } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
@@ -38,8 +39,17 @@ export function ScanScreen() {
     if (mode === 'scan' && !checkedIn) {
       const loop = Animated.loop(
         Animated.sequence([
-          Animated.timing(scanAnim, { toValue: 1, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-          Animated.timing(scanAnim, { toValue: 0, duration: 1800, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+          Animated.timing(scanAnim, {
+            toValue: 1,
+            duration: 2400,
+            easing: motion.easing.inOut,
+            useNativeDriver: true,
+          }),
+          Animated.timing(scanAnim, {
+            toValue: 0,
+            duration: 0,
+            useNativeDriver: true,
+          }),
         ]),
       );
       loop.start();
@@ -47,12 +57,16 @@ export function ScanScreen() {
     }
   }, [mode, checkedIn, scanAnim]);
 
-  const handleScanned = () => {
+  const handleScanned = async () => {
     if (scanLock.current) return;
     scanLock.current = true;
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     setCheckedIn(true);
-    checkIns.recordCheckIn({ classId: null, method: 'qr' }).catch(() => {});
+    try {
+      await checkIns.recordCheckIn({ classId: null, method: 'qr' });
+    } catch {
+      /* keep success UX for demo */
+    }
   };
 
   const reset = () => {
@@ -189,7 +203,14 @@ function ScanView({
           <Corner pos={{ top: 0, right: 0 }} r={{ borderTopRightRadius: 18 }} />
           <Corner pos={{ bottom: 0, left: 0 }} r={{ borderBottomLeftRadius: 18 }} />
           <Corner pos={{ bottom: 0, right: 0 }} r={{ borderBottomRightRadius: 18 }} />
-          <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]} />
+          <Animated.View style={[styles.scanLine, { transform: [{ translateY }] }]}>
+            <LinearGradient
+              colors={['transparent', palette.greenBright, palette.red, palette.greenBright, 'transparent']}
+              start={{ x: 0, y: 0.5 }}
+              end={{ x: 1, y: 0.5 }}
+              style={styles.scanGrad}
+            />
+          </Animated.View>
         </View>
       </View>
       <Text style={styles.scanHint}>Point at the gym check-in code</Text>
@@ -205,21 +226,39 @@ function Corner({ pos, r }: { pos: object; r: object }) {
 }
 
 function SuccessView({ onDone }: { onDone: () => void }) {
+  const scale = useRef(new Animated.Value(0.6)).current;
+  const fade = useRef(new Animated.Value(0)).current;
+  const rise = useRef(new Animated.Value(24)).current;
+  const streak = membership.streakDays + 1;
+
+  useEffect(() => {
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(scale, { toValue: 1, ...motion.springBounce }),
+        Animated.timing(fade, { toValue: 1, duration: motion.duration.normal, easing: motion.easing.out, useNativeDriver: true }),
+      ]),
+      Animated.spring(rise, { toValue: 0, ...motion.springSoft }),
+    ]).start();
+  }, [fade, rise, scale]);
+
   return (
-    <View style={styles.successWrap}>
-      <View style={styles.successIcon}>
+    <Animated.View style={[styles.successWrap, { opacity: fade }]}>
+      <Animated.View style={[styles.successIcon, { transform: [{ scale }] }]}>
         <LinearGradient colors={[...brand.cta]} style={styles.successFill}>
           <Ionicons name="checkmark" size={56} color="#fff" />
         </LinearGradient>
-      </View>
-      <Text style={styles.successTitle}>You're checked in</Text>
-      <Text style={styles.successText}>Walk onto the mat — see you on the floor.</Text>
-      <View style={styles.successCard}>
-        <Ionicons name="flame" size={18} color={palette.red} />
-        <Text style={styles.successStreak}>{membership.streakDays + 1} day streak</Text>
-      </View>
+      </Animated.View>
+      <Animated.View style={{ transform: [{ translateY: rise }] }}>
+        <Text style={styles.successTitle}>You're checked in</Text>
+        <Text style={styles.successText}>Walk onto the mat — session added to your history.</Text>
+        <View style={styles.successCard}>
+          <Ionicons name="flame" size={18} color={palette.red} />
+          <AnimatedNumber value={streak} style={styles.successStreakNum} />
+          <Text style={styles.successStreakLabel}>day streak</Text>
+        </View>
+      </Animated.View>
       <Button label="Done" onPress={onDone} style={{ marginTop: spacing.xxl }} full={false} />
-    </View>
+    </Animated.View>
   );
 }
 
@@ -268,7 +307,8 @@ const styles = StyleSheet.create({
   },
   scanOverlay: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, margin: 14 },
   corner: { position: 'absolute', width: 34, height: 34, borderColor: colors.accent, borderWidth: 3 },
-  scanLine: { position: 'absolute', left: 0, right: 0, height: 2, backgroundColor: colors.accent },
+  scanLine: { position: 'absolute', left: 0, right: 0, height: 3 },
+  scanGrad: { flex: 1, borderRadius: 2 },
   scanHint: { marginTop: spacing.xl, fontFamily: fonts.medium, fontSize: 14, color: colors.textMuted },
   permWrap: { alignItems: 'center', paddingTop: spacing.huge },
   permIcon: {
@@ -302,5 +342,6 @@ const styles = StyleSheet.create({
     paddingVertical: spacing.md,
     borderRadius: radii.pill,
   },
-  successStreak: { color: palette.red, fontFamily: fonts.semi, fontSize: 14 },
+  successStreakNum: { color: palette.red, fontFamily: fonts.displayBold, fontSize: 14 },
+  successStreakLabel: { color: palette.red, fontFamily: fonts.semi, fontSize: 14 },
 });

@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, glow, palette, radii, shadow, spacing, brand } from '../theme';
+import { colors, fonts, motion, palette, radii, shadow, spacing } from '../theme';
 import { Logo } from './Logo';
 import { QrCode } from './QrCode';
 import { UaeFlagStripe } from './UaeAccent';
@@ -42,45 +42,42 @@ export function MemberPassCard({
   const on = TIER_ON[tier];
   const enter = useRef(new Animated.Value(0)).current;
   const shimmer = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
   const ringSpin = useRef(new Animated.Value(0)).current;
   const [tick, setTick] = useState(() => new Date());
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.spring(enter, { toValue: 1, damping: 16, stiffness: 120, useNativeDriver: true }),
-      Animated.timing(shimmer, { toValue: 1, duration: 2800, easing: Easing.linear, useNativeDriver: true }),
-    ]).start();
+    Animated.spring(enter, { toValue: 1, ...motion.spring }).start();
 
     const shimmerLoop = Animated.loop(
-      Animated.timing(shimmer, { toValue: 1, duration: 3200, easing: Easing.linear, useNativeDriver: true }),
-    );
-    const pulseLoop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
+      Animated.timing(shimmer, {
+        toValue: 1,
+        duration: 4200,
+        easing: motion.easing.inOut,
+        useNativeDriver: true,
+      }),
     );
     const ringLoop = Animated.loop(
-      Animated.timing(ringSpin, { toValue: 1, duration: 8000, easing: Easing.linear, useNativeDriver: true }),
+      Animated.timing(ringSpin, {
+        toValue: 1,
+        duration: 14000,
+        easing: motion.easing.inOut,
+        useNativeDriver: true,
+      }),
     );
     shimmerLoop.start();
-    pulseLoop.start();
     ringLoop.start();
 
     const clock = setInterval(() => setTick(new Date()), 30_000);
     return () => {
       shimmerLoop.stop();
-      pulseLoop.stop();
       ringLoop.stop();
       clearInterval(clock);
     };
-  }, [enter, pulse, ringSpin, shimmer]);
+  }, [enter, ringSpin, shimmer]);
 
-  const cardScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.94, 1] });
+  const cardScale = enter.interpolate({ inputRange: [0, 1], outputRange: [0.96, 1] });
   const cardOpacity = enter.interpolate({ inputRange: [0, 1], outputRange: [0, 1] });
-  const shimmerX = shimmer.interpolate({ inputRange: [0, 1], outputRange: [-220, 320] });
-  const dotScale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.35] });
+  const shimmerX = shimmer.interpolate({ inputRange: [0, 1], outputRange: [-240, 360] });
   const ringRotate = ringSpin.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   const timeStr = tick.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
@@ -110,7 +107,7 @@ export function MemberPassCard({
           </View>
           <Text style={[styles.memberName, { color: on.text }]} numberOfLines={1}>{name}</Text>
           <View style={styles.statusRow}>
-            <Animated.View style={[styles.statusDot, { transform: [{ scale: dotScale }] }]} />
+            <View style={styles.statusDot} />
             <Text style={[styles.statusText, { color: on.text }]}>{status}</Text>
             <Text style={[styles.liveTime, { color: on.muted }]}>· Live {timeStr}</Text>
           </View>
@@ -118,7 +115,14 @@ export function MemberPassCard({
 
         {/* Body */}
         <View style={styles.body}>
-          <Animated.View style={[styles.holoShine, { transform: [{ translateX: shimmerX }, { rotate: '-18deg' }] }]} pointerEvents="none" />
+          <Animated.View style={[styles.holoShine, { transform: [{ translateX: shimmerX }, { rotate: '-16deg' }] }]} pointerEvents="none">
+            <LinearGradient
+              colors={['transparent', 'rgba(255,255,255,0.55)', 'rgba(255,255,255,0.08)', 'transparent']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
 
           <View style={styles.qrStage}>
             <Animated.View style={[styles.qrRing, { transform: [{ rotate: ringRotate }] }]}>
@@ -210,7 +214,6 @@ const styles = StyleSheet.create({
     height: 8,
     borderRadius: 4,
     backgroundColor: '#7DFFB0',
-    ...glow.green,
   },
   statusText: { fontFamily: fonts.semi, fontSize: 13 },
   liveTime: { fontFamily: fonts.medium, fontSize: 12 },
@@ -224,10 +227,10 @@ const styles = StyleSheet.create({
   holoShine: {
     position: 'absolute',
     top: -40,
-    width: 80,
+    width: 100,
     height: 400,
-    backgroundColor: 'rgba(255,255,255,0.45)',
-    opacity: 0.5,
+    opacity: 0.7,
+    overflow: 'hidden',
   },
   qrStage: {
     alignItems: 'center',
