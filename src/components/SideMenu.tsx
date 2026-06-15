@@ -49,14 +49,14 @@ const PRIMARY: Item[] = [
   { label: 'Training log', icon: 'training', tone: 'green', route: 'Training', badge: `${membership.checkInsThisMonth}` },
   { label: 'Know your history', icon: 'time', tone: 'red', route: 'Training' },
   { label: 'Rewards', icon: 'rewards', tone: 'gold', route: 'Rewards', badge: `${rewardsProfile.points}` },
-  { label: 'Belt journey', icon: 'belt', tone: 'red', route: 'BeltJourney' },
-  { label: 'Profile', icon: 'profile', tone: 'ink', route: 'Tabs', tab: 'Profile' },
+  { label: 'Belt journey', icon: 'belt', tone: 'red', route: 'Tabs', tab: 'Belt' },
+  { label: 'Profile', icon: 'profile', tone: 'ink', route: 'Profile' },
 ];
 
 const SECONDARY: Item[] = [
-  { label: 'Membership', icon: 'membership', tone: 'gold', route: 'Tabs', tab: 'Profile' },
+  { label: 'Membership', icon: 'membership', tone: 'gold', route: 'Profile' },
   { label: 'Notifications', icon: 'notifications', tone: 'neutral', route: 'Tabs', tab: 'Home' },
-  { label: 'Help & support', icon: 'help', tone: 'neutral', route: 'Tabs', tab: 'Profile' },
+  { label: 'Help & support', icon: 'help', tone: 'neutral', route: 'Profile' },
 ];
 
 export function SideMenu() {

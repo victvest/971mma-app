@@ -179,6 +179,62 @@ export const coaches = [
   { id: 'co3', name: 'Coach Maeda', role: 'Performance Coach', tag: 'Strength' },
 ];
 
+export const coachProfiles = [
+  {
+    id: 'co1',
+    name: 'Coach Tony',
+    role: 'HEAD COACH',
+    belt: 'Black belt · 5th degree',
+    rating: 4.9,
+    image: heroImage,
+    about:
+      'Head BJJ coach at 971 MMA. Trained under Rilion Gracie lineage. Focus on fundamentals, competition prep, and building disciplined athletes on the mat.',
+    disciplines: ['BJJ GI', 'BJJ NOGI', 'MMA'] as const,
+    lineage: 'Lineage · Rilion Gracie',
+  },
+  {
+    id: 'co2',
+    name: 'Coach Rilion',
+    role: 'STRIKING COACH',
+    belt: 'Muay Thai · Kru',
+    rating: 4.8,
+    image: boxingImg,
+    about: 'Striking specialist — Muay Thai, boxing, and MMA stand-up for all levels.',
+    disciplines: ['MUAY THAI', 'BOXING'] as const,
+    lineage: 'Lineage · Thailand camp circuit',
+  },
+  {
+    id: 'co3',
+    name: 'Coach Maeda',
+    role: 'PERFORMANCE COACH',
+    belt: 'Strength & conditioning',
+    rating: 4.9,
+    image: conditioningImg,
+    about: 'Builds fight-ready engines — mobility, power, and recovery for 971 athletes.',
+    disciplines: ['CONDITIONING', 'MMA'] as const,
+    lineage: 'Lineage · Performance lab',
+  },
+];
+
+export type WeekDayStatus = 'accent' | 'done' | 'pending';
+
+export const weekActivity = {
+  sessionCount: 5,
+  /** Mon–Sun: accent = brand green, done = ink black, pending = open day */
+  days: ['accent', 'done', 'done', 'pending', 'done', 'pending', 'pending'] as const satisfies readonly WeekDayStatus[],
+};
+
+export const lineage = {
+  chain: ['MAEDA', 'GRACIE', 'TONY'] as const,
+  caption: 'Brazilian Jiu-Jitsu roots at 971 MMA',
+  image: communityImage,
+};
+
+export const disciplineScore = 86;
+export const totalSessionsLogged = 147;
+
+export const eightWeekActivity = [0.4, 0.55, 0.7, 0.6, 0.85, 0.75, 0.9, 1] as const;
+
 export const announcement = {
   tag: 'This week',
   title: 'Open Mat Saturday',

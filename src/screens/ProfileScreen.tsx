@@ -4,11 +4,10 @@ import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useNavigation } from '@react-navigation/native';
-import type { BottomTabNavigationProp } from '@react-navigation/bottom-tabs';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
 import { useAuth } from '../context/AuthContext';
-import { GlassNavBar } from '../components/GlassNavBar';
+import { AcademyHeader } from '../components/AcademyHeader';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { Tag, ProgressBar } from '../components/primitives';
@@ -16,12 +15,16 @@ import { membership, progress } from '../data/mockData';
 import { beltJourney, rewardsProfile } from '../data/memberFeatures';
 import { useProfile } from '../hooks/useProfile';
 import { EditProfileSheet } from '../components/EditProfileSheet';
-import type { MainStackParamList, TabsParamList } from '../navigation/types';
+import type { MainStackParamList } from '../navigation/types';
 
-const TIER_LABEL: Record<string, string> = { standard: 'Standard', pro: 'Pro', elite: 'Elite' };
-const STATUS_LABEL: Record<string, string> = { active: 'Active', paused: 'Paused', expired: 'Expired' };
+function memberFirstName(email?: string | null, full?: string) {
+  if (full) return full.split(' ')[0];
+  if (!email) return 'Athlete';
+  const handle = email.split('@')[0];
+  return handle.charAt(0).toUpperCase() + handle.slice(1);
+}
 
-function initials(name?: string, email?: string | null) {
+function memberInitials(name?: string, email?: string | null) {
   if (name) {
     const parts = name.trim().split(' ');
     return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase();
@@ -36,14 +39,17 @@ function formatDate(iso: string | null): string {
   return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+const TIER_LABEL: Record<string, string> = { standard: 'Standard', pro: 'Pro', elite: 'Elite' };
+const STATUS_LABEL: Record<string, string> = { active: 'Active', paused: 'Paused', expired: 'Expired' };
+
 export function ProfileScreen() {
   const { user, signOut } = useAuth();
   const { profile, save } = useProfile();
-  const tabNav = useNavigation<BottomTabNavigationProp<TabsParamList, 'Profile'>>();
-  const stackNav = tabNav.getParent<NativeStackNavigationProp<MainStackParamList>>();
+  const stackNav = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [editing, setEditing] = useState(false);
 
   const display = profile?.fullName || user?.email?.split('@')[0] || 'Member';
+  const headerName = memberFirstName(user?.email, profile?.fullName || display);
   const tier = profile?.membershipTier ?? 'elite';
   const tierLabel = TIER_LABEL[tier] ?? 'Elite';
   const statusLabel = STATUS_LABEL[profile?.membershipStatus ?? 'active'] ?? 'Active';
@@ -67,7 +73,11 @@ export function ProfileScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Profile" subtitle={membership.memberId} showBell={false} />
+      <AcademyHeader
+        memberName={headerName}
+        initials={memberInitials(profile?.fullName, user?.email)}
+        showBack
+      />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Horizontal member ID — not centered avatar card */}
@@ -75,7 +85,7 @@ export function ProfileScreen() {
           <View style={styles.identityRow}>
             <View style={styles.avatarRing}>
               <LinearGradient colors={[palette.greenBright, palette.green]} style={styles.avatarFill}>
-                <Text style={styles.avatarText}>{initials(profile?.fullName, user?.email)}</Text>
+                <Text style={styles.avatarText}>{memberInitials(profile?.fullName, user?.email)}</Text>
               </LinearGradient>
             </View>
             <View style={styles.identityBody}>
@@ -97,7 +107,7 @@ export function ProfileScreen() {
           <View style={styles.quickStats}>
             <QuickStat label="Sessions" value={String(membership.checkInsThisMonth)} onPress={() => stackNav?.navigate('Training')} />
             <QuickStat label="Points" value={String(rewardsProfile.points)} onPress={() => stackNav?.navigate('Rewards')} />
-            <QuickStat label="Belt" value={`${beltStripes} stripes`} onPress={() => stackNav?.navigate('BeltJourney')} />
+            <QuickStat label="Belt" value={`${beltStripes} stripes`} onPress={() => stackNav.navigate('Tabs', { screen: 'Belt' })} />
           </View>
         </GlassSurface>
 
@@ -132,7 +142,7 @@ export function ProfileScreen() {
           </View>
         </View>
 
-        <Pressable onPress={() => stackNav?.navigate('BeltJourney')}>
+        <Pressable onPress={() => stackNav.navigate('Tabs', { screen: 'Belt' })}>
           <GlassSurface tone="green" style={{ marginTop: spacing.lg }}>
             <View style={styles.beltHead}>
               <Ionicons name="ribbon-outline" size={22} color={colors.accent} />

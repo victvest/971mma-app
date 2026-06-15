@@ -3,7 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { TabNavigator } from './TabNavigator';
 import { TrainingScreen } from '../screens/TrainingScreen';
 import { RewardsScreen } from '../screens/RewardsScreen';
-import { BeltJourneyScreen } from '../screens/BeltJourneyScreen';
+import { ProfileScreen } from '../screens/ProfileScreen';
 import { SideMenu } from '../components/SideMenu';
 import { MenuProvider } from '../context/MenuContext';
 import type { MainStackParamList } from './types';
@@ -24,7 +24,7 @@ export function MainStack() {
         <Stack.Screen name="Tabs" component={TabNavigator} />
         <Stack.Screen name="Training" component={TrainingScreen} />
         <Stack.Screen name="Rewards" component={RewardsScreen} />
-        <Stack.Screen name="BeltJourney" component={BeltJourneyScreen} />
+        <Stack.Screen name="Profile" component={ProfileScreen} />
       </Stack.Navigator>
       <SideMenu />
     </MenuProvider>

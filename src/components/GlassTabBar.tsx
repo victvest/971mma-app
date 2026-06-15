@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import * as Haptics from 'expo-haptics';
-import { colors, fonts, glass, glow, palette, radii, shadow, brand } from '../theme';
+import { colors, fonts, glass, palette, radii, shadow, spacing } from '../theme';
 import { UaeFlagStripe } from './UaeAccent';
 
 const ICONS: Record<
@@ -14,9 +14,10 @@ const ICONS: Record<
   { active: keyof typeof Ionicons.glyphMap; inactive: keyof typeof Ionicons.glyphMap }
 > = {
   Home: { active: 'home', inactive: 'home-outline' },
-  Scan: { active: 'qr-code', inactive: 'qr-code-outline' },
   Classes: { active: 'calendar', inactive: 'calendar-outline' },
-  Profile: { active: 'person', inactive: 'person-outline' },
+  Scan: { active: 'qr-code', inactive: 'qr-code-outline' },
+  Belt: { active: 'ribbon', inactive: 'ribbon-outline' },
+  Coaches: { active: 'people', inactive: 'people-outline' },
 };
 
 export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
@@ -59,26 +60,21 @@ export function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProp
                 key={route.key}
                 onPress={onPress}
                 style={styles.tab}
-                hitSlop={6}
+                hitSlop={4}
                 accessibilityRole="button"
                 accessibilityState={{ selected: isFocused }}
                 accessibilityLabel={label}
               >
-                {isFocused ? (
-                  <LinearGradient
-                    colors={[...brand.cta]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 1 }}
-                    style={[styles.iconWrap, glow.green]}
-                  >
-                    <Ionicons name={icons.active} size={21} color="#fff" />
-                  </LinearGradient>
-                ) : (
-                  <View style={styles.iconWrap}>
-                    <Ionicons name={icons.inactive} size={21} color={colors.textMuted} />
-                  </View>
-                )}
-                <Text style={[styles.label, isFocused && styles.labelActive]}>{label}</Text>
+                <View style={[styles.iconWrap, isFocused && styles.iconWrapActive]}>
+                  <Ionicons
+                    name={isFocused ? icons.active : icons.inactive}
+                    size={20}
+                    color={isFocused ? palette.green : colors.textMuted}
+                  />
+                </View>
+                <Text style={[styles.label, isFocused && styles.labelActive]} numberOfLines={1}>
+                  {label}
+                </Text>
               </Pressable>
             );
           })}
@@ -94,7 +90,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    paddingHorizontal: 16,
+    paddingHorizontal: spacing.lg,
     paddingTop: 6,
     backgroundColor: 'transparent',
   },
@@ -118,18 +114,24 @@ const styles = StyleSheet.create({
   barInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-around',
-    paddingVertical: 10,
-    paddingHorizontal: 6,
+    justifyContent: 'space-between',
+    paddingVertical: 8,
+    paddingHorizontal: 4,
   },
-  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 5 },
+  tab: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 4, minWidth: 0 },
   iconWrap: {
-    width: 48,
-    height: 36,
+    width: 44,
+    height: 32,
     borderRadius: radii.pill,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  label: { fontFamily: fonts.semi, fontSize: 11, color: colors.textFaint },
-  labelActive: { fontFamily: fonts.bold, color: colors.text },
+  iconWrapActive: {
+    backgroundColor: '#fff',
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    ...shadow.soft,
+  },
+  label: { fontFamily: fonts.medium, fontSize: 10, color: colors.textFaint },
+  labelActive: { fontFamily: fonts.bold, color: palette.green },
 });

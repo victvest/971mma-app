@@ -28,7 +28,9 @@ export type RewardEvent = {
 export type BeltRequirement = {
   id: string;
   label: string;
-  done: boolean;
+  detail: string;
+  state: 'done' | 'active' | 'locked';
+  done?: boolean;
   coachSigned?: boolean;
 };
 
@@ -131,10 +133,30 @@ export const beltJourney = {
   },
   coachNote: 'Strong guard retention progress. Assessment round scheduled — final stripe decision is made by your coach after the review.',
   requirements: [
-    { id: 'r1', label: '12 classes attended on current rank', done: true, coachSigned: true },
-    { id: 'r2', label: 'Escape fundamentals demonstrated', done: true, coachSigned: true },
-    { id: 'r3', label: 'Guard retention review', done: false, coachSigned: false },
-    { id: 'r4', label: 'Coach assessment round', done: false, coachSigned: false },
+    {
+      id: 'r1',
+      label: '12 BJJ classes',
+      detail: '12 of 12 attended',
+      state: 'done' as const,
+    },
+    {
+      id: 'r2',
+      label: 'Escape fundamentals',
+      detail: 'Assessed by Coach Tony',
+      state: 'done' as const,
+    },
+    {
+      id: 'r3',
+      label: 'Guard retention',
+      detail: 'Coach approval · open mat Friday',
+      state: 'active' as const,
+    },
+    {
+      id: 'r4',
+      label: 'Submission chain',
+      detail: 'Unlocks after stripe 3',
+      state: 'locked' as const,
+    },
   ] as BeltRequirement[],
   history: [
     { id: 'h1', rank: 'White Belt · Stripe 2', date: 'May 3, 2026', coach: 'Coach Tony', note: 'Consistent attendance and improved top control.' },

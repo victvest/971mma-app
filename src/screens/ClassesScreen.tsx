@@ -3,11 +3,13 @@ import { ActivityIndicator, Pressable, RefreshControl, ScrollView, StyleSheet, T
 import { StatusBar } from 'expo-status-bar';
 import { LinearGradient } from 'expo-linear-gradient';
 import { colors, fonts, palette, radii, spacing, typography } from '../theme';
-import { GlassNavBar } from '../components/GlassNavBar';
+import { AcademyHeader } from '../components/AcademyHeader';
 import { ScreenShell } from '../components/ScreenShell';
 import { ClassCard } from '../components/ClassCard';
 import { Chip } from '../components/Chip';
 import { GymClass } from '../data/mockData';
+import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../hooks/useProfile';
 import {
   DisciplineFilter,
   disciplineFilters,
@@ -17,7 +19,22 @@ import { useClasses } from '../hooks/useClasses';
 
 type Range = 'today' | 'week';
 
+function firstName(email?: string | null, full?: string) {
+  if (full) return full.split(' ')[0];
+  if (!email) return 'Athlete';
+  const handle = email.split('@')[0];
+  return handle.charAt(0).toUpperCase() + handle.slice(1);
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
+
 export function ClassesScreen() {
+  const { user } = useAuth();
+  const { profile } = useProfile();
   const { classes, loading, refresh } = useClasses();
   const [range, setRange] = useState<Range>('week');
   const [filter, setFilter] = useState<DisciplineFilter>('All');
@@ -37,10 +54,13 @@ export function ClassesScreen() {
     return Object.entries(map);
   }, [filtered]);
 
+  const displayName =
+    profile?.fullName || (user?.user_metadata as any)?.full_name || user?.email?.split('@')[0] || 'Member';
+
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Schedule" subtitle="Walk in anytime — just show up" />
+      <AcademyHeader memberName={firstName(user?.email, displayName)} initials={initials(displayName)} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}

@@ -6,7 +6,7 @@ import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Haptics from 'expo-haptics';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, fonts, motion, palette, radii, spacing, typography, brand } from '../theme';
-import { GlassNavBar } from '../components/GlassNavBar';
+import { AcademyHeader } from '../components/AcademyHeader';
 import { ScreenShell } from '../components/ScreenShell';
 import { MemberPassCard } from '../components/MemberPassCard';
 import { AnimatedNumber } from '../components/AnimatedNumber';
@@ -18,6 +18,19 @@ import { checkIns } from '../services/integrations';
 import { buildMemberQrToken } from '../services/qrToken';
 
 type Mode = 'pass' | 'scan';
+
+function firstName(email?: string | null, full?: string) {
+  if (full) return full.split(' ')[0];
+  if (!email) return 'Athlete';
+  const handle = email.split('@')[0];
+  return handle.charAt(0).toUpperCase() + handle.slice(1);
+}
+
+function initials(name: string) {
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+}
 
 function formatExpiry(iso: string | null): string {
   if (!iso) return membership.renewsOn;
@@ -78,11 +91,12 @@ export function ScanScreen() {
   const displayName =
     profile?.fullName || (user?.user_metadata as any)?.full_name || user?.email?.split('@')[0] || 'Member';
   const tier = (profile?.membershipTier ?? 'elite') as 'standard' | 'pro' | 'elite';
+  const headerName = firstName(user?.email, displayName);
 
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Member pass" subtitle="Earn Your Level · show at reception" showBell={false} />
+      <AcademyHeader memberName={headerName} initials={initials(displayName)} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.segment}>

@@ -1,132 +1,240 @@
-import React, { useEffect, useRef } from 'react';
-import { Animated, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import { colors, fonts, motion, palette, spacing } from '../theme';
-import { GlassNavBar } from '../components/GlassNavBar';
+import Svg, { Circle } from 'react-native-svg';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { colors, fonts, palette, radii, shadow, spacing } from '../theme';
+import { AcademyHeader } from '../components/AcademyHeader';
 import { ScreenShell } from '../components/ScreenShell';
-import { GlassSurface } from '../components/GlassSurface';
-import { SectionHeader } from '../components/primitives';
-import { AnimatedBeltTrack } from '../components/tracking/AnimatedBeltTrack';
-import { beltJourney, type PromotionEvent } from '../data/memberFeatures';
+import { eightWeekActivity, membership, totalSessionsLogged } from '../data/mockData';
+import { beltJourney, type BeltRequirement } from '../data/memberFeatures';
+import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
+import type { MainStackParamList } from '../navigation/types';
+
+function firstName(email?: string | null, full?: string) {
+  if (full) return full.split(' ')[0];
+  if (!email) return 'Athlete';
+  return email.split('@')[0].charAt(0).toUpperCase() + email.split('@')[0].slice(1);
+}
+
+function initials(name: string) {
+  const p = name.trim().split(/\s+/);
+  return p.length >= 2 ? `${p[0][0]}${p[1][0]}`.toUpperCase() : name.slice(0, 2).toUpperCase();
+}
 
 export function BeltJourneyScreen() {
+  const { user } = useAuth();
   const { profile } = useProfile();
-  const rank = profile?.beltRank ?? beltJourney.rank;
-  const stripes = profile?.beltStripes ?? beltJourney.stripes;
+  const nav = useNavigation();
+  const stackNav = nav.getParent<NativeStackNavigationProp<MainStackParamList>>();
+  const name = firstName(user?.email, profile?.fullName || (user?.user_metadata as any)?.full_name);
+  const remaining = membership.monthlyGoal - membership.checkInsThisMonth;
 
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="Belt journey" subtitle="Earn Your Level · coach decides promotion" showBell={false} />
+      <AcademyHeader memberName={name} initials={initials(name)} />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        <GlassSurface strong tone="green">
-          <AnimatedBeltTrack
-            rank={rank}
-            stripes={stripes}
-            percent={beltJourney.percent}
-            nextMilestone={beltJourney.nextMilestone}
-            track={beltJourney.track}
-          />
-        </GlassSurface>
-
-        <GlassSurface tone="gold" style={{ marginTop: spacing.lg }}>
-          <View style={styles.coachHead}>
-            <Ionicons name="school-outline" size={20} color={palette.goldDeep} />
-            <Text style={styles.coachTitle}>Coach assessment scheduled</Text>
+        <View style={[styles.goalCard, shadow.soft]}>
+          <View style={styles.goalRow}>
+            <GoalRing value={membership.checkInsThisMonth} max={membership.monthlyGoal} />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.goalLbl}>JUNE GOAL</Text>
+              <Text style={styles.goalTitle}>{remaining} sessions to go</Text>
+              <View style={styles.stats}>
+                <StatCol value={String(membership.streakDays)} label="STREAK" />
+                <StatCol value={String(totalSessionsLogged)} label="TOTAL" accent />
+              </View>
+            </View>
           </View>
-          <Text style={styles.coachWhen}>{beltJourney.coachAssessment.date}</Text>
-          <Text style={styles.coachMeta}>
-            {beltJourney.coachAssessment.coach} · {beltJourney.coachAssessment.location}
-          </Text>
-          <Text style={styles.coachNote}>{beltJourney.coachNote}</Text>
-        </GlassSurface>
+        </View>
 
-        <View style={styles.section}>
-          <SectionHeader title="Requirements" />
-          <GlassSurface>
-            {beltJourney.requirements.map((r, i) => (
-              <View key={r.id} style={[styles.reqRow, i < beltJourney.requirements.length - 1 && styles.reqBorder]}>
-                <Ionicons
-                  name={r.done ? 'checkmark-circle' : 'ellipse-outline'}
-                  size={22}
-                  color={r.done ? colors.accent : colors.textFaint}
-                />
-                <View style={{ flex: 1 }}>
-                  <Text style={[styles.reqText, !r.done && { color: colors.textMuted }]}>{r.label}</Text>
-                  {r.coachSigned ? <Text style={styles.reqSigned}>Signed off by coach</Text> : null}
-                </View>
+        <View style={[styles.weekCard, shadow.soft]}>
+          <View style={styles.weekHead}>
+            <Text style={styles.weekLbl}>LAST 8 WEEKS</Text>
+            <View style={styles.consistent}>
+              <Ionicons name="checkmark-circle" size={14} color={palette.green} />
+              <Text style={styles.consistentText}>CONSISTENT</Text>
+            </View>
+          </View>
+          <View style={styles.bars}>
+            {eightWeekActivity.map((h, i) => (
+              <View key={i} style={styles.barWrap}>
+                <View style={[styles.bar, { height: 24 + h * 48 }, i === 7 && styles.barCurrent]} />
               </View>
             ))}
-          </GlassSurface>
-          <Text style={styles.disclaimer}>
-            Final promotion decisions are made by your coach after review on the mat.
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <SectionHeader title="Promotion history" />
-          <View style={{ gap: spacing.sm }}>
-            {beltJourney.history.map((h, i) => (
-              <PromotionRow key={h.id} item={h} index={i} />
-            ))}
           </View>
         </View>
+
+        <Text style={styles.sectionTitle}>Requirements</Text>
+        <View style={styles.reqList}>
+          {beltJourney.requirements.map((r) => (
+            <RequirementRow key={r.id} item={r} />
+          ))}
+        </View>
+
+        <Pressable
+          onPress={() => stackNav?.navigate('Rewards')}
+          style={[styles.rewardBtn, shadow.soft]}
+          accessibilityRole="button"
+        >
+          <Ionicons name="gift-outline" size={18} color={colors.text} />
+          <Text style={styles.rewardText}>See reward path</Text>
+        </Pressable>
       </ScrollView>
     </ScreenShell>
   );
 }
 
-function PromotionRow({ item, index }: { item: PromotionEvent; index: number }) {
-  const slide = useRef(new Animated.Value(20)).current;
-  const fade = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.spring(slide, { toValue: 0, delay: index * motion.stagger, ...motion.springSoft }),
-      Animated.timing(fade, {
-        toValue: 1,
-        duration: motion.duration.normal,
-        delay: index * motion.stagger,
-        easing: motion.easing.out,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [fade, index, slide]);
+function GoalRing({ value, max }: { value: number; max: number }) {
+  const size = 96;
+  const stroke = 9;
+  const r = (size - stroke) / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(1, value / max);
+  const offset = circ * (1 - pct);
 
   return (
-    <Animated.View style={{ opacity: fade, transform: [{ translateY: slide }] }}>
-      <GlassSurface padding={spacing.lg}>
-        <Text style={styles.histRank}>{item.rank}</Text>
-        <Text style={styles.histMeta}>{item.date} · {item.coach}</Text>
-        {item.note ? <Text style={styles.histNote}>{item.note}</Text> : null}
-      </GlassSurface>
-    </Animated.View>
+    <View style={styles.ringWrap}>
+      <Svg width={size} height={size}>
+        <Circle cx={size / 2} cy={size / 2} r={r} stroke={palette.insetStrong} strokeWidth={stroke} fill="none" />
+        <Circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          stroke={palette.green}
+          strokeWidth={stroke}
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray={`${circ} ${circ}`}
+          strokeDashoffset={offset}
+          rotation="-90"
+          origin={`${size / 2}, ${size / 2}`}
+        />
+      </Svg>
+      <View style={styles.ringCenter}>
+        <Text style={styles.ringVal}>{value}</Text>
+        <Text style={styles.ringSub}>OF {max}</Text>
+      </View>
+    </View>
+  );
+}
+
+function StatCol({ value, label, accent }: { value: string; label: string; accent?: boolean }) {
+  return (
+    <View style={styles.statCol}>
+      <Text style={[styles.statVal, accent && { color: palette.green }]}>{value}</Text>
+      <Text style={styles.statLbl}>{label}</Text>
+    </View>
+  );
+}
+
+function RequirementRow({ item }: { item: BeltRequirement }) {
+  const done = item.state === 'done';
+  const active = item.state === 'active';
+  const locked = item.state === 'locked';
+
+  return (
+    <View style={[styles.reqCard, shadow.soft, locked && styles.reqLocked]}>
+      <Ionicons
+        name={done ? 'checkmark-circle' : locked ? 'lock-closed' : 'water'}
+        size={22}
+        color={done ? palette.green : locked ? colors.textFaint : palette.green}
+      />
+      <View style={{ flex: 1 }}>
+        <Text style={[styles.reqTitle, locked && styles.reqTitleLocked]}>{item.label}</Text>
+        <Text style={[styles.reqDetail, done && { color: palette.green }]}>{item.detail}</Text>
+      </View>
+      {done ? <Ionicons name="checkmark" size={18} color={palette.green} /> : null}
+      {active ? (
+        <View style={styles.nowPill}>
+          <Text style={styles.nowText}>NOW</Text>
+        </View>
+      ) : null}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: { paddingHorizontal: spacing.xl, paddingBottom: 132 },
-  coachHead: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  coachTitle: { fontFamily: fonts.semi, fontSize: 15, color: colors.text },
-  coachWhen: { fontFamily: fonts.bold, fontSize: 16, color: colors.text, marginTop: spacing.md },
-  coachMeta: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, marginTop: 4 },
-  coachNote: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, lineHeight: 20, marginTop: spacing.md },
-  section: { marginTop: spacing.xxl },
-  reqRow: { flexDirection: 'row', alignItems: 'flex-start', gap: spacing.md, paddingVertical: spacing.md },
-  reqBorder: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  reqText: { fontFamily: fonts.semi, fontSize: 14, color: colors.text },
-  reqSigned: { fontFamily: fonts.medium, fontSize: 11, color: colors.accent, marginTop: 3 },
-  disclaimer: {
-    fontFamily: fonts.medium,
-    fontSize: 12,
-    color: colors.textFaint,
+  scroll: { paddingHorizontal: spacing.xl, paddingBottom: 140 },
+  goalCard: {
+    backgroundColor: '#fff',
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    padding: spacing.xl,
     marginTop: spacing.md,
-    lineHeight: 18,
   },
-  histRank: { fontFamily: fonts.semi, fontSize: 15, color: colors.text },
-  histMeta: { fontFamily: fonts.medium, fontSize: 12, color: colors.textMuted, marginTop: 4 },
-  histNote: { fontFamily: fonts.medium, fontSize: 13, color: colors.textMuted, marginTop: 6, lineHeight: 18 },
+  goalRow: { flexDirection: 'row', gap: spacing.lg, alignItems: 'center' },
+  ringWrap: { width: 96, height: 96, alignItems: 'center', justifyContent: 'center' },
+  ringCenter: { position: 'absolute', alignItems: 'center' },
+  ringVal: { fontFamily: fonts.displayBlack, fontSize: 28, color: colors.text },
+  ringSub: { fontFamily: fonts.bold, fontSize: 9, color: colors.textFaint, letterSpacing: 0.6 },
+  goalLbl: { fontFamily: fonts.bold, fontSize: 11, color: colors.textFaint, letterSpacing: 0.8 },
+  goalTitle: { fontFamily: fonts.bold, fontSize: 20, color: colors.text, marginTop: 6 },
+  stats: { flexDirection: 'row', gap: spacing.xl, marginTop: spacing.lg },
+  statCol: {},
+  statVal: { fontFamily: fonts.displayBold, fontSize: 22, color: colors.text },
+  statLbl: { fontFamily: fonts.bold, fontSize: 10, color: colors.textFaint, letterSpacing: 0.6, marginTop: 2 },
+  weekCard: {
+    backgroundColor: '#fff',
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    padding: spacing.lg,
+    marginTop: spacing.lg,
+  },
+  weekHead: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: spacing.lg },
+  weekLbl: { fontFamily: fonts.bold, fontSize: 11, color: colors.textFaint, letterSpacing: 0.8 },
+  consistent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    borderWidth: 1,
+    borderColor: palette.greenLine,
+    backgroundColor: palette.greenGlass,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radii.pill,
+  },
+  consistentText: { fontFamily: fonts.bold, fontSize: 10, color: palette.green, letterSpacing: 0.5 },
+  bars: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', gap: 6, height: 72 },
+  barWrap: { flex: 1, justifyContent: 'flex-end' },
+  bar: { backgroundColor: palette.insetStrong, borderRadius: 6 },
+  barCurrent: { backgroundColor: palette.green },
+  sectionTitle: { fontFamily: fonts.bold, fontSize: 22, color: colors.text, marginTop: spacing.xxl, marginBottom: spacing.md },
+  reqList: { gap: spacing.sm },
+  reqCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    backgroundColor: '#fff',
+    borderRadius: radii.lg,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    padding: spacing.lg,
+  },
+  reqLocked: { opacity: 0.55 },
+  reqTitle: { fontFamily: fonts.semi, fontSize: 15, color: colors.text },
+  reqTitleLocked: { color: colors.textMuted },
+  reqDetail: { fontFamily: fonts.medium, fontSize: 12, color: colors.textMuted, marginTop: 3 },
+  nowPill: { backgroundColor: palette.green, paddingHorizontal: 12, paddingVertical: 6, borderRadius: radii.pill },
+  nowText: { fontFamily: fonts.bold, fontSize: 11, color: '#fff', letterSpacing: 0.6 },
+  rewardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    backgroundColor: '#fff',
+    borderRadius: radii.xl,
+    borderWidth: 1,
+    borderColor: palette.hairline,
+    paddingVertical: spacing.lg,
+    marginTop: spacing.xxl,
+  },
+  rewardText: { fontFamily: fonts.semi, fontSize: 15, color: colors.text },
 });
