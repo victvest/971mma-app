@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { AuthStackParamList } from '../../navigation/types';
@@ -19,7 +20,6 @@ import { Logo } from '../../components/Logo';
 import { TextField } from '../../components/TextField';
 import { Button } from '../../components/Button';
 import { GlassSurface } from '../../components/GlassSurface';
-import { ScreenShell } from '../../components/ScreenShell';
 
 const heroImg = require('../../../assets/images/hero-bjj.jpg');
 
@@ -46,107 +46,151 @@ export function LoginScreen({ navigation }: Props) {
   };
 
   return (
-    <ScreenShell>
-      <StatusBar style="dark" />
+    <View style={styles.root}>
+      <StatusBar style="light" />
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}
       >
         <ScrollView
-          contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.xl }]}
+          contentContainerStyle={styles.scroll}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <View style={styles.brandBlock}>
-            <View style={styles.logoBadge}>
-              <Logo size={36} tint="black" />
-            </View>
-            <Text style={styles.brand}>971 MMA</Text>
-            <Text style={styles.brandSub}>Fitness Academy · Dubai</Text>
-          </View>
-
-          <View style={styles.heroStrip}>
+          <View style={styles.hero}>
             <Image source={heroImg} style={styles.heroImg} resizeMode="cover" />
+            <LinearGradient
+              colors={['rgba(4,8,6,0.2)', 'rgba(4,8,6,0.55)', 'rgba(241,244,242,0.95)']}
+              locations={[0, 0.55, 1]}
+              style={StyleSheet.absoluteFill}
+            />
+            <View style={[styles.heroTop, { paddingTop: insets.top + spacing.md }]}>
+              <View style={styles.logoBadge}>
+                <Logo size={30} tint="white" />
+              </View>
+              <Text style={styles.brand}>971 MMA</Text>
+            </View>
+            <View style={styles.heroBottom}>
+              <Text style={styles.earn}>Earn Your Level</Text>
+              <Text style={styles.earnSub}>Train on the mat. Track every session. Rise.</Text>
+            </View>
           </View>
 
-          <GlassSurface strong tone="green" radius={radii.xl} padding={spacing.xxl}>
-            <Text style={styles.kicker}>Member access</Text>
-            <Text style={styles.title}>Welcome back</Text>
-            <Text style={styles.subtitle}>
-              Sign in to check in at the gym and track your training.
-            </Text>
+          <View style={styles.sheet}>
+            <GlassSurface strong tone="green" radius={radii.xl} padding={spacing.xxl}>
+              <Text style={styles.kicker}>Member access</Text>
+              <Text style={styles.title}>Welcome back</Text>
+              <Text style={styles.subtitle}>
+                Sign in to check in, track sessions, and earn rewards.
+              </Text>
 
-            {error ? (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>{error}</Text>
-              </View>
-            ) : null}
+              {error ? (
+                <View style={styles.errorBox}>
+                  <Text style={styles.errorText}>{error}</Text>
+                </View>
+              ) : null}
 
-            <View style={{ height: spacing.xl }} />
+              <View style={{ height: spacing.xl }} />
 
-            <TextField
-              label="Email"
-              icon="mail-outline"
-              placeholder="you@email.com"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              autoComplete="email"
-              value={email}
-              onChangeText={setEmail}
-            />
-            <TextField
-              label="Password"
-              icon="lock-closed-outline"
-              placeholder="••••••••"
-              password
-              value={password}
-              onChangeText={setPassword}
-            />
+              <TextField
+                label="Email"
+                icon="mail-outline"
+                placeholder="you@email.com"
+                autoCapitalize="none"
+                keyboardType="email-address"
+                autoComplete="email"
+                value={email}
+                onChangeText={setEmail}
+              />
+              <TextField
+                label="Password"
+                icon="lock-closed-outline"
+                placeholder="••••••••"
+                password
+                value={password}
+                onChangeText={setPassword}
+              />
 
-            <Pressable style={styles.forgot} hitSlop={8}>
-              <Text style={styles.forgotText}>Forgot password?</Text>
-            </Pressable>
+              <Pressable style={styles.forgot} hitSlop={8}>
+                <Text style={styles.forgotText}>Forgot password?</Text>
+              </Pressable>
 
-            <Button label="Sign in" onPress={onSubmit} loading={loading} />
-          </GlassSurface>
+              <Button label="Sign in" onPress={onSubmit} loading={loading} />
+            </GlassSurface>
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>New to 971 MMA? </Text>
-            <Pressable onPress={() => navigation.navigate('Signup')} hitSlop={8}>
-              <Text style={styles.footerLink}>Create account</Text>
-            </Pressable>
+            <View style={styles.footer}>
+              <Text style={styles.footerText}>New to 971 MMA? </Text>
+              <Pressable onPress={() => navigation.navigate('Signup')} hitSlop={8}>
+                <Text style={styles.footerLink}>Create account</Text>
+              </Pressable>
+            </View>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
-    </ScreenShell>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  scroll: {
+  root: { flex: 1, backgroundColor: palette.ink900 },
+  scroll: { flexGrow: 1 },
+  hero: { height: 340, overflow: 'hidden' },
+  heroImg: { width: '100%', height: '100%' },
+  heroTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
     paddingHorizontal: spacing.xl,
-    paddingBottom: spacing.huge,
   },
-  brandBlock: { alignItems: 'center', marginBottom: spacing.xl },
   logoBadge: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: palette.glass12,
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1,
-    borderColor: palette.greenLine,
+    borderColor: 'rgba(255,255,255,0.25)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  brand: { fontFamily: fonts.displayBlack, color: colors.text, fontSize: 32, letterSpacing: 0.3, marginTop: spacing.md },
-  brandSub: { fontFamily: fonts.medium, color: colors.textMuted, fontSize: 13, marginTop: 4 },
-  heroStrip: {
-    height: 120,
-    borderRadius: radii.lg,
-    overflow: 'hidden',
-    marginBottom: spacing.xl,
+  brand: {
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+    color: '#fff',
+    letterSpacing: 0.5,
+    textShadowColor: 'rgba(0,0,0,0.35)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   },
-  heroImg: { width: '100%', height: '100%' },
+  heroBottom: {
+    position: 'absolute',
+    left: spacing.xl,
+    right: spacing.xl,
+    bottom: spacing.xxl,
+  },
+  earn: {
+    fontFamily: fonts.displayBlack,
+    fontSize: 36,
+    color: '#fff',
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0,0,0,0.4)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
+  },
+  earnSub: {
+    fontFamily: fonts.medium,
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.88)',
+    marginTop: spacing.sm,
+  },
+  sheet: {
+    marginTop: -spacing.xxl,
+    paddingHorizontal: spacing.xl,
+    paddingBottom: spacing.huge,
+  },
   kicker: { fontFamily: fonts.semi, color: colors.accent, fontSize: 13 },
   title: { ...typography.h1, color: colors.text, marginTop: 8 },
   subtitle: { ...typography.body, color: colors.textMuted, marginTop: spacing.sm },

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Animated,
   Dimensions,
+  Image,
   Modal,
   Pressable,
   ScrollView,
@@ -18,6 +19,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import * as Haptics from 'expo-haptics';
 import { colors, fonts, glass, palette, radii, shadow, spacing } from '../theme';
 import { Logo } from './Logo';
+import { FeatureIcon } from './icons/FeatureIcon';
 import { useMenu } from '../context/MenuContext';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../hooks/useProfile';
@@ -25,32 +27,34 @@ import { membership } from '../data/mockData';
 import { rewardsProfile } from '../data/memberFeatures';
 import type { MainStackParamList } from '../navigation/types';
 
+const heroImg = require('../../assets/images/hero-bjj.jpg');
 const WIDTH = Math.min(320, Dimensions.get('window').width * 0.86);
 
 type Nav = NativeStackNavigationProp<MainStackParamList>;
 
 type Item = {
   label: string;
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentProps<typeof FeatureIcon>['name'];
+  tone?: React.ComponentProps<typeof FeatureIcon>['tone'];
   route: keyof MainStackParamList | 'Tabs';
   tab?: keyof import('../navigation/types').TabsParamList;
   badge?: string;
 };
 
 const PRIMARY: Item[] = [
-  { label: 'Home', icon: 'home-outline', route: 'Tabs', tab: 'Home' },
-  { label: 'Member pass', icon: 'qr-code-outline', route: 'Tabs', tab: 'Scan' },
-  { label: 'Schedule', icon: 'calendar-outline', route: 'Tabs', tab: 'Classes' },
-  { label: 'Training log', icon: 'pulse-outline', route: 'Training', badge: `${membership.checkInsThisMonth}` },
-  { label: 'Rewards', icon: 'gift-outline', route: 'Rewards', badge: `${rewardsProfile.points}` },
-  { label: 'Belt journey', icon: 'ribbon-outline', route: 'BeltJourney' },
-  { label: 'Profile', icon: 'person-outline', route: 'Tabs', tab: 'Profile' },
+  { label: 'Home', icon: 'home', tone: 'green', route: 'Tabs', tab: 'Home' },
+  { label: 'Member pass', icon: 'pass', tone: 'ink', route: 'Tabs', tab: 'Scan' },
+  { label: 'Schedule', icon: 'schedule', tone: 'green', route: 'Tabs', tab: 'Classes' },
+  { label: 'Training log', icon: 'training', tone: 'green', route: 'Training', badge: `${membership.checkInsThisMonth}` },
+  { label: 'Rewards', icon: 'rewards', tone: 'gold', route: 'Rewards', badge: `${rewardsProfile.points}` },
+  { label: 'Belt journey', icon: 'belt', tone: 'red', route: 'BeltJourney' },
+  { label: 'Profile', icon: 'profile', tone: 'ink', route: 'Tabs', tab: 'Profile' },
 ];
 
 const SECONDARY: Item[] = [
-  { label: 'Membership', icon: 'card-outline', route: 'Tabs', tab: 'Profile' },
-  { label: 'Notifications', icon: 'notifications-outline', route: 'Tabs', tab: 'Home' },
-  { label: 'Help & support', icon: 'help-circle-outline', route: 'Tabs', tab: 'Profile' },
+  { label: 'Membership', icon: 'profile', tone: 'gold', route: 'Tabs', tab: 'Profile' },
+  { label: 'Notifications', icon: 'schedule', tone: 'ink', route: 'Tabs', tab: 'Home' },
+  { label: 'Help & support', icon: 'home', tone: 'ink', route: 'Tabs', tab: 'Profile' },
 ];
 
 export function SideMenu() {
@@ -61,6 +65,7 @@ export function SideMenu() {
   const { profile } = useProfile();
   const slide = useRef(new Animated.Value(-WIDTH)).current;
   const fade = useRef(new Animated.Value(0)).current;
+  const heroSlide = useRef(new Animated.Value(-16)).current;
 
   useEffect(() => {
     Animated.parallel([
@@ -75,8 +80,14 @@ export function SideMenu() {
         duration: 220,
         useNativeDriver: true,
       }),
+      Animated.timing(heroSlide, {
+        toValue: visible ? 0 : -16,
+        duration: 380,
+        easing: undefined,
+        useNativeDriver: true,
+      }),
     ]).start();
-  }, [visible, slide, fade]);
+  }, [visible, slide, fade, heroSlide]);
 
   const go = (item: Item) => {
     Haptics.selectionAsync().catch(() => {});
@@ -100,47 +111,49 @@ export function SideMenu() {
         <Animated.View style={[styles.panel, { transform: [{ translateX: slide }] }]}>
           <BlurView intensity={glass.blurStrong} tint="light" style={StyleSheet.absoluteFill} />
           <View style={styles.panelTint} />
-          <LinearGradient
-            colors={['rgba(255,255,255,0.95)', 'rgba(255,255,255,0.7)']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 0, y: 1 }}
-            style={styles.panelSheen}
-            pointerEvents="none"
-          />
 
           <ScrollView
-            contentContainerStyle={[styles.scroll, { paddingTop: insets.top + spacing.lg, paddingBottom: insets.bottom + spacing.xl }]}
+            contentContainerStyle={{ paddingBottom: insets.bottom + spacing.xl }}
             showsVerticalScrollIndicator={false}
           >
-            <View style={styles.brandRow}>
-              <View style={styles.logoWrap}>
-                <Logo size={28} tint="black" />
+            {/* Hero strip — coach on the mat */}
+            <Animated.View style={[styles.heroStrip, { transform: [{ translateY: heroSlide }] }]}>
+              <Image source={heroImg} style={styles.heroImg} resizeMode="cover" />
+              <LinearGradient
+                colors={['rgba(4,8,6,0.1)', 'rgba(4,8,6,0.75)']}
+                style={StyleSheet.absoluteFill}
+              />
+              <View style={[styles.heroContent, { paddingTop: insets.top + spacing.md }]}>
+                <View style={styles.heroBrand}>
+                  <Logo size={22} tint="white" />
+                  <Text style={styles.heroBrandText}>971 MMA</Text>
+                </View>
+                <Text style={styles.heroTagline}>Earn Your Level</Text>
+                <Text style={styles.heroSub}>Train · Track · Rise</Text>
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.brand}>971 MMA</Text>
-                <Text style={styles.brandSub}>Fitness Academy</Text>
+            </Animated.View>
+
+            <View style={styles.body}>
+              <View style={styles.memberCard}>
+                <Text style={styles.memberName} numberOfLines={1}>{name}</Text>
+                <Text style={styles.memberMeta}>{membership.plan} · {membership.memberId}</Text>
+                <View style={styles.memberStats}>
+                  <MiniStat label="Points" value={String(rewardsProfile.points)} />
+                  <MiniStat label="Streak" value={`${membership.streakDays}d`} />
+                  <MiniStat label="Sessions" value={String(membership.checkInsThisMonth)} />
+                </View>
               </View>
+
+              <Text style={styles.sectionLabel}>Navigate</Text>
+              {PRIMARY.map((item, i) => (
+                <MenuRow key={item.label} item={item} index={i} visible={visible} onPress={() => go(item)} />
+              ))}
+
+              <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Account</Text>
+              {SECONDARY.map((item, i) => (
+                <MenuRow key={item.label} item={item} index={i} visible={visible} muted onPress={() => go(item)} />
+              ))}
             </View>
-
-            <View style={styles.memberCard}>
-              <Text style={styles.memberName} numberOfLines={1}>{name}</Text>
-              <Text style={styles.memberMeta}>{membership.plan} · {membership.memberId}</Text>
-              <View style={styles.memberStats}>
-                <MiniStat label="Points" value={String(rewardsProfile.points)} />
-                <MiniStat label="Streak" value={`${membership.streakDays}d`} />
-                <MiniStat label="Sessions" value={String(membership.checkInsThisMonth)} />
-              </View>
-            </View>
-
-            <Text style={styles.sectionLabel}>Navigate</Text>
-            {PRIMARY.map((item) => (
-              <MenuRow key={item.label} item={item} onPress={() => go(item)} />
-            ))}
-
-            <Text style={[styles.sectionLabel, { marginTop: spacing.lg }]}>Account</Text>
-            {SECONDARY.map((item) => (
-              <MenuRow key={item.label} item={item} onPress={() => go(item)} muted />
-            ))}
           </ScrollView>
         </Animated.View>
       </View>
@@ -148,20 +161,49 @@ export function SideMenu() {
   );
 }
 
-function MenuRow({ item, onPress, muted }: { item: Item; onPress: () => void; muted?: boolean }) {
+function MenuRow({
+  item,
+  index,
+  visible,
+  onPress,
+  muted,
+}: {
+  item: Item;
+  index: number;
+  visible: boolean;
+  onPress: () => void;
+  muted?: boolean;
+}) {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 360,
+        delay: 80 + index * 45,
+        useNativeDriver: true,
+      }).start();
+    } else {
+      anim.setValue(0);
+    }
+  }, [anim, index, visible]);
+
+  const translateX = anim.interpolate({ inputRange: [0, 1], outputRange: [-20, 0] });
+
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} accessibilityRole="button">
-      <View style={[styles.rowIcon, muted && styles.rowIconMuted]}>
-        <Ionicons name={item.icon} size={20} color={muted ? colors.textMuted : colors.text} />
-      </View>
-      <Text style={[styles.rowLabel, muted && { color: colors.textMuted }]}>{item.label}</Text>
-      {item.badge ? (
-        <View style={styles.badge}>
-          <Text style={styles.badgeText}>{item.badge}</Text>
-        </View>
-      ) : null}
-      <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
-    </Pressable>
+    <Animated.View style={{ opacity: anim, transform: [{ translateX }] }}>
+      <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && styles.rowPressed]} accessibilityRole="button">
+        <FeatureIcon name={item.icon} size={42} tone={item.tone ?? 'green'} />
+        <Text style={[styles.rowLabel, muted && { color: colors.textMuted }]}>{item.label}</Text>
+        {item.badge ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>{item.badge}</Text>
+          </View>
+        ) : null}
+        <Ionicons name="chevron-forward" size={16} color={colors.textFaint} />
+      </Pressable>
+    </Animated.View>
   );
 }
 
@@ -176,7 +218,7 @@ function MiniStat({ label, value }: { label: string; value: string }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
-  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(11,15,18,0.35)' },
+  backdrop: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(11,15,18,0.4)' },
   panel: {
     position: 'absolute',
     top: 0,
@@ -186,23 +228,17 @@ const styles = StyleSheet.create({
     borderRightWidth: 1,
     borderRightColor: palette.hairlineStrong,
     ...shadow.floating,
+    overflow: 'hidden',
   },
-  panelTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.72)' },
-  panelSheen: { position: 'absolute', top: 0, left: 0, right: 0, height: 180 },
-  scroll: { paddingHorizontal: spacing.lg },
-  brandRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.xl },
-  logoWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: palette.glass12,
-    borderWidth: 1,
-    borderColor: palette.greenLine,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  brand: { fontFamily: fonts.displayBold, fontSize: 22, color: colors.text },
-  brandSub: { fontFamily: fonts.medium, fontSize: 12, color: colors.textMuted, marginTop: 2 },
+  panelTint: { ...StyleSheet.absoluteFill, backgroundColor: 'rgba(255,255,255,0.78)' },
+  heroStrip: { height: 168, overflow: 'hidden' },
+  heroImg: { width: '100%', height: '100%' },
+  heroContent: { ...StyleSheet.absoluteFill, paddingHorizontal: spacing.lg, justifyContent: 'flex-end', paddingBottom: spacing.lg },
+  heroBrand: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm, marginBottom: spacing.sm },
+  heroBrandText: { fontFamily: fonts.displayBold, fontSize: 16, color: '#fff', letterSpacing: 0.4 },
+  heroTagline: { fontFamily: fonts.displayBlack, fontSize: 26, color: '#fff', letterSpacing: 0.3 },
+  heroSub: { fontFamily: fonts.medium, fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
+  body: { paddingHorizontal: spacing.lg, paddingTop: spacing.lg },
   memberCard: {
     backgroundColor: palette.greenGlass,
     borderWidth: 1,
@@ -228,22 +264,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing.md,
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: radii.md,
   },
   rowPressed: { backgroundColor: palette.inset },
-  rowIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: palette.glass08,
-    borderWidth: 1,
-    borderColor: colors.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowIconMuted: { backgroundColor: palette.inset },
   rowLabel: { flex: 1, fontFamily: fonts.semi, fontSize: 15, color: colors.text },
   badge: {
     backgroundColor: palette.greenGlass,

@@ -19,6 +19,7 @@ import { GlassNavBar } from '../components/GlassNavBar';
 import { ScreenShell } from '../components/ScreenShell';
 import { GlassSurface } from '../components/GlassSurface';
 import { ClassCard } from '../components/ClassCard';
+import { FeatureIcon } from '../components/icons/FeatureIcon';
 import { Tag, SectionHeader, ProgressBar } from '../components/primitives';
 import { membership, announcement, heroImage } from '../data/mockData';
 import { rewardsProfile } from '../data/memberFeatures';
@@ -48,7 +49,7 @@ export function HomeScreen() {
   return (
     <ScreenShell>
       <StatusBar style="dark" />
-      <GlassNavBar title="971 MMA" subtitle="Member hub" />
+      <GlassNavBar title="971 MMA" subtitle="Earn Your Level" />
 
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         <View style={styles.greetRow}>
@@ -61,21 +62,24 @@ export function HomeScreen() {
 
         <View style={styles.featureGrid}>
           <FeatureTile
-            icon="pulse-outline"
+            icon="training"
+            tone="green"
             label="Training"
             value={`${membership.checkInsThisMonth} sessions`}
             onPress={() => stackNav?.navigate('Training')}
           />
           <FeatureTile
-            icon="gift-outline"
+            icon="rewards"
+            tone="gold"
             label="Rewards"
             value={`${rewardsProfile.points} pts`}
             onPress={() => stackNav?.navigate('Rewards')}
           />
           <FeatureTile
-            icon="ribbon-outline"
-            label="Belt journey"
-            value="68% to stripe 3"
+            icon="belt"
+            tone="red"
+            label="Belt"
+            value="68% next stripe"
             onPress={() => stackNav?.navigate('BeltJourney')}
           />
         </View>
@@ -165,11 +169,13 @@ export function HomeScreen() {
 
 function FeatureTile({
   icon,
+  tone,
   label,
   value,
   onPress,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: React.ComponentProps<typeof FeatureIcon>['name'];
+  tone: React.ComponentProps<typeof FeatureIcon>['tone'];
   label: string;
   value: string;
   onPress: () => void;
@@ -177,7 +183,7 @@ function FeatureTile({
   return (
     <Pressable onPress={onPress} accessibilityRole="button" style={({ pressed }) => [styles.featureTileWrap, pressed && { opacity: 0.92 }]}>
       <GlassSurface padding={spacing.md} style={styles.featureTile}>
-        <Ionicons name={icon} size={18} color={colors.accent} />
+        <FeatureIcon name={icon} size={36} tone={tone} />
         <Text style={styles.featureLabel}>{label}</Text>
         <Text style={styles.featureValue} numberOfLines={1}>{value}</Text>
       </GlassSurface>

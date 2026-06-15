@@ -7,6 +7,12 @@
       "skillPath": ".claude/skills/design-system/SKILL.md",
       "computedHash": "49b8308dc428c66b0983f4b3d102c522c495f62538121064d1e82a040b1afd2c"
     },
+    "flutter-animations": {
+      "source": "madteacher/mad-agents-skills",
+      "sourceType": "github",
+      "skillPath": "flutter-animations/SKILL.md",
+      "computedHash": "a0f81c4bbff81b43be42cd11ebf33b6a4e50e2f94134d3071e441785fc4872e8"
+    },
     "shadcn": {
       "source": "shadcn/ui",
       "sourceType": "github",
