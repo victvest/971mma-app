@@ -1,8 +1,8 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { Text as PaperText } from 'react-native-paper';
-import Svg, { Circle } from 'react-native-svg';
 import { GlassCard } from '../../ui';
+import { ProgressRing, ProgressRingCenter } from '../ProgressRing';
 import { colors, fonts, palette, spacing } from '../../theme';
 import type { WeekDayStatus } from '../../data/mockData';
 
@@ -31,12 +31,7 @@ export function PerformanceStrip({
   weekCount,
   weekDays,
 }: Props) {
-  const pct = sessionsThisMonth / monthlyGoal;
   const size = 72;
-  const stroke = 7;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - Math.min(1, pct));
 
   return (
     <GlassCard style={styles.card}>
@@ -53,26 +48,11 @@ export function PerformanceStrip({
             </View>
           </View>
           <View style={styles.ringWrap}>
-            <Svg width={size} height={size}>
-              <Circle cx={size / 2} cy={size / 2} r={r} stroke={palette.insetStrong} strokeWidth={stroke} fill="none" />
-              <Circle
-                cx={size / 2}
-                cy={size / 2}
-                r={r}
-                stroke={palette.green}
-                strokeWidth={stroke}
-                fill="none"
-                strokeLinecap="round"
-                strokeDasharray={`${circ} ${circ}`}
-                strokeDashoffset={offset}
-                rotation="-90"
-                origin={`${size / 2}, ${size / 2}`}
-              />
-            </Svg>
-            <View style={styles.ringCenter}>
+            <ProgressRing size={size} value={sessionsThisMonth} max={monthlyGoal} />
+            <ProgressRingCenter size={size}>
               <PaperText style={styles.ringVal}>{sessionsThisMonth}</PaperText>
               <PaperText style={styles.ringSub}>OF {monthlyGoal} · JUNE</PaperText>
-            </View>
+            </ProgressRingCenter>
           </View>
         </View>
 
@@ -106,7 +86,6 @@ const styles = StyleSheet.create({
   streak: { flexDirection: 'row', alignItems: 'center', marginTop: spacing.sm },
   streakText: { fontFamily: fonts.semi, fontSize: 13, color: palette.red },
   ringWrap: { width: 72, height: 72, alignItems: 'center', justifyContent: 'center' },
-  ringCenter: { position: 'absolute', alignItems: 'center' },
   ringVal: { fontFamily: fonts.displayBold, fontSize: 20, color: colors.text },
   ringSub: { fontFamily: fonts.bold, fontSize: 7, color: colors.textFaint, letterSpacing: 0.4, textAlign: 'center' },
   week: { marginTop: spacing.lg, paddingTop: spacing.lg, borderTopWidth: 1, borderTopColor: palette.hairline },

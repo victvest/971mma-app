@@ -1,6 +1,6 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import Svg, { Circle } from 'react-native-svg';
+import { ProgressRing } from '../ProgressRing';
 import { colors, fonts, palette, radii, shadow, spacing } from '../../theme';
 import { UaeFlagIcon } from '../UaeFlagIcon';
 
@@ -14,10 +14,6 @@ type Props = {
 
 export function BeltPathCard({ rank, stripes, percent, sessionsToNext, onPress }: Props) {
   const size = 64;
-  const stroke = 6;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const offset = circ * (1 - percent / 100);
 
   return (
     <Pressable onPress={onPress} style={[styles.card, shadow.card]} accessibilityRole="button">
@@ -30,22 +26,7 @@ export function BeltPathCard({ rank, stripes, percent, sessionsToNext, onPress }
         <Text style={styles.sub}>{sessionsToNext} sessions to stripe {stripes + 1}</Text>
       </View>
       <View style={styles.ring}>
-        <Svg width={size} height={size}>
-          <Circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.15)" strokeWidth={stroke} fill="none" />
-          <Circle
-            cx={size / 2}
-            cy={size / 2}
-            r={r}
-            stroke={palette.greenBright}
-            strokeWidth={stroke}
-            fill="none"
-            strokeLinecap="round"
-            strokeDasharray={`${circ} ${circ}`}
-            strokeDashoffset={offset}
-            rotation="-90"
-            origin={`${size / 2}, ${size / 2}`}
-          />
-        </Svg>
+        <ProgressRing size={size} stroke={6} value={percent} max={100} color={palette.greenBright} trackColor="rgba(255,255,255,0.15)" />
         <Text style={styles.pct}>{percent}%</Text>
       </View>
     </Pressable>

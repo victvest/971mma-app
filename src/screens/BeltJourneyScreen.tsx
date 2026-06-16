@@ -2,7 +2,7 @@ import React from 'react';
 import { ScrollView, StyleSheet, Text, View, Pressable } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { Ionicons } from '@expo/vector-icons';
-import Svg, { Circle } from 'react-native-svg';
+import { ProgressRing, ProgressRingCenter } from '../components/ProgressRing';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { colors, fonts, palette, radii, shadow, spacing } from '../theme';
@@ -92,34 +92,13 @@ export function BeltJourneyScreen() {
 
 function GoalRing({ value, max }: { value: number; max: number }) {
   const size = 96;
-  const stroke = 9;
-  const r = (size - stroke) / 2;
-  const circ = 2 * Math.PI * r;
-  const pct = Math.min(1, value / max);
-  const offset = circ * (1 - pct);
-
   return (
     <View style={styles.ringWrap}>
-      <Svg width={size} height={size}>
-        <Circle cx={size / 2} cy={size / 2} r={r} stroke={palette.insetStrong} strokeWidth={stroke} fill="none" />
-        <Circle
-          cx={size / 2}
-          cy={size / 2}
-          r={r}
-          stroke={palette.green}
-          strokeWidth={stroke}
-          fill="none"
-          strokeLinecap="round"
-          strokeDasharray={`${circ} ${circ}`}
-          strokeDashoffset={offset}
-          rotation="-90"
-          origin={`${size / 2}, ${size / 2}`}
-        />
-      </Svg>
-      <View style={styles.ringCenter}>
+      <ProgressRing size={size} stroke={9} value={value} max={max} />
+      <ProgressRingCenter size={size}>
         <Text style={styles.ringVal}>{value}</Text>
         <Text style={styles.ringSub}>OF {max}</Text>
-      </View>
+      </ProgressRingCenter>
     </View>
   );
 }
