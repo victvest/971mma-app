@@ -1,0 +1,100 @@
+project_id = "971mma-app"
+
+[api]
+enabled = true
+port = 54321
+schemas = ["public", "graphql_public"]
+extra_search_path = ["public", "extensions"]
+max_rows = 1000
+
+[db]
+port = 54322
+shadow_port = 54320
+major_version = 17
+
+# Hosted auth settings — pushed via `supabase config push`.
+[auth]
+enabled = true
+site_url = "nine71mma://auth/callback"
+additional_redirect_urls = [
+  "nine71mma://**",
+  "nine71mma://auth/callback",
+  "exp://**",
+]
+enable_signup = true
+minimum_password_length = 6
+
+[auth.rate_limit]
+# Dev-friendly limits while testing signup / link flows.
+email_sent = 100
+sms_sent = 30
+anonymous_users = 100
+token_refresh = 500
+sign_in_sign_ups = 500
+token_verifications = 500
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+double_confirm_changes = true
+secure_password_change = false
+max_frequency = "1s"
+otp_length = 6
+otp_expiry = 45
+
+[functions.mb-health]
+verify_jwt = true
+
+[functions.mb-link]
+verify_jwt = true
+
+[functions.mb-link-manual]
+verify_jwt = true
+
+[functions.mb-programs]
+verify_jwt = true
+
+[functions.mb-schedule]
+verify_jwt = true
+
+[functions.mb-webhook]
+verify_jwt = false
+
+[functions.push-send]
+verify_jwt = false
+
+[functions.class-reminders]
+verify_jwt = false
+
+[functions.mb-staff]
+verify_jwt = true
+
+[functions.qr-issue]
+verify_jwt = true
+
+[functions.mb-checkin]
+verify_jwt = true
+
+[functions.mb-visits]
+verify_jwt = true
+
+[functions.mb-parity]
+verify_jwt = true
+
+[functions.mb-membership]
+verify_jwt = true
+
+[functions.guardian-approve]
+verify_jwt = true
+
+[functions.mb-class-roster]
+verify_jwt = true
+
+[functions.gate-qr-issue]
+verify_jwt = true
+
+[functions.entry-checkin]
+verify_jwt = true
+
+[functions.auth-sign-in]
+verify_jwt = false

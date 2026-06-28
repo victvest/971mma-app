@@ -1,0 +1,39 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Cancel",
+    "save": "Save",
+    "delete": "Delete",
+    "confirm": "Confirm",
+    "close": "Close",
+    "loading": "Loading...",
+    "retry": "Retry",
+    "back": "Back"
+  },
+  "auth": {
+    "signIn": "Sign In",
+    "register": "Create Account",
+    "signOut": "Sign Out",
+    "email": "Email",
+    "password": "Password",
+    "forgotPassword": "Forgot password?",
+    "continueWith": "Continue with {{provider}}"
+  },
+  "tabs": {
+    "home": "Home",
+    "schedule": "Schedule",
+    "rewards": "Rewards",
+    "profile": "Profile"
+  },
+  "dialog": {
+    "defaultConfirmLabel": "Confirm",
+    "defaultCancelLabel": "Cancel"
+  },
+  "errors": {
+    "network": "No internet connection",
+    "server": "Server error. Please try again.",
+    "unknown": "Something went wrong",
+    "timeout": "Request timed out. Please try again.",
+    "unauthorized": "Session expired. Please sign in again."
+  }
+}

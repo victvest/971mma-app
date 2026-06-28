@@ -1,0 +1,39 @@
+{
+  "common": {
+    "ok": "OK",
+    "cancel": "Annuler",
+    "save": "Enregistrer",
+    "delete": "Supprimer",
+    "confirm": "Confirmer",
+    "close": "Fermer",
+    "loading": "Chargement...",
+    "retry": "Réessayer",
+    "back": "Retour"
+  },
+  "auth": {
+    "signIn": "Se connecter",
+    "register": "Créer un compte",
+    "signOut": "Se déconnecter",
+    "email": "E-mail",
+    "password": "Mot de passe",
+    "forgotPassword": "Mot de passe oublié ?",
+    "continueWith": "Continuer avec {{provider}}"
+  },
+  "tabs": {
+    "home": "Accueil",
+    "schedule": "Programme",
+    "rewards": "Récompenses",
+    "profile": "Profil"
+  },
+  "dialog": {
+    "defaultConfirmLabel": "Confirmer",
+    "defaultCancelLabel": "Annuler"
+  },
+  "errors": {
+    "network": "Pas de connexion Internet",
+    "server": "Erreur serveur. Veuillez réessayer.",
+    "unknown": "Quelque chose a mal tourné",
+    "timeout": "La requête a expiré. Veuillez réessayer.",
+    "unauthorized": "Session expirée. Veuillez vous reconnecter."
+  }
+}

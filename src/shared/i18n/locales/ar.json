@@ -1,0 +1,39 @@
+{
+  "common": {
+    "ok": "موافق",
+    "cancel": "إلغاء",
+    "save": "حفظ",
+    "delete": "حذف",
+    "confirm": "تأكيد",
+    "close": "إغلاق",
+    "loading": "جاري التحميل...",
+    "retry": "إعادة المحاولة",
+    "back": "رجوع"
+  },
+  "auth": {
+    "signIn": "تسجيل الدخول",
+    "register": "إنشاء حساب",
+    "signOut": "تسجيل الخروج",
+    "email": "البريد الإلكتروني",
+    "password": "كلمة المرور",
+    "forgotPassword": "نسيت كلمة المرور؟",
+    "continueWith": "المتابعة مع {{provider}}"
+  },
+  "tabs": {
+    "home": "الرئيسية",
+    "schedule": "الجدول",
+    "rewards": "المكافآت",
+    "profile": "الملف الشخصي"
+  },
+  "dialog": {
+    "defaultConfirmLabel": "تأكيد",
+    "defaultCancelLabel": "إلغاء"
+  },
+  "errors": {
+    "network": "لا يوجد اتصال بالإنترنت",
+    "server": "خطأ في الخادم. حاول مرة أخرى.",
+    "unknown": "حدث خطأ ما",
+    "timeout": "انتهت مهلة الطلب. حاول مرة أخرى.",
+    "unauthorized": "انتهت الجلسة. يرجى تسجيل الدخول مجدداً."
+  }
+}

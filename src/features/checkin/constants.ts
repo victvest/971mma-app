@@ -1,0 +1,2 @@
+export const ATTENDANCE_PAGE_SIZE = 20;
+export const RECENT_ATTENDANCE_PREVIEW = 5;
