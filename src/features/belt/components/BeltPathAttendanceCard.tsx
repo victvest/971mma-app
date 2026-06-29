@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AnimatedBarFill, AnimatedProgressRing } from '@/shared/animations';
 import { BeltPathSurfaceCard } from '@/features/belt/components/BeltPathSurfaceCard';
 import { useTheme } from '@/shared/theme';
 
 const ATTENDANCE_WINDOW_DAYS = 30;
+const BAR_TRACK_HEIGHT = 40;
 
 type Props = {
   trainingDays30d: number;
@@ -16,39 +17,63 @@ type Props = {
 function WeekActivityBars({
   counts,
   currentColor,
-  mutedColor,
-  emptyColor,
+  pastColor,
+  trackColor,
 }: {
   counts: number[];
   currentColor: string;
-  mutedColor: string;
-  emptyColor: string;
+  pastColor: string;
+  trackColor: string;
 }) {
+  const { colors, typography } = useTheme();
   const maxCount = Math.max(...counts, 1);
+  const totalSessions = useMemo(() => counts.reduce((sum, count) => sum + count, 0), [counts]);
 
   return (
-    <View style={styles.barChartContainer}>
-      {counts.map((count, idx) => {
-        const height = count > 0 ? Math.round((count / maxCount) * 100) : 0;
-        const isCurrentWeek = idx === counts.length - 1;
+    <View style={styles.barChartRoot}>
+      <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
+        {totalSessions} {totalSessions === 1 ? 'session' : 'sessions'} in 8 weeks
+      </Text>
+      <View style={styles.barChartContainer}>
+        {counts.map((count, idx) => {
+          const height = count > 0 ? Math.round((count / maxCount) * 100) : 0;
+          const isCurrentWeek = idx === counts.length - 1;
 
-        return (
-          <View key={`${idx}-${count}`} style={styles.barContainer}>
-            {isCurrentWeek && count > 0 ? (
-              <Text style={[styles.nowLabel, { color: currentColor }]}>Now</Text>
-            ) : (
-              <View style={styles.nowSpacer} />
-            )}
-            <AnimatedBarFill
-              percent={height}
-              backgroundColor={mutedColor}
-              highlightColor={currentColor}
-              isHighlighted={isCurrentWeek}
-              trackColor={emptyColor}
-            />
-          </View>
-        );
-      })}
+          return (
+            <View key={`week-${idx}`} style={styles.barColumn}>
+              {isCurrentWeek ? (
+                <Text style={[styles.nowLabel, { color: currentColor }]}>Now</Text>
+              ) : (
+                <View style={styles.nowSpacer} />
+              )}
+              <AnimatedBarFill
+                percent={height}
+                backgroundColor={pastColor}
+                highlightColor={currentColor}
+                isHighlighted={isCurrentWeek}
+                trackColor={trackColor}
+                trackHeight={BAR_TRACK_HEIGHT}
+              />
+              <Text
+                style={[
+                  styles.countLabel,
+                  {
+                    color:
+                      count > 0
+                        ? isCurrentWeek
+                          ? currentColor
+                          : colors.text.secondary
+                        : colors.text.tertiary,
+                    fontWeight: isCurrentWeek && count > 0 ? '800' : '600',
+                  },
+                ]}
+              >
+                {count}
+              </Text>
+            </View>
+          );
+        })}
+      </View>
     </View>
   );
 }
@@ -61,7 +86,6 @@ export function BeltPathAttendanceCard({
 }: Props) {
   const { colors, typography, gap, layout, inset } = useTheme();
   const ringPercent = Math.min(100, (trainingDays30d / ATTENDANCE_WINDOW_DAYS) * 100);
-  const hasWeeklyActivity = weekCounts.some((count) => count > 0);
 
   return (
     <BeltPathSurfaceCard style={{ gap: gap.lg, marginBottom: gap.lg }}>
@@ -110,18 +134,12 @@ export function BeltPathAttendanceCard({
         ]}
       >
         <Text style={[styles.consistencyKicker, { color: colors.text.tertiary }]}>LAST 8 WEEKS</Text>
-        {hasWeeklyActivity ? (
-          <WeekActivityBars
-            counts={weekCounts}
-            currentColor={colors.accent.default}
-            mutedColor={colors.fill.secondary}
-            emptyColor={colors.background.secondary}
-          />
-        ) : (
-          <Text style={[typography.textPresets.footnote, { color: colors.text.tertiary }]}>
-            Weekly activity will appear after your first sessions.
-          </Text>
-        )}
+        <WeekActivityBars
+          counts={weekCounts}
+          currentColor={colors.accent.default}
+          pastColor={colors.accent.pressed}
+          trackColor={colors.accent.subtle}
+        />
       </View>
     </BeltPathSurfaceCard>
   );
@@ -159,27 +177,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.6,
   },
+  barChartRoot: {
+    gap: 8,
+  },
   barChartContainer: {
     alignItems: 'flex-end',
     flexDirection: 'row',
-    height: 56,
     justifyContent: 'space-between',
-    marginTop: 4,
   },
-  barContainer: {
+  barColumn: {
     alignItems: 'center',
     flex: 1,
-    height: '100%',
-    justifyContent: 'flex-end',
+    gap: 4,
   },
   nowLabel: {
     fontSize: 9,
     fontWeight: '800',
     letterSpacing: 0.2,
-    marginBottom: 4,
   },
   nowSpacer: {
     height: 13,
-    marginBottom: 4,
+  },
+  countLabel: {
+    fontSize: 10,
+    letterSpacing: -0.1,
   },
 });

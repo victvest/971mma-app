@@ -14,8 +14,11 @@ import type {
   CoachDashboardStats,
   CoachItem,
   CoachMemberSearchItem,
+  CommunityChannelItem,
   PromotionCandidateItem,
 } from '@/types/domain';
+
+export const DEMO_COMMUNITY_CHANNEL_PREFIX = 'demo-community-channel-';
 
 export const DEMO_COACH: CoachItem = {
   id: 'demo-coach-profile',
@@ -27,7 +30,68 @@ export const DEMO_COACH: CoachItem = {
   bio: null,
   photoUrl: null,
   isHeadCoach: true,
+  coachingPhilosophy: null,
+  yearsExperience: 12,
+  fightRecord: null,
+  titles: [],
+  certifications: [],
+  languages: ['English', 'Arabic'],
 };
+
+/** Demo coach is BJJ-only — mirrors separate coach accounts per rank discipline. */
+export const DEMO_COACH_ASSIGNED_DISCIPLINES = [
+  {
+    id: 'demo-discipline-bjj',
+    slug: 'bjj',
+    displayName: 'Brazilian Jiu-Jitsu',
+    hasRankProgression: true,
+  },
+] as const;
+
+export const DEMO_COMMUNITY_CHANNELS: CommunityChannelItem[] = [
+  {
+    id: 'demo-community-channel-bjj',
+    title: 'Bahaa · Brazilian Jiu-Jitsu',
+    description: null,
+    disciplineName: 'Brazilian Jiu-Jitsu',
+    disciplineSlug: 'bjj',
+    coachName: DEMO_COACH.name,
+    coachAvatarUrl: null,
+    latestPostAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
+    lastMessageAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
+    lastMessagePreview: 'Open mat this Saturday — bring your gi.',
+    unreadCount: 0,
+    memberCount: 48,
+    isCoachOwner: true,
+  },
+  {
+    id: 'demo-community-channel-nogi',
+    title: 'Bahaa · No-Gi',
+    description: null,
+    disciplineName: 'No-Gi',
+    disciplineSlug: 'nogi',
+    coachName: DEMO_COACH.name,
+    coachAvatarUrl: null,
+    latestPostAt: null,
+    lastMessageAt: null,
+    lastMessagePreview: null,
+    unreadCount: 0,
+    memberCount: 31,
+    isCoachOwner: true,
+  },
+];
+
+export function getDemoCoachCommunityChannels(): CommunityChannelItem[] {
+  return DEMO_COMMUNITY_CHANNELS.map((channel) => ({ ...channel }));
+}
+
+export function isDemoCommunityChannelId(channelId: string): boolean {
+  return channelId.startsWith(DEMO_COMMUNITY_CHANNEL_PREFIX);
+}
+
+export function getDemoCommunityChannels(): CommunityChannelItem[] {
+  return getDemoCoachCommunityChannels();
+}
 
 function gymTodayIso(hour: number, minute = 0): string {
   const today = gymDayKey();
@@ -61,7 +125,9 @@ function buildDemoClass(
     title,
     discipline: 'bjj',
     disciplineId: null,
-    description: null,
+    description:
+      options.description ??
+      'Structured session with coach-led technique, positional drilling, and supervised rolling.',
     coachName: DEMO_COACH.name,
     coachId: null,
     startsAt,
@@ -360,6 +426,13 @@ export function getDemoCoachMemberBeltPath(userId: string): BeltPathSummary {
         toStripe: 3,
         awardedAt: new Date(Date.now() - 90 * 24 * 60 * 60_000).toISOString(),
       },
+    ],
+    curriculumRanks: [
+      { id: 'demo-rank-white', discipline: 'bjj', name: 'White', order: 1, stripes: 4 },
+      { id: 'demo-rank-blue', discipline: 'bjj', name: 'Blue', order: 2, stripes: 4 },
+      { id: 'demo-rank-purple', discipline: 'bjj', name: 'Purple', order: 3, stripes: 4 },
+      { id: 'demo-rank-brown', discipline: 'bjj', name: 'Brown', order: 4, stripes: 4 },
+      { id: 'demo-rank-black', discipline: 'bjj', name: 'Black', order: 5, stripes: 4 },
     ],
     isPlaceholderCurriculum: false,
   };

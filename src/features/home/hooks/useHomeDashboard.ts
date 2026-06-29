@@ -25,7 +25,7 @@ export function useHomeDashboardSummary() {
   const query = useQuery({
     queryKey: homeDashboardKey(activeMemberId),
     queryFn: () => getHomeDashboardSummary(activeMemberId),
-    enabled: Boolean(activeMemberId),
+    enabled: true,
     staleTime: MEMBER_DASHBOARD_STALE_MS,
   });
 

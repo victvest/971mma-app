@@ -10,6 +10,7 @@ import { isCoachDemoMode } from '@/features/coach/demo/coachDemoMode';
 import { getSupabaseClient } from '@/services/supabase/client';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { getClassById, getClassesByCoach } from '@/services/database/classes.repository';
+import { getCoachAssignedDisciplines } from '@/services/database/coachMemberNotes.repository';
 import type {
   ClassItem,
   ClassRosterResponse,
@@ -20,18 +21,44 @@ import type {
 
 const rosterInflightRequests = new Map<string, Promise<ClassRosterResponse>>();
 
+async function filterCoachClassesByAssignedDisciplines(
+  coach: CoachItem,
+  classes: ClassItem[],
+): Promise<ClassItem[]> {
+  const assigned = await getCoachAssignedDisciplines(coach.id);
+  if (assigned.length === 0) return classes;
+
+  const allowed = new Set(assigned.map((item) => item.id));
+  return classes.filter((item) => !item.disciplineId || allowed.has(item.disciplineId));
+}
+
+export async function assertCoachClassAccess(classId: string): Promise<void> {
+  if (isCoachDemoMode()) return;
+
+  const { error } = await getSupabaseClient().rpc('assert_coach_class_access', {
+    p_class_id: classId,
+  });
+  if (error) throw error;
+}
+
 export async function getCoachClasses(coach: CoachItem): Promise<ClassItem[]> {
   if (isCoachDemoMode()) {
     return getDemoCoachClasses();
   }
-  return getClassesByCoach(coach);
+  const classes = await getClassesByCoach(coach);
+  return filterCoachClassesByAssignedDisciplines(coach, classes);
 }
 
 export async function getCoachClassById(classId: string): Promise<ClassItem | null> {
   if (isCoachDemoMode()) {
     return getDemoCoachClassById(classId);
   }
-  return getClassById(classId);
+
+  const item = await getClassById(classId);
+  if (!item) return null;
+
+  await assertCoachClassAccess(classId);
+  return item;
 }
 
 export async function fetchClassRoster(
@@ -83,10 +110,10 @@ export function computeClassRosterAttendance(visitors: ClassRosterResponse['visi
 }
 
 export async function listPromotionCandidates(
-  discipline = 'bjj',
+  discipline: 'bjj' | 'wrestling',
 ): Promise<PromotionCandidateItem[]> {
   if (isCoachDemoMode()) {
-    void discipline;
+    if (discipline !== 'bjj') return [];
     return DEMO_PROMOTION_CANDIDATES.map((item) => ({ ...item }));
   }
   const { data, error } = await getSupabaseClient().rpc('list_promotion_candidates', {
@@ -145,7 +172,7 @@ export async function getCoachDashboardStats(
 
   if (error) throw error;
 
-  const candidates = await listPromotionCandidates();
+  const candidates = await listPromotionCandidates('bjj');
   const promotionCandidateCount = candidates.filter(
     (item) => item.candidateReason !== 'tracking',
   ).length;

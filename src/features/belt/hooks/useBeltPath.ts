@@ -3,6 +3,8 @@ import {
   awardPromotion,
   getBeltPathSummary,
   getCoachMemberBeltPath,
+  getUnseenPromotion,
+  markPromotionCelebrationSeen,
   markRequirementStatus,
   searchMembersForCoach,
 } from '@/services/database/belt.repository';
@@ -85,3 +87,28 @@ export function useAwardPromotion(targetUserId: string | null) {
     },
   });
 }
+
+export function useUnseenPromotion() {
+  const activeMemberId = useActiveMemberId();
+
+  return useQuery({
+    queryKey: ['unseen-promotion', activeMemberId],
+    queryFn: () => getUnseenPromotion(activeMemberId),
+    enabled: Boolean(activeMemberId),
+    staleTime: 0,
+  });
+}
+
+export function useMarkPromotionCelebrationSeen() {
+  const queryClient = useQueryClient();
+  const activeMemberId = useActiveMemberId();
+
+  return useMutation({
+    mutationFn: (promotionId: string) => markPromotionCelebrationSeen(promotionId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['unseen-promotion', activeMemberId] });
+      queryClient.invalidateQueries({ queryKey: ['belt-path', activeMemberId] });
+    },
+  });
+}
+

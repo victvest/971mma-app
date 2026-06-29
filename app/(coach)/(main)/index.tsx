@@ -5,6 +5,7 @@ import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { CoachDashboardSkeleton } from '@/shared/animations';
 import { useTabEntranceReplay } from '@/shared/navigation/useTabEntranceReplay';
 import { CoachNowTeachingCard } from '@/features/coach/components/home/CoachNowTeachingCard';
+import { CoachGroupsPreview } from '@/features/coach/components/home/CoachGroupsPreview';
 import { CoachTodayClassRow } from '@/features/coach/components/home/CoachTodayClassRow';
 import {
   useCoachClasses,
@@ -189,6 +190,10 @@ export default function CoachHomeScreen() {
         </HomeAnimatedSection>
 
         <HomeAnimatedSection index={2} replayKey={entranceReplayKey}>
+          <CoachGroupsPreview />
+        </HomeAnimatedSection>
+
+        <HomeAnimatedSection index={3} replayKey={entranceReplayKey}>
           <HomeSectionTitle
             title="Today's schedule"
             actionLabel="See all →"

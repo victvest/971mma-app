@@ -343,10 +343,9 @@ export default function ProfileScreen() {
   }, [membershipQuery.data?.status, colors]);
 
   const roleLabel = useMemo(() => {
-    if (viewingChild) return 'Trainee';
     const role = user?.role ?? 'member';
     return role.charAt(0).toUpperCase() + role.slice(1);
-  }, [user?.role, viewingChild]);
+  }, [user?.role]);
 
   const showMembershipCard = membershipQuery.data?.status !== 'none';
 

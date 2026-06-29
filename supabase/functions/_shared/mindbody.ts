@@ -54,6 +54,13 @@ function isReadMethod(method?: string): boolean {
   return (method ?? 'GET').toUpperCase() === 'GET';
 }
 
+/** Mindbody source credentials require a leading underscore on usertoken/issue. */
+function sourceUsername(): string {
+  const name = env('MINDBODY_SOURCE_NAME').trim();
+  if (name.startsWith('_') || name.includes('@')) return name;
+  return `_${name}`;
+}
+
 function isUsableToken(row: TokenRow | null): row is Required<TokenRow> {
   if (!row?.access_token || !row.expires_at) return false;
   return new Date(row.expires_at).getTime() > Date.now() + TOKEN_REFRESH_SKEW_MS;
@@ -93,7 +100,7 @@ async function issueToken(svc: SupabaseClient): Promise<string> {
       method: 'POST',
       headers: baseHeaders(),
       body: JSON.stringify({
-        Username: env('MINDBODY_SOURCE_NAME'),
+        Username: sourceUsername(),
         Password: env('MINDBODY_SOURCE_PASSWORD'),
       }),
     }),
@@ -193,7 +200,7 @@ export async function mbFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const sandboxRead = isSandbox() && isReadMethod(init.method);
+  const readMethod = isReadMethod(init.method);
   let forceTokenRefresh = false;
   let useKeyOnly = false;
 
@@ -204,7 +211,7 @@ export async function mbFetch<T>(
       try {
         token = await getToken(svc, forceTokenRefresh);
       } catch (error) {
-        if (!sandboxRead) throw error;
+        if (!readMethod) throw error;
         useKeyOnly = true;
       }
     }
@@ -223,14 +230,14 @@ export async function mbFetch<T>(
         forceTokenRefresh = true;
         continue;
       }
-      if (sandboxRead) {
+      if (readMethod) {
         useKeyOnly = true;
         forceTokenRefresh = false;
         continue;
       }
     }
 
-    if (status === 401 && sandboxRead && !useKeyOnly) {
+    if (status === 401 && readMethod && !useKeyOnly) {
       useKeyOnly = true;
       continue;
     }

@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { getCoaches, getCoachById, getClassesByCoachId } from '@/services/database';
+import { getCoachAssignedDisciplines } from '@/services/database/coachMemberNotes.repository';
 import { getDirectoryProvider } from '@/services/integrations';
 import {
   STATIC_DIRECTORY_GC_MS,
@@ -63,5 +64,19 @@ export function useCoachClasses(coachId: string | undefined) {
     },
     enabled: Boolean(coachId),
     staleTime: 5 * 60 * 1000,
+  });
+}
+
+export function coachDisciplinesKey(coachId: string) {
+  return ['coach-disciplines', coachId] as const;
+}
+
+export function useCoachDisciplines(coachId: string | undefined) {
+  return useQuery({
+    queryKey: coachDisciplinesKey(coachId ?? ''),
+    queryFn: () => getCoachAssignedDisciplines(coachId),
+    enabled: Boolean(coachId),
+    staleTime: STATIC_DIRECTORY_STALE_MS,
+    gcTime: STATIC_DIRECTORY_GC_MS,
   });
 }

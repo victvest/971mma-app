@@ -4,10 +4,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { GlassMediaChip } from '@/shared/components/ui';
 import { HomeAnimatedPressable } from '@/features/home/components/HomeAnimatedPressable';
-import { HomeElevatedCard } from '@/features/home/components/HomeElevatedCard';
 import { formatCoachClassTime } from '@/features/coach/utils/classDisplay';
 import { isClassLiveNow } from '@/core/time/gymTime';
-import { resolveClassImage } from '@/features/schedule/utils/classImages';
+import { academyAssets } from '@/features/academy/assets';
 import { useTheme } from '@/shared/theme';
 import type { ClassItem } from '@/types/domain';
 
@@ -66,35 +65,46 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
   const cardWidth = screenWidth - inset.lg * 2;
   const cardHeight = cardWidth * HERO_CARD_HEIGHT_RATIO;
   const actionHeight = layout.coachActionHeight * HERO_ACTION_HEIGHT_SCALE;
+  const heroImage = academyAssets.homeCarouselHero;
 
   if (!classItem) {
     return (
-      <HomeElevatedCard>
-        <Text style={[typography.textPresets.label, { color: colors.text.tertiary }]}>
-          NOW TEACHING
-        </Text>
-        <Text
-          style={[
-            typography.textPresets.title,
-            styles.emptyTitle,
-            { color: colors.text.primary, marginTop: gap.sm },
-          ]}
-        >
-          You have no classes today
-        </Text>
-        <Text
-          style={[typography.textPresets.footnote, { color: colors.text.secondary, marginTop: gap.xs }]}
-        >
-          Your schedule will appear here.
-        </Text>
-      </HomeElevatedCard>
+      <View style={[styles.shadowWrap, shadows.mediaHero, { width: cardWidth }]}>
+        <View style={[styles.cardShell, { borderRadius: radius.cardLarge }]}>
+          <View style={[styles.mediaFrame, { height: cardHeight }]}>
+            <Image source={heroImage} style={styles.mediaImage} contentFit="cover" />
+            <LinearGradient
+              colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.42)', 'rgba(0,0,0,0.92)']}
+              locations={[0, 0.45, 1]}
+              style={styles.scrim}
+            />
+            <View style={[styles.content, { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm }]}>
+              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
+                COACH MODE
+              </Text>
+              <Text
+                style={[typography.textPresets.hero, styles.title, { color: colors.text.inverse }]}
+                numberOfLines={2}
+              >
+                You have no classes today
+              </Text>
+              <Text
+                style={[typography.textPresets.body, styles.meta, { color: colors.text.inverse }]}
+                numberOfLines={2}
+              >
+                Your schedule will appear here when sessions are assigned.
+              </Text>
+            </View>
+          </View>
+        </View>
+      </View>
     );
   }
 
   const isLive = isClassLiveNow(classItem.startsAt, classItem.durationMinutes);
   const time = formatCoachClassTime(classItem.startsAt);
   const statValue = statsLoading ? '—' : undefined;
-  const imageSource = resolveClassImage(classItem.discipline, classItem.imageUrl, classItem.title);
+  const imageSource = heroImage;
   const statusChipLabel = isLive ? 'IN SESSION' : 'UP NEXT';
   const liveChipLabel = isLive ? `LIVE · ${statusChipLabel}` : statusChipLabel;
 
@@ -233,8 +243,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 12,
     width: '100%',
-  },
-  emptyTitle: {
-    letterSpacing: -0.3,
   },
 });

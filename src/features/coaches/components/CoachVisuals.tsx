@@ -4,13 +4,13 @@ import { Star } from 'lucide-react-native';
 import { GlassMediaChip } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
 import type { CoachItem } from '@/types/domain';
-import coachFallbackHero from '../../../../assets/images/optimized/coach-fallback-hero.jpg';
+import { academyAssets } from '@/features/academy/assets';
 import coachFallbackTeam from '../../../../assets/images/optimized/coach-fallback-team.jpg';
 import coachFallbackMma from '../../../../assets/images/optimized/coach-fallback-mma.jpg';
 import coachFallbackStriking from '../../../../assets/images/optimized/coach-fallback-striking.jpg';
 
 const FALLBACK_IMAGES = [
-  coachFallbackHero,
+  academyAssets.coachFallbackHero,
   coachFallbackTeam,
   coachFallbackMma,
   coachFallbackStriking,

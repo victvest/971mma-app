@@ -3,7 +3,7 @@
 export type MembershipTier = 'standard' | 'pro' | 'elite';
 export type MembershipStatus = 'active' | 'paused' | 'expired';
 export type BookingStatus = 'booked' | 'waitlisted' | 'cancelled' | 'attended';
-export type UserRole = 'member' | 'coach' | 'admin' | 'gate';
+export type UserRole = 'member' | 'coach' | 'admin' | 'gate' | 'guest';
 export type LinkMethod = 'matched_email' | 'matched_phone' | 'created' | 'manual';
 export type RequirementType = 'attendance' | 'skill' | 'assessment';
 export type RequirementStatus = 'locked' | 'now' | 'done';
@@ -200,6 +200,12 @@ export interface CoachRow {
   bio: string | null;
   photo_url: string | null;
   is_head_coach: boolean;
+  coaching_philosophy: string | null;
+  years_experience: number | null;
+  fight_record: string | null;
+  titles: unknown;
+  certifications: unknown;
+  languages: string[] | null;
   sort_order: number;
   last_synced_at: string | null;
   created_at: string;

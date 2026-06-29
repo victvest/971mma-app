@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { AnimatedBarFill } from '@/shared/animations';
 import { BeltPathIconBadge } from '@/features/belt/components/BeltPathIconBadge';
 import { BeltPathStatusBadge, type BeltPathBadgeStatus } from '@/features/belt/components/BeltPathStatusBadge';
 import { useTheme } from '@/shared/theme';
@@ -33,7 +34,7 @@ function getRequirementIcon(type: BeltRequirementItem['type']): keyof typeof Ion
 function getMetaLine(item: BeltRequirementItem, trainingDays: number): string {
   if (item.type === 'attendance' && item.attendanceTarget) {
     const current = Math.min(trainingDays, item.attendanceTarget);
-    return `Stripe ${item.stripe} · Progress: ${current}/${item.attendanceTarget}`;
+    return `Stripe ${item.stripe} · ${current}/${item.attendanceTarget} classes`;
   }
   return `Stripe ${item.stripe}`;
 }
@@ -48,6 +49,15 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
   const iconName = getRequirementIcon(item.type);
   const iconColor = isActive ? colors.accent.default : colors.text.tertiary;
 
+  const attendanceProgress = useMemo(() => {
+    if (item.type !== 'attendance' || !item.attendanceTarget) return null;
+    const current = Math.min(trainingDays, item.attendanceTarget);
+    const percent = Math.round((current / item.attendanceTarget) * 100);
+    return { current, target: item.attendanceTarget, percent };
+  }, [item.attendanceTarget, item.type, trainingDays]);
+
+  const showDescription = isActive && item.description;
+
   return (
     <View
       style={[
@@ -57,7 +67,9 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
           backgroundColor: colors.surface.primary,
           borderRadius: radius.cardLarge,
           padding: inset.md,
-          gap: gap.md,
+          gap: gap.sm,
+          borderWidth: item.status === 'now' ? 1.5 : 0,
+          borderColor: item.status === 'now' ? colors.accent.default : 'transparent',
         },
       ]}
     >
@@ -82,6 +94,31 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
 
         <BeltPathStatusBadge status={badgeStatus} />
       </View>
+
+      {showDescription ? (
+        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary, lineHeight: 18 }]}>
+          {item.description}
+        </Text>
+      ) : null}
+
+      {attendanceProgress && item.status !== 'locked' ? (
+        <View style={[styles.progressBlock, { gap: gap.xs }]}>
+          <AnimatedBarFill
+            percent={attendanceProgress.percent}
+            backgroundColor={colors.accent.pressed}
+            highlightColor={colors.accent.default}
+            isHighlighted={item.status === 'now'}
+            trackColor={colors.accent.subtle}
+            trackHeight={6}
+            minFillHeight={item.status === 'done' ? 6 : 4}
+          />
+          <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
+            {item.status === 'done'
+              ? 'Attendance requirement complete'
+              : `${attendanceProgress.target - attendanceProgress.current} classes to go`}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 });
@@ -95,5 +132,8 @@ const styles = StyleSheet.create({
   },
   copy: {
     flex: 1,
+  },
+  progressBlock: {
+    paddingLeft: 56,
   },
 });

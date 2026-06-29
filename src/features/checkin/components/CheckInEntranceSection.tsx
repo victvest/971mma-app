@@ -26,10 +26,8 @@ type Props = {
   planName?: string | null;
   expiryDate?: string | null;
   onModeChange?: (mode: CheckInMode) => void;
-  showSimulate?: boolean;
-  simulating?: boolean;
-  simulateDisabled?: boolean;
-  onSimulate?: () => void;
+  isGuest?: boolean;
+  isRegistered?: boolean;
 };
 
 export function CheckInEntranceSection({
@@ -44,10 +42,8 @@ export function CheckInEntranceSection({
   planName,
   expiryDate,
   onModeChange,
-  showSimulate,
-  simulating,
-  simulateDisabled,
-  onSimulate,
+  isGuest = false,
+  isRegistered = false,
 }: Props) {
   const { gap } = useTheme();
   const [mode, setMode] = useState<CheckInMode>('pass');
@@ -109,10 +105,8 @@ export function CheckInEntranceSection({
               canShowActiveQr={canShowActiveQr}
               planName={planName}
               expiryDate={expiryDate}
-              showSimulate={showSimulate}
-              simulating={simulating}
-              simulateDisabled={simulateDisabled}
-              onSimulate={onSimulate}
+              isGuest={isGuest}
+              isRegistered={isRegistered}
             />
           </View>
         </Animated.View>

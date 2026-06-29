@@ -4,7 +4,7 @@ import type { CoachItem } from '@/types/domain';
 import { mapCoachRow } from './mappers';
 
 const COACH_COLUMNS =
-  'id, mindbody_staff_id, name, specialty, rank, rating, bio, photo_url, is_head_coach, sort_order, last_synced_at, created_at';
+  'id, mindbody_staff_id, name, specialty, rank, rating, bio, photo_url, is_head_coach, coaching_philosophy, years_experience, fight_record, titles, certifications, languages, sort_order, last_synced_at, created_at';
 
 export async function getCoaches(): Promise<CoachItem[]> {
   const { data, error } = await getSupabaseClient()

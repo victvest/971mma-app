@@ -22,7 +22,8 @@ import {
 import { toast } from '@/shared/components/Toast';
 import { useDialog } from '@/shared/components/Dialog';
 import { triggerSuccessNotification, triggerLightImpact } from '@/shared/haptics';
-import { ActiveProfileBanner } from '@/features/guardian/components/ActiveProfileBanner';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
 import { MilestoneRow } from '@/features/rewards/components/MilestoneRow';
 import { PointsBalanceCard } from '@/features/rewards/components/PointsBalanceCard';
 import { RewardCatalogCard } from '@/features/rewards/components/RewardCatalogCard';
@@ -415,13 +416,35 @@ export default function RewardsScreen() {
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const account = pointsQuery.data ?? {
+  const role = useAuthStore((s) => s.role);
+  const userStore = useAuthStore((s) => s.user);
+  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
+
+  const mockScore = {
+    score: 85,
+    trainingDays: 15,
+    trainingDays30d: 8,
+    currentStreak: 3,
+    bestStreak: 8,
+    streakStatus: 'active' as const,
+    monthlyGoalPct: 0.5,
+    computedAt: new Date().toISOString(),
+    isPlaceholderWeights: false,
+  };
+  const mockWeekActivity: GymDayActivity[] = [];
+
+  const account = isGuest ? {
+    balance: 1250,
+    tier: 'silver' as const,
+    lifetimePoints: 2500,
+  } : (pointsQuery.data ?? {
     balance: 0,
     tier: 'bronze' as const,
     lifetimePoints: 0,
-  };
+  });
+
   const pendingRewardId = redeemMutation.variables ?? null;
-  const trainingDays = scoreQuery.data?.trainingDays ?? 0;
+  const trainingDays = isGuest ? 15 : (scoreQuery.data?.trainingDays ?? 0);
 
   const errorMessage =
     redeemMutation.error && typeof redeemMutation.error === 'object' && 'message' in redeemMutation.error
@@ -430,8 +453,8 @@ export default function RewardsScreen() {
 
   const milestones = useMemo(() => milestonesQuery.data ?? [], [milestonesQuery.data]);
   const rewards = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
-  const redemptions = useMemo(() => redemptionsQuery.data ?? [], [redemptionsQuery.data]);
-  const ledgerItems = useMemo(() => ledgerQuery.data ?? [], [ledgerQuery.data]);
+  const redemptions = useMemo(() => isGuest ? [] : (redemptionsQuery.data ?? []), [redemptionsQuery.data, isGuest]);
+  const ledgerItems = useMemo(() => isGuest ? [] : (ledgerQuery.data ?? []), [ledgerQuery.data, isGuest]);
 
   const sortedMilestones = useMemo(() => {
     return [...milestones].sort((a, b) => a.unlockDays - b.unlockDays);
@@ -446,12 +469,14 @@ export default function RewardsScreen() {
   const redemptionList = useMemo(() => buildRedemptionList(redemptions), [redemptions]);
 
   const streakInsights = useMemo(
-    () => buildStreakInsights(scoreQuery.data, weekActivityQuery.data ?? [], sortedMilestones),
-    [scoreQuery.data, sortedMilestones, weekActivityQuery.data],
+    () => buildStreakInsights(isGuest ? mockScore : scoreQuery.data, isGuest ? mockWeekActivity : (weekActivityQuery.data ?? []), sortedMilestones),
+    [scoreQuery.data, sortedMilestones, weekActivityQuery.data, isGuest],
   );
 
   const handleRedeem = useCallback(
     (rewardId: string) => {
+      if (viewingChild) return;
+
       const reward = rewards.find((item) => item.id === rewardId);
       if (!reward) return;
 
@@ -468,7 +493,7 @@ export default function RewardsScreen() {
         { confirmLabel: 'Redeem' },
       );
     },
-    [redeemMutation, rewards, showConfirm],
+    [redeemMutation, rewards, showConfirm, viewingChild],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -631,8 +656,6 @@ export default function RewardsScreen() {
               </View>
             ) : null}
 
-            <ActiveProfileBanner />
-
             {errorMessage ? (
               <View
                 style={[
@@ -750,6 +773,14 @@ export default function RewardsScreen() {
           </LoadingCrossfade>
         )}
       </Animated.ScrollView>
+
+      {isGuest ? (
+        <PremiumLockOverlay
+          title="Points & Rewards"
+          description="Earn as you train. Activate your membership to unlock the points economy, complete milestones, and redeem rewards."
+          topOffset={scrollTopInset}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }

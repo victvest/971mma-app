@@ -37,31 +37,27 @@ export async function refreshBeltProgress(
 
 async function getRankMap(discipline = DEFAULT_DISCIPLINE): Promise<Map<string, BeltRankItem>> {
   const { data, error } = await getSupabaseClient()
-    .from('rank_levels')
-    .select(`
-      id,
-      name,
-      level_order,
-      stripe_count,
-      rank_systems!inner (
-        disciplines!inner (
-          slug
-        )
-      )
-    `)
-    .eq('rank_systems.disciplines.slug', discipline)
-    .order('level_order', { ascending: true });
+    .from('belt_ranks')
+    .select('id, discipline, name, order, stripes')
+    .eq('discipline', discipline)
+    .order('order', { ascending: true });
 
   if (error) throw error;
 
   const map = new Map<string, BeltRankItem>();
-  for (const row of (data ?? []) as any[]) {
+  for (const row of (data ?? []) as Array<{
+    id: string;
+    discipline: string;
+    name: string;
+    order: number;
+    stripes: number;
+  }>) {
     map.set(row.id, {
       id: row.id,
-      discipline: discipline,
+      discipline: row.discipline,
       name: row.name,
-      order: row.level_order,
-      stripes: row.stripe_count,
+      order: row.order,
+      stripes: row.stripes,
     });
   }
   return map;
@@ -127,8 +123,32 @@ export async function getBeltPathSummary(
   if (progressResult.error) throw progressResult.error;
   if (promotionsResult.error) throw promotionsResult.error;
 
+  let progressRow = progressResult.data as {
+    user_id: string;
+    discipline_id: string;
+    rank_level_id: string;
+    stripe: number;
+    percent_complete: number;
+    updated_at: string;
+  } | null;
+
+  if (disciplineId && !progressRow) {
+    try {
+      await refreshBeltProgress(userId, discipline);
+      const { data: seededProgress, error: seededError } = await getSupabaseClient()
+        .from('member_rank_progress')
+        .select('user_id, discipline_id, rank_level_id, stripe, percent_complete, updated_at')
+        .eq('user_id', userId)
+        .eq('discipline_id', disciplineId)
+        .maybeSingle();
+      if (seededError) throw seededError;
+      progressRow = seededProgress;
+    } catch {
+      // Rank system may not be configured for this discipline yet.
+    }
+  }
+
   const trainingDays = disciplineScore.trainingDays;
-  const progressRow = progressResult.data as any;
   const rankId = progressRow?.rank_level_id ?? defaultRank?.id ?? null;
   const rank = rankId ? rankMap.get(rankId) : defaultRank;
 
@@ -171,10 +191,10 @@ export async function getBeltPathSummary(
     if (requirementsResult.error) throw requirementsResult.error;
     if (statusesResult.error) throw statusesResult.error;
 
-    const statusMap = new Map<string, { status: BeltRequirementItem['status']; assessedAt: string | null }>();
+    const statusMap = new Map<string, { status: string; assessedAt: string | null }>();
     for (const row of (statusesResult.data ?? []) as Array<{
       rank_requirement_id: string;
-      status: BeltRequirementItem['status'];
+      status: string;
       assessed_at: string | null;
     }>) {
       statusMap.set(row.rank_requirement_id, { status: row.status, assessedAt: row.assessed_at });
@@ -182,6 +202,9 @@ export async function getBeltPathSummary(
 
     requirements = ((requirementsResult.data ?? []) as any[]).map((row) => {
       const statusRow = statusMap.get(row.id);
+      const rawStatus = statusRow?.status;
+      const status: BeltRequirementItem['status'] =
+        rawStatus === 'next' ? 'now' : rawStatus === 'done' ? 'done' : rawStatus === 'now' ? 'now' : 'locked';
       return {
         id: row.id,
         rankId: row.rank_level_id,
@@ -191,15 +214,14 @@ export async function getBeltPathSummary(
         type: row.requirement_type,
         attendanceTarget: row.attendance_target,
         unlockAfterStripe: null,
-        status: statusRow?.status ?? 'locked',
+        status,
         assessedAt: statusRow?.assessedAt ?? null,
       };
     });
   }
 
-  const isPlaceholderCurriculum =
-    requirements.length === 0 ||
-    requirements.every((item) => item.description?.toLowerCase().includes('placeholder') ?? false);
+  const curriculumRanks = [...rankMap.values()].sort((a, b) => a.order - b.order);
+  const isPlaceholderCurriculum = curriculumRanks.length === 0;
 
   const promotions: PromotionItem[] = ((promotionsResult.data ?? []) as any[]).map(
     (row) => ({
@@ -217,6 +239,7 @@ export async function getBeltPathSummary(
     progress,
     requirements,
     promotions,
+    curriculumRanks,
     isPlaceholderCurriculum,
   };
 }
@@ -293,3 +316,52 @@ export async function getCoachMemberBeltPath(
   }
   return getBeltPathSummary(userId, discipline);
 }
+
+export async function getUnseenPromotion(
+  userId: string,
+): Promise<PromotionItem | null> {
+  if (isCoachDemoMode()) return null;
+
+  const { data, error } = await getSupabaseClient()
+    .from('rank_promotions')
+    .select('id, discipline_id, from_rank_level_id, to_rank_level_id, from_stripe, to_stripe, awarded_at')
+    .eq('user_id', userId)
+    .is('celebration_seen_at', null)
+    .order('awarded_at', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) throw error;
+  if (!data) return null;
+
+  const { data: discData } = await getSupabaseClient()
+    .from('disciplines')
+    .select('slug')
+    .eq('id', data.discipline_id)
+    .single();
+
+  const discipline = discData?.slug ?? 'bjj';
+  const rankMap = await getRankMap(discipline);
+
+  return {
+    id: data.id,
+    discipline,
+    fromRankName: data.from_rank_level_id ? (rankMap.get(data.from_rank_level_id)?.name ?? null) : null,
+    toRankName: data.to_rank_level_id ? (rankMap.get(data.to_rank_level_id)?.name ?? null) : null,
+    fromStripe: data.from_stripe,
+    toStripe: data.to_stripe,
+    awardedAt: data.awarded_at,
+  };
+}
+
+export async function markPromotionCelebrationSeen(promotionId: string): Promise<void> {
+  if (isCoachDemoMode()) return;
+
+  const { error } = await getSupabaseClient()
+    .from('rank_promotions')
+    .update({ celebration_seen_at: new Date().toISOString() })
+    .eq('id', promotionId);
+
+  if (error) throw error;
+}
+

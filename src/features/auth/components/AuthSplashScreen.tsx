@@ -1,19 +1,30 @@
-import React, { useCallback, useEffect, useRef } from 'react';
-import { Pressable, StyleSheet, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef } from 'react';
+import { Pressable, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useEventListener } from 'expo';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { router } from 'expo-router';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
-import authSplashVideo from '../../../../assets/videos/7eeef479-17fb-4f62-8f5b-0d2b93ccc651.mp4';
+import { useTheme } from '@/shared/theme';
+import authSplashVideo from '../../../../assets/videos/logo.mov';
 
 const SPLASH_FALLBACK_MS = 5_000;
-const SPLASH_VIDEO_ASPECT_RATIO = 720 / 1280;
-/** Logo/video frame at 60% of full width, centered on black. */
+const SPLASH_VIDEO_ASPECT_RATIO = 574 / 502;
 const SPLASH_VIDEO_SCALE = 0.6;
+const SPLASH_VIDEO_MAX_WIDTH = 320;
 
 export function AuthSplashScreen() {
+  const { colors } = useTheme();
+  const { width: screenWidth } = useWindowDimensions();
   const hasContinuedRef = useRef(false);
+
+  const videoStageSize = useMemo(() => {
+    const width = Math.min(
+      SPLASH_VIDEO_MAX_WIDTH,
+      Math.round(screenWidth * SPLASH_VIDEO_SCALE),
+    );
+    return { width, height: Math.round(width / SPLASH_VIDEO_ASPECT_RATIO) };
+  }, [screenWidth]);
 
   const continueToIntro = useCallback(() => {
     if (hasContinuedRef.current) return;
@@ -42,12 +53,9 @@ export function AuthSplashScreen() {
   }, [continueToIntro]);
 
   return (
-    <View style={styles.root}>
-      <AppStatusBar hidden />
-      <View
-        pointerEvents="none"
-        style={[styles.videoStage, { width: `${SPLASH_VIDEO_SCALE * 100}%`, aspectRatio: SPLASH_VIDEO_ASPECT_RATIO }]}
-      >
+    <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
+      <AppStatusBar style="dark" backgroundColor={colors.background.primary} />
+      <View pointerEvents="none" style={[styles.videoStage, videoStageSize]}>
         <VideoView
           player={player}
           style={styles.video}
@@ -70,7 +78,6 @@ export function AuthSplashScreen() {
 const styles = StyleSheet.create({
   root: {
     alignItems: 'center',
-    backgroundColor: '#000000',
     flex: 1,
     justifyContent: 'center',
   },

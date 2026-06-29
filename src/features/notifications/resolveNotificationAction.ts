@@ -1,8 +1,13 @@
 import type { NotificationItem } from '@/types/domain';
+import {
+  applyGuardianNotificationContext,
+  guardianNotificationHref,
+} from '@/features/guardian/utils/guardianNotificationNavigation';
 
 export type NotificationAction = {
   href: string;
   label: string;
+  beforeNavigate?: () => void;
 };
 
 function readPayloadId(payload: Record<string, unknown>, keys: string[]): string | null {
@@ -59,6 +64,42 @@ export function resolveNotificationAction(item: NotificationItem): NotificationA
     type.includes('progress')
   ) {
     return { href: '/(tabs)/belt-path', label: 'View belt path' };
+  }
+
+  if (
+    type === 'parent_child' ||
+    type === 'guardian_alert' ||
+    type.includes('guardian') ||
+    type.includes('parent_child')
+  ) {
+    const href = guardianNotificationHref(payload) ?? '/family-trainees';
+    return {
+      href,
+      label: 'View trainee',
+      beforeNavigate: () => applyGuardianNotificationContext(payload),
+    };
+  }
+
+  if (type === 'community' || type.includes('community')) {
+    const postId = readPayloadId(payload, ['postId', 'post_id']);
+    const channelId = readPayloadId(payload, ['channelId', 'channel_id']);
+    const postKind = readPayloadId(payload, ['postKind', 'post_kind']);
+    const titleLower = item.title.toLowerCase();
+    const isAnnouncement =
+      postKind === 'announcement' ||
+      titleLower.includes('announcement') ||
+      titleLower.includes('new announcement');
+
+    if (postId) {
+      return {
+        href: `/communities/post/${postId}`,
+        label: isAnnouncement ? 'View announcement' : 'View post',
+      };
+    }
+    if (channelId) {
+      return { href: `/communities/${channelId}`, label: 'View group' };
+    }
+    return { href: '/communities', label: 'View groups' };
   }
 
   return null;

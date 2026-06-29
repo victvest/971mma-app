@@ -8,6 +8,7 @@ import { AcademyEyebrow } from '@/shared/components/brand';
 import { useActiveProfileOptions, useGuardianLinks } from '@/features/guardian/hooks/useGuardian';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
+import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
 import { useTheme } from '@/shared/theme';
 import type { GuardianLinkItem } from '@/types/domain';
 
@@ -39,6 +40,7 @@ function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: Pro
           paddingHorizontal: inset.md,
           paddingVertical: inset.sm + 2,
           opacity: isInteractive && pressed ? 0.7 : 1,
+          backgroundColor: selected ? colors.accent.subtle : 'transparent',
         },
       ]}
     >
@@ -69,13 +71,15 @@ function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: Pro
         </Text>
         {pending ? (
           <Text style={[styles.pendingLabel, { color: colors.text.tertiary }]}>Awaiting approval</Text>
+        ) : selected ? (
+          <Text style={[styles.pendingLabel, { color: colors.accent.default }]}>Active profile</Text>
         ) : null}
       </View>
 
       {pending ? (
         <Ionicons name="hourglass-outline" size={18} color={colors.text.tertiary} />
       ) : selected ? (
-        <Ionicons name="checkmark" size={20} color={colors.accent.default} />
+        <Ionicons name="checkmark-circle" size={22} color={colors.accent.default} />
       ) : (
         <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
       )}
@@ -102,7 +106,9 @@ export function FamilyTraineesScreenContent() {
   const { colors, typography, inset, gap, radius, layout } = useTheme();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
+  const role = useAuthStore((s) => s.role);
   const authUserId = useAuthStore((s) => s.user?.id ?? '');
+  const isGuest = role === 'guest' || (role === 'member' && user?.accountStatus !== 'active');
   const activeUserId = useActiveProfileStore((s) => s.activeUserId);
   const setActiveUserId = useActiveProfileStore((s) => s.setActiveUserId);
   const linksQuery = useGuardianLinks();
@@ -142,7 +148,7 @@ export function FamilyTraineesScreenContent() {
   const handleSwitchToSelf = useCallback(() => {
     if (isSelfSelected) return;
     setActiveUserId(null);
-    router.push('/(tabs)/(main)/checkin');
+    router.replace('/(tabs)');
   }, [isSelfSelected, router, setActiveUserId]);
 
   const handleSwitch = useCallback(
@@ -150,7 +156,7 @@ export function FamilyTraineesScreenContent() {
       if (!link.traineeUserId || link.status !== 'approved') return;
       if (link.traineeUserId === selectedTraineeId) return;
       setActiveUserId(link.traineeUserId);
-      router.push('/(tabs)/(main)/checkin');
+      router.replace('/(tabs)');
     },
     [router, selectedTraineeId, setActiveUserId],
   );
@@ -173,12 +179,12 @@ export function FamilyTraineesScreenContent() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ gap: gap.xs }}>
-          <AcademyEyebrow label="971 MMA · Guardian" accent />
+          <AcademyEyebrow label="971 MMA · Family" accent />
           <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, lineHeight: 42 }]}>
-            Your trainees.
+            Switch profile
           </Text>
           <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
-            Switch between academy-approved trainee profiles linked by staff.
+            Choose whose progress you want to see in the app.
           </Text>
         </View>
 
@@ -197,6 +203,7 @@ export function FamilyTraineesScreenContent() {
           <ProfileRow
             name={selfLabel}
             selected={isSelfSelected}
+            avatarUrl={profileOptionsByUserId.get(authUserId)?.avatarUrl ?? null}
             onPress={isSelfSelected ? undefined : handleSwitchToSelf}
           />
 
@@ -232,9 +239,16 @@ export function FamilyTraineesScreenContent() {
       {!linksQuery.isLoading && listLinks.length === 0 ? (
         <View style={[styles.footer, { paddingHorizontal: inset.lg, paddingBottom: inset.lg }]}>
           <Text style={[styles.staffNote, { color: colors.text.secondary }]}>
-            Ask the front desk to link a child or teen trainee to your account.
+            Ask the front desk to link a child or teen to your account.
           </Text>
         </View>
+      ) : null}
+
+      {isGuest ? (
+        <PremiumLockOverlay
+          title="Family profiles"
+          description="Switch between family profiles after your membership is active."
+        />
       ) : null}
     </View>
   );

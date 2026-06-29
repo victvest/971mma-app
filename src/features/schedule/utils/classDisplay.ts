@@ -30,8 +30,10 @@ export function spotsLabel(item: ClassItem): string {
 
 export function findCoachIdForClass(
   coaches: CoachItem[],
-  classItem: Pick<ClassItem, 'coachName' | 'staffMindbodyId'>,
+  classItem: Pick<ClassItem, 'coachId' | 'coachName' | 'staffMindbodyId'>,
 ): string | null {
+  if (classItem.coachId) return classItem.coachId;
+
   if (classItem.staffMindbodyId) {
     const byStaff = coaches.find((coach) => coach.mindbodyStaffId === classItem.staffMindbodyId);
     if (byStaff) return byStaff.id;

@@ -1,7 +1,8 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { RefreshControl, StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { HomeDashboardSkeleton } from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
@@ -24,6 +25,8 @@ import {
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useHomeTabEntrance } from '@/features/home/hooks/useHomeTabEntrance';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { LiquidGlassSurface } from '@/shared/components/ui/LiquidGlassSurface';
 
 function getGymDateKey(date: Date): string {
   const utc = date.getTime() + date.getTimezoneOffset() * 60000;
@@ -32,6 +35,63 @@ function getGymDateKey(date: Date): string {
   const m = (dubaiTime.getMonth() + 1).toString().padStart(2, '0');
   const d = dubaiTime.getDate().toString().padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function JoinAcademyCard() {
+  const { colors, typography, radius, inset, gap } = useTheme();
+  const router = useRouter();
+  const user = useAuthStore((s) => s.user);
+  const isAnonymous = user === null;
+
+  const handlePress = () => {
+    triggerLightImpact();
+    if (isAnonymous) {
+      router.push('/(auth)/register');
+    } else {
+      router.push('/activation-required');
+    }
+  };
+
+  return (
+    <LiquidGlassSurface
+      variant="chrome"
+      borderRadius={radius.cardLarge}
+      contentStyle={{ padding: inset.lg, gap: gap.md, alignItems: 'center' }}
+    >
+      <View style={{ flexDirection: 'row', gap: gap.md, alignItems: 'center', alignSelf: 'stretch' }}>
+        <View style={{ backgroundColor: colors.accent.default + '1a', borderRadius: radius.pill, padding: 8 }}>
+          <Ionicons name="sparkles" size={24} color={colors.accent.default} />
+        </View>
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+            Unlock Full Experience
+          </Text>
+          <Text style={[typography.textPresets.caption, { color: colors.text.secondary }]}>
+            {isAnonymous 
+              ? 'Create an account to track BJJ/Wrestling ranks and earn rewards.' 
+              : 'Link your academy membership to activate your profile.'}
+          </Text>
+        </View>
+      </View>
+      <TouchableOpacity
+        activeOpacity={0.8}
+        onPress={handlePress}
+        style={{
+          backgroundColor: colors.accent.default,
+          borderRadius: radius.pill,
+          paddingVertical: 10,
+          alignSelf: 'stretch',
+          alignItems: 'center',
+          justifyContent: 'center',
+          marginTop: gap.xs,
+        }}
+      >
+        <Text style={[typography.textPresets.buttonSmall, { color: '#FFFFFF' }]}>
+          {isAnonymous ? 'Sign Up Now' : 'Complete Activation'}
+        </Text>
+      </TouchableOpacity>
+    </LiquidGlassSurface>
+  );
 }
 
 export default function HomeScreen() {
@@ -120,7 +180,10 @@ export default function HomeScreen() {
     [contentBottomInset, gap.lg, inset.lg, screenPaddingTop],
   );
 
-  const eyebrowLabel = isToday ? 'Tonight at the academy' : 'Next at the academy';
+  const role = useAuthStore((s) => s.role);
+  const userStore = useAuthStore((s) => s.user);
+  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
+  const eyebrowLabel = isGuest ? 'Welcome to the Academy' : (isToday ? 'Tonight at the academy' : 'Next at the academy');
 
   if (hasError && !hasData) {
     return (
@@ -181,22 +244,26 @@ export default function HomeScreen() {
         ) : null}
 
         <HomeAnimatedSection index={2} {...sectionScrollProps}>
-          <DisciplineHero
-            score={dashboard?.disciplineScore}
-            weekActivity={dashboard?.weekActivity}
-          />
+          {isGuest ? (
+            <JoinAcademyCard />
+          ) : (
+            <DisciplineHero
+              score={dashboard?.disciplineScore}
+              weekActivity={dashboard?.weekActivity}
+            />
+          )}
         </HomeAnimatedSection>
-
+ 
         <HomeAnimatedSection index={3} {...sectionScrollProps}>
           <HomeSectionTitle title="Quick access" />
           <HomeQuickActions
-            pointsBalance={Number(dashboard?.points.balance ?? 0)}
+            pointsBalance={isGuest ? 0 : Number(dashboard?.points.balance ?? 0)}
             onOpenCheckIn={() => router.push('/(tabs)/checkin')}
             onOpenRewards={() => router.push('/(tabs)/rewards')}
           />
         </HomeAnimatedSection>
-
-        {rankEligible ? (
+ 
+        {rankEligible && !isGuest ? (
           <HomeAnimatedSection index={4} {...sectionScrollProps}>
             <HomeBeltPathCard
               hasBeltProgress={hasBeltProgress}

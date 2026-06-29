@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Image } from 'expo-image';
 import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
 import { getInitials } from '@/shared/utils/getInitials';
+import { useAuthStore } from '@/stores/useAuthStore';
 
 type MemberAvatarProps = {
   name: string;
@@ -30,6 +31,8 @@ export function MemberAvatar({
   children,
 }: MemberAvatarProps) {
   const [imageFailed, setImageFailed] = useState(false);
+  const role = useAuthStore((s) => s.role);
+  const isGuest = role === 'guest';
 
   useEffect(() => {
     setImageFailed(false);
@@ -70,7 +73,7 @@ export function MemberAvatar({
       ) : (
         <>
           <Text style={[styles.initials, { color: textColor }, initialsStyle]}>
-            {getInitials(name)}
+            {isGuest ? 'GU' : getInitials(name)}
           </Text>
           {children}
         </>

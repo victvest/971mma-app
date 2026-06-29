@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Lock, Mail } from 'lucide-react-native';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -27,7 +26,6 @@ import {
 export default function RegisterScreen() {
   const router = useRouter();
   const { signUp, signUpWithGoogle, configError } = useAuth();
-  const scrollRef = useRef<ScrollView>(null);
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
@@ -59,12 +57,6 @@ export default function RegisterScreen() {
     confirmPasswordRef.current?.focus();
   }
 
-  function scrollToConfirmField() {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    });
-  }
-
   function handleEmailChange(text: string) {
     const wasValid = !validateEmail(email);
     setEmail(text);
@@ -86,7 +78,6 @@ export default function RegisterScreen() {
       authToast.error('Registration Failed', passwordError);
       if (passwordError.includes('match') || passwordError.includes('Confirm')) {
         confirmPasswordRef.current?.focus();
-        scrollToConfirmField();
       } else {
         passwordRef.current?.focus();
       }
@@ -135,7 +126,6 @@ export default function RegisterScreen() {
 
   return (
     <AuthScreen
-      ref={scrollRef}
       title="Create account"
       subtitle="Enter your email and password. We'll send a code to confirm your email."
       showBackButton
@@ -193,7 +183,6 @@ export default function RegisterScreen() {
         icon={Lock}
         returnKeyType="done"
         onSubmitEditing={handleSignUp}
-        onFocus={scrollToConfirmField}
       />
 
       <AuthSubmitButton

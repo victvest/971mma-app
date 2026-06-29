@@ -2,7 +2,10 @@ import React from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
+import { BlurView } from 'expo-blur';
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/shared/theme';
+import { triggerLightImpact } from '@/shared/haptics';
 
 const ON_INVERSE = {
   text: '#FFFFFF',
@@ -22,10 +25,8 @@ type Props = {
   planName?: string | null;
   /** Membership expiry date, formatted (e.g. "Expires 31 Aug 2025"). */
   expiryDate?: string | null;
-  showSimulate?: boolean;
-  simulating?: boolean;
-  simulateDisabled?: boolean;
-  onSimulate?: () => void;
+  isGuest?: boolean;
+  isRegistered?: boolean;
 };
 
 export function QrPassCard({
@@ -36,31 +37,39 @@ export function QrPassCard({
   beltLine,
   planName,
   expiryDate,
-  showSimulate = false,
-  simulating = false,
-  simulateDisabled = false,
-  onSimulate,
+  isGuest = false,
+  isRegistered = false,
 }: Props) {
   const { colors, typography, inset, radii, radius, gap } = useTheme();
+  const router = useRouter();
+
+  const handleUnlockPress = () => {
+    triggerLightImpact();
+    if (isRegistered) {
+      router.push('/activation-required');
+    } else {
+      router.push('/(auth)/register');
+    }
+  };
 
   return (
     <View
       accessibilityRole="summary"
       accessibilityLabel={`Digital membership card for ${memberName}. ${planName ?? 'Active member'}.`}
-        style={[
-          styles.card,
-          {
-            borderRadius: radius.cardLarge,
-            backgroundColor: colors.background.inverse,
-            padding: inset.lg,
-            paddingTop: inset.lg,
-            gap: gap.lg,
-            borderColor: colors.border.onPromo,
-            borderWidth: 1,
-            overflow: 'hidden',
-          },
-        ]}
-      >
+      style={[
+        styles.card,
+        {
+          borderRadius: radius.cardLarge,
+          backgroundColor: colors.background.inverse,
+          padding: inset.lg,
+          paddingTop: inset.lg,
+          gap: gap.lg,
+          borderColor: colors.border.onPromo,
+          borderWidth: 1,
+          overflow: 'hidden',
+        },
+      ]}
+    >
       <View style={styles.statusRow}>
         <View
           style={[
@@ -105,7 +114,18 @@ export function QrPassCard({
       </View>
 
       <View style={styles.qrWrap}>
-        {loading ? (
+        {isGuest ? (
+          <View style={[styles.qrFrame, { borderRadius: radii.lg, overflow: 'hidden', position: 'relative' }]}>
+            <QRCode value="guest-token" size={208} backgroundColor="#FFFFFF" color="#000000" />
+            <View style={[StyleSheet.absoluteFill, styles.qrLockOverlay]}>
+              <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} />
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.45)' }]} />
+              <Pressable onPress={handleUnlockPress}>
+                <Ionicons name="lock-closed" size={32} color={colors.accent.default} />
+              </Pressable>
+            </View>
+          </View>
+        ) : loading ? (
           <View style={[styles.qrFrame, { borderRadius: radii.lg }]}>
             <View style={styles.qrLoadingBox}>
               <ActivityIndicator size="large" color={colors.accent.default} />
@@ -142,37 +162,25 @@ export function QrPassCard({
         ) : null}
       </View>
 
-      {showSimulate ? (
+      {isGuest && (
         <Pressable
-          onPress={onSimulate}
-          disabled={simulateDisabled}
-          accessibilityRole="button"
-          accessibilityLabel={
-            checkedInToday
-              ? 'Already checked in today'
-              : simulating
-                ? 'Simulating check-in scan'
-                : 'Simulate QR check-in scan (dev only)'
-          }
-          accessibilityState={{ disabled: simulateDisabled }}
+          onPress={handleUnlockPress}
           style={({ pressed }) => [
-            styles.simulateBtn,
+            styles.unlockBtn,
             {
               borderRadius: radius.button,
-              backgroundColor: ON_INVERSE.surfaceStrong,
-              opacity: simulateDisabled ? 0.55 : pressed ? 0.88 : 1,
+              backgroundColor: colors.accent.default,
+              opacity: pressed ? 0.88 : 1,
+              paddingVertical: 16,
+              alignItems: 'center',
             },
           ]}
         >
-          <Text style={[typography.textPresets.buttonSmall, { color: ON_INVERSE.text }]}>
-            {checkedInToday
-              ? 'Already checked in today'
-              : simulating
-                ? 'Scanning...'
-                : 'Simulate scan (dev)'}
+          <Text style={[typography.textPresets.buttonSmall, { color: '#FFFFFF' }]}>
+            {isRegistered ? 'Link Membership' : 'Sign Up to Unlock'}
           </Text>
         </Pressable>
-      ) : null}
+      )}
     </View>
   );
 }
@@ -257,8 +265,12 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginTop: 2,
   },
-  simulateBtn: {
-    paddingVertical: 16,
+  qrLockOverlay: {
     alignItems: 'center',
+    justifyContent: 'center',
+  },
+  unlockBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 });

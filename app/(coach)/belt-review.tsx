@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AppBar, AppScrollView, BrandedButton } from '@/shared/components/ui';
 import { useAwardPromotion, useCoachMemberBeltPath } from '@/features/belt/hooks/useBeltPath';
+import { useCoachAssignedDisciplines } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 import { triggerLightImpact } from '@/shared/haptics';
@@ -42,9 +43,12 @@ function BeltReviewContent() {
       : null,
   );
 
+  const assignedDisciplinesQuery = useCoachAssignedDisciplines();
+  const reviewDiscipline = assignedDisciplinesQuery.primaryRankDisciplineSlug;
+
   const selectedMemberId = selectedMember?.userId ?? null;
 
-  const beltReviewQuery = useCoachMemberBeltPath(selectedMemberId, params.discipline ?? 'bjj');
+  const beltReviewQuery = useCoachMemberBeltPath(selectedMemberId, reviewDiscipline ?? 'bjj');
   const awardPromotionMutation = useAwardPromotion(selectedMemberId);
 
   useEffect(() => {
@@ -102,7 +106,9 @@ function BeltReviewContent() {
     if (!selectedMember || !review) return;
 
     try {
-      await awardPromotionMutation.mutateAsync({ discipline: params.discipline ?? 'bjj' });
+      await awardPromotionMutation.mutateAsync({
+        discipline: reviewDiscipline ?? 'bjj',
+      });
       showAlert(
         'Stripe awarded',
         `${selectedMember.fullName} is now on stripe ${review.stripe + 1}.`,
@@ -113,7 +119,7 @@ function BeltReviewContent() {
         error instanceof Error ? error.message : 'Please try again.',
       );
     }
-  }, [awardPromotionMutation, review, selectedMember, showAlert, params.discipline]);
+  }, [awardPromotionMutation, review, reviewDiscipline, selectedMember, showAlert]);
 
   const handleAwardStripe = useCallback(() => {
     if (!selectedMember || !review) return;

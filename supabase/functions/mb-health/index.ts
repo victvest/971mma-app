@@ -7,14 +7,25 @@ type HealthBody = {
   ok: boolean;
   siteId: string | null;
   tokenAcquired: boolean;
+  autoLinkReady: boolean;
   site: { name: string } | null;
   sandboxKeyOnly?: boolean;
   error?: string;
 };
 
 type SitesResponse = {
-  Sites?: Array<{ Name?: unknown }>;
+  Sites?: Array<{ Id?: unknown; Name?: unknown }>;
 };
+
+function siteNameForConfiguredId(
+  sites: SitesResponse['Sites'],
+  configuredSiteId: string | null,
+): string | null {
+  if (!Array.isArray(sites) || !configuredSiteId) return null;
+
+  const match = sites.find((site) => String(site.Id) === configuredSiteId);
+  return typeof match?.Name === 'string' ? match.Name : null;
+}
 
 function healthResponse(body: HealthBody, init?: ResponseInit): Response {
   return jsonResponse(body, init);
@@ -30,6 +41,7 @@ Deno.serve(async (req) => {
         ok: false,
         siteId: Deno.env.get('MINDBODY_SITE_ID') ?? null,
         tokenAcquired: false,
+        autoLinkReady: false,
         site: null,
       },
       { status: 405 },
@@ -51,20 +63,20 @@ Deno.serve(async (req) => {
     try {
       await getToken(svc, forceRefresh);
       tokenAcquired = true;
-    } catch (tokenError) {
-      if (siteId !== '-99') throw tokenError;
+    } catch {
+      // Reads may still work with API-key-only when token issue fails.
     }
 
     const siteBody = await mbFetch<SitesResponse>(svc, '/site/sites');
     const sites = Array.isArray(siteBody.Sites) ? siteBody.Sites : [];
-    const firstSite = sites[0] as { Name?: unknown } | undefined;
-    const name = typeof firstSite?.Name === 'string' ? firstSite.Name : null;
-    const sandboxKeyOnly = siteId === '-99' && !tokenAcquired;
+    const name = siteNameForConfiguredId(sites, siteId);
+    const sandboxKeyOnly = !tokenAcquired;
 
     return healthResponse({
       ok: Boolean(name),
       siteId,
       tokenAcquired,
+      autoLinkReady: tokenAcquired,
       site: name ? { name } : null,
       ...(sandboxKeyOnly ? { sandboxKeyOnly: true } : {}),
     });
@@ -76,7 +88,7 @@ Deno.serve(async (req) => {
           ? error.message
           : 'Mindbody health check failed.';
     return healthResponse(
-      { ok: false, siteId, tokenAcquired: false, site: null, error: message },
+      { ok: false, siteId, tokenAcquired: false, autoLinkReady: false, site: null, error: message },
       { status: 200 },
     );
   }

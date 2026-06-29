@@ -1,7 +1,15 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import * as Notifications from 'expo-notifications';
 import { getSupabaseClient } from '@/services/supabase/client';
+import {
+  getNotificationsModule,
+  isPushNotificationsAvailable,
+} from './notificationsNativeModule';
+
+type NotificationsModule = typeof import('expo-notifications');
+type NotificationPermissionsStatus = Awaited<
+  ReturnType<NotificationsModule['getPermissionsAsync']>
+>;
 
 const CLASS_REMINDER_CHANNEL_ID = 'class-reminders';
 
@@ -30,7 +38,7 @@ function pushPlatform(): PushPlatform | null {
   return null;
 }
 
-async function ensureAndroidChannel(): Promise<void> {
+async function ensureAndroidChannel(Notifications: NotificationsModule): Promise<void> {
   if (Platform.OS !== 'android') return;
 
   await Notifications.setNotificationChannelAsync(CLASS_REMINDER_CHANNEL_ID, {
@@ -42,7 +50,10 @@ async function ensureAndroidChannel(): Promise<void> {
   });
 }
 
-function permissionGranted(status: Notifications.NotificationPermissionsStatus): boolean {
+function permissionGranted(
+  Notifications: NotificationsModule,
+  status: NotificationPermissionsStatus,
+): boolean {
   if (status.granted || status.status === 'granted') return true;
 
   const iosStatus = status.ios?.status;
@@ -70,15 +81,32 @@ export async function registerForPushNotifications(
     };
   }
 
+  if (!isPushNotificationsAvailable()) {
+    return {
+      token: null,
+      status: 'skipped',
+      message: 'Push notifications require a development or production build on Android.',
+    };
+  }
+
+  const Notifications = getNotificationsModule();
+  if (!Notifications) {
+    return {
+      token: null,
+      status: 'unavailable',
+      message: 'Push notifications are unavailable in this environment.',
+    };
+  }
+
   try {
-    await ensureAndroidChannel();
+    await ensureAndroidChannel(Notifications);
 
     let permission = await Notifications.getPermissionsAsync();
-    if (!permissionGranted(permission) && options.requestPermission === true) {
+    if (!permissionGranted(Notifications, permission) && options.requestPermission === true) {
       permission = await Notifications.requestPermissionsAsync();
     }
 
-    if (!permissionGranted(permission)) {
+    if (!permissionGranted(Notifications, permission)) {
       return {
         token: null,
         status: 'denied',

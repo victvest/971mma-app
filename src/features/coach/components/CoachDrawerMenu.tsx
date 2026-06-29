@@ -16,6 +16,7 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IOSGlassSurface } from '@/shared/components/ui/IOSGlassSurface';
+import { DrawerMenuHeader } from '@/shared/components/navigation/DrawerMenuHeader';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
 import { triggerLightImpact } from '@/shared/haptics';
@@ -33,8 +34,8 @@ type CoachDrawerMenuProps = {
 };
 
 const COACH_NAV_ITEMS: NavItem[] = [
+  { icon: 'chatbubbles-outline', label: 'My groups', route: '/(coach)/communities' },
   { icon: 'ribbon-outline', label: 'Belt review', route: '/(coach)/belt-review' },
-  { icon: 'megaphone-outline', label: 'Post announcement', route: '/(coach)/post-announcement' },
 ];
 
 const CLOSE_TIMING = { duration: 190 } as const;
@@ -237,24 +238,8 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
               },
             ]}
           >
-            <View style={[styles.drawerHeader, { marginBottom: headerBottomSpacing }]}>
-              <Pressable
-                onPressIn={triggerLightImpact}
-                onPress={requestClose}
-                accessibilityLabel="Close navigation menu"
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  {
-                    width: layout.appHeaderIconTouch,
-                    height: layout.appHeaderIconTouch,
-                    borderRadius: radius.pill,
-                    backgroundColor: colors.surface.primary,
-                    opacity: pressed ? animations.alpha.pressed : animations.alpha.visible,
-                  },
-                ]}
-              >
-                <Ionicons name="close" size={typography.fontSize.lg} color={colors.text.primary} />
-              </Pressable>
+            <View style={{ marginBottom: headerBottomSpacing }}>
+              <DrawerMenuHeader onClose={requestClose} />
             </View>
 
             <View style={[styles.taglineBlock, { gap: gap.md, marginBottom: gap.lg }]}>
@@ -333,15 +318,6 @@ const styles = StyleSheet.create({
   },
   panelContent: {
     flex: 1,
-  },
-  drawerHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  closeBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   taglineBlock: {},
   navScroll: {

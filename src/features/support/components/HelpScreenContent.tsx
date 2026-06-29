@@ -23,6 +23,8 @@ import { AppScrollView, Button } from '@/shared/components/ui';
 import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { validateEmail } from '@/features/auth/services/authValidation';
 import { ACADEMY_CONTACT } from '@/features/about/content/academyContent';
 import { FAQ_ITEMS, SUPPORT_CATEGORIES, type FaqItem } from '@/features/support/data/faq';
 import { useSubmitSupportMessage } from '@/features/support/hooks/useSubmitSupportMessage';
@@ -238,10 +240,17 @@ const CategoryChip = memo(function CategoryChip({
 // ─── Main content ────────────────────────────────────────────────────────────────
 export function HelpScreenContent() {
   const { colors, typography, inset, gap, radius } = useTheme();
+  const role = useAuthStore((s) => s.role);
+  const user = useAuthStore((s) => s.user);
+  const isAnonymousGuest = role === 'guest' && user === null;
   const [expandedId, setExpandedId] = useState<string | null>(FAQ_ITEMS[0]?.id ?? null);
   const [category, setCategory] = useState<SupportCategory>('general');
+  const [fullName, setFullName] = useState('');
+  const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
+  const [fullNameFocused, setFullNameFocused] = useState(false);
+  const [emailFocused, setEmailFocused] = useState(false);
   const [subjectFocused, setSubjectFocused] = useState(false);
   const [messageFocused, setMessageFocused] = useState(false);
 
@@ -251,21 +260,37 @@ export function HelpScreenContent() {
     setExpandedId((current) => (current === id ? null : id));
   }, []);
 
-  const canSubmit = useMemo(
-    () => subject.trim().length > 0 && message.trim().length > 0 && !submitMutation.isPending,
-    [subject, message, submitMutation.isPending],
-  );
+  const canSubmit = useMemo(() => {
+    if (submitMutation.isPending) return false;
+    if (subject.trim().length === 0 || message.trim().length === 0) return false;
+    if (!isAnonymousGuest) return true;
+    return fullName.trim().length > 0 && validateEmail(email) === null;
+  }, [subject, message, submitMutation.isPending, isAnonymousGuest, fullName, email]);
 
   const handleSubmit = useCallback(() => {
     if (!canSubmit) return;
     triggerLightImpact();
     submitMutation.mutate(
-      { category, subject: subject.trim(), message: message.trim() },
+      {
+        category,
+        subject: subject.trim(),
+        message: message.trim(),
+        ...(isAnonymousGuest
+          ? {
+              contactName: fullName.trim(),
+              contactEmail: email.trim(),
+            }
+          : {}),
+      },
       {
         onSuccess: () => {
           setSubject('');
           setMessage('');
           setCategory('general');
+          if (isAnonymousGuest) {
+            setFullName('');
+            setEmail('');
+          }
           toast.success('Message sent', 'Our team will get back to you soon.');
         },
         onError: (error) => {
@@ -273,7 +298,7 @@ export function HelpScreenContent() {
         },
       },
     );
-  }, [canSubmit, category, subject, message, submitMutation]);
+  }, [canSubmit, category, subject, message, submitMutation, isAnonymousGuest, fullName, email]);
 
   return (
     <KeyboardAvoidingView
@@ -326,6 +351,68 @@ export function HelpScreenContent() {
             />
           ))}
         </View>
+
+        {isAnonymousGuest ? (
+          <>
+            <View style={{ gap: gap.xs }}>
+              <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Full name</Text>
+              <View
+                style={[
+                  styles.inputField,
+                  {
+                    borderColor: fullNameFocused ? colors.accent.default : colors.border.default,
+                    backgroundColor: fullNameFocused ? colors.surface.primary : colors.surface.secondary,
+                    borderRadius: radius.input,
+                    paddingHorizontal: inset.md,
+                  },
+                ]}
+              >
+                <TextInput
+                  value={fullName}
+                  onChangeText={setFullName}
+                  onFocus={() => setFullNameFocused(true)}
+                  onBlur={() => setFullNameFocused(false)}
+                  placeholder="Your full name"
+                  placeholderTextColor={colors.text.tertiary}
+                  maxLength={120}
+                  autoCapitalize="words"
+                  returnKeyType="next"
+                  style={[styles.inputText, { color: colors.text.primary }]}
+                />
+              </View>
+            </View>
+
+            <View style={{ gap: gap.xs }}>
+              <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Email</Text>
+              <View
+                style={[
+                  styles.inputField,
+                  {
+                    borderColor: emailFocused ? colors.accent.default : colors.border.default,
+                    backgroundColor: emailFocused ? colors.surface.primary : colors.surface.secondary,
+                    borderRadius: radius.input,
+                    paddingHorizontal: inset.md,
+                  },
+                ]}
+              >
+                <TextInput
+                  value={email}
+                  onChangeText={setEmail}
+                  onFocus={() => setEmailFocused(true)}
+                  onBlur={() => setEmailFocused(false)}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.text.tertiary}
+                  maxLength={120}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  returnKeyType="next"
+                  style={[styles.inputText, { color: colors.text.primary }]}
+                />
+              </View>
+            </View>
+          </>
+        ) : null}
 
         {/* Subject */}
         <View style={{ gap: gap.xs }}>

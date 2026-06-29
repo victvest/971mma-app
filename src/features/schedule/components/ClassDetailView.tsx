@@ -8,13 +8,16 @@ import { AlertTriangle, Calendar, MapPin } from 'lucide-react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 
 import { isClassLiveNow, GYM_TIME_ZONE, formatGymTime12h } from '@/core/time/gymTime';
-import { getCoachImageSource } from '@/features/coaches/components/CoachVisuals';
+import { getCoachImageSource, getCoachRatingLabel } from '@/features/coaches/components/CoachVisuals';
 import { GlassNavChrome, GlassSurface } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 import { resolveClassImage } from '@/features/schedule/utils/classImages';
+import { formatDisciplineLabel, plainClassDescription } from '@/features/schedule/utils/classDisplay';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { triggerLightImpact, triggerMediumImpact } from '@/shared/haptics';
 import type { ClassItem, CoachItem } from '@/types/domain';
+
+import { useAuthStore } from '@/stores/useAuthStore';
 
 type Props = {
   item: ClassItem;
@@ -38,6 +41,10 @@ export function ClassDetailView({
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+
+  const role = useAuthStore((s) => s.role);
+  const userStore = useAuthStore((s) => s.user);
+  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
 
   const scrollY = useSharedValue(0);
 
@@ -76,7 +83,10 @@ export function ClassDetailView({
     }
   }, [item.startsAt]);
 
-  const calendarHeadline = `${weekdayLong} • ${timeStr}`;
+  const calendarHeadline = `${weekdayLong} • ${timeStr} • ${item.durationMinutes} min`;
+
+  const classDescription = useMemo(() => plainClassDescription(item.description), [item.description]);
+  const disciplineLabel = useMemo(() => formatDisciplineLabel(item), [item]);
 
   const handleScroll = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -113,11 +123,13 @@ export function ClassDetailView({
   const coachRoleLabel = useMemo(() => {
     if (coachLoading) return 'Loading profile…';
     const specialty = (coach?.specialty?.split(',')[0] ?? item.discipline) || 'MMA';
+    const rating =
+      coach?.rating !== null && coach?.rating !== undefined ? ` · ${getCoachRatingLabel(coach)}★` : '';
     if (coach?.isHeadCoach) {
-      return `Head ${specialty} Instructor`;
+      return `Head ${specialty} Instructor${rating}`;
     }
-    return `${specialty} Instructor`;
-  }, [coach?.isHeadCoach, coach?.specialty, item.discipline, coachLoading]);
+    return `${specialty} Instructor${rating}`;
+  }, [coach, coach?.isHeadCoach, coach?.rating, coach?.specialty, coachLoading, item.discipline]);
 
   const capacityTotal = item.capacity > 0 ? item.capacity : 30;
   const statusHeadline = isFull
@@ -191,11 +203,24 @@ export function ClassDetailView({
               <Calendar size={16} color="#007A33" style={styles.calendarIcon} />
               <Text style={styles.calendarText}>{calendarHeadline}</Text>
             </View>
+
+            <Text style={styles.disciplineLine}>{disciplineLabel}</Text>
           </GlassSurface>
         </View>
 
         {/* Detail cards */}
         <View style={styles.infoContainer}>
+          {classDescription ? (
+            <GlassSurface
+              borderRadius={32}
+              style={styles.detailCardGlass}
+              contentStyle={[styles.detailCardContent, styles.detailCardCompact]}
+            >
+              <Text style={styles.sectionLabel}>About this class</Text>
+              <Text style={styles.descriptionText}>{classDescription}</Text>
+            </GlassSurface>
+          ) : null}
+
           {/* Instructor profile card */}
           <Pressable
             onPress={canOpenCoach ? onOpenCoach : undefined}
@@ -293,6 +318,19 @@ export function ClassDetailView({
             <Text style={styles.spotsRemaining}>{spotsRemainingLabel}</Text>
             <View style={styles.capacityDivider} />
           </GlassSurface>
+
+          {isGuest ? (
+            <GlassSurface
+              borderRadius={32}
+              style={[styles.detailCardGlass, { borderColor: '#D71920' + '33', borderWidth: 1 }]}
+              contentStyle={[styles.detailCardContent, { flexDirection: 'row', gap: 12, alignItems: 'center' }]}
+            >
+              <Ionicons name="information-circle-outline" size={24} color="#D71920" />
+              <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: '#333333', lineHeight: 18 }}>
+                Membership required. To attend this class, please activate your membership or contact the front desk.
+              </Text>
+            </GlassSurface>
+          ) : null}
         </View>
       </Animated.ScrollView>
 
@@ -447,6 +485,29 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter_600SemiBold',
     fontSize: 13,
     color: '#555555',
+    flex: 1,
+  },
+  disciplineLine: {
+    color: '#007A33',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 0.8,
+    marginTop: 10,
+    textTransform: 'uppercase',
+  },
+  sectionLabel: {
+    color: '#9CA3AF',
+    fontFamily: 'Inter_700Bold',
+    fontSize: 11,
+    letterSpacing: 1,
+    marginBottom: 10,
+    textTransform: 'uppercase',
+  },
+  descriptionText: {
+    color: '#444444',
+    fontFamily: 'Inter_400Regular',
+    fontSize: 14,
+    lineHeight: 22,
   },
   infoContainer: {
     gap: 14,

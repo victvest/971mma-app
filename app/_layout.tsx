@@ -22,6 +22,7 @@ function RootStack() {
   return (
     <Stack screenOptions={pushOptions}>
       <Stack.Screen name="index" options={fadeOptions} />
+      <Stack.Screen name="activation-required" options={pushOptions} />
       <Stack.Screen name="(auth)" options={fadeOptions} />
       <Stack.Screen name="(onboarding)" options={fadeOptions} />
       <Stack.Screen name="(tabs)" options={fadeOptions} />
@@ -34,6 +35,7 @@ function RootStack() {
       <Stack.Screen name="notifications" options={pushOptions} />
       <Stack.Screen name="attendance" options={pushOptions} />
       <Stack.Screen name="family-trainees" options={pushOptions} />
+      <Stack.Screen name="communities" options={pushOptions} />
       <Stack.Screen name="edit-profile" options={pushOptions} />
       <Stack.Screen name="delete-account" options={pushOptions} />
       <Stack.Screen name="change-password" options={pushOptions} />

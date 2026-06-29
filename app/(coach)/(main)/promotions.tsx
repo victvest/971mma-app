@@ -1,10 +1,5 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  StyleSheet,
-  TouchableOpacity,
-  Text,
-  View,
-} from 'react-native';
+import React, { useCallback, useMemo } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { FlashList } from '@shopify/flash-list';
@@ -21,6 +16,7 @@ import {
   PromotionCandidateCard,
 } from '@/features/coach/components/promotions/PromotionCandidateCard';
 import { usePromotionCandidates } from '@/features/coach/hooks/useCoachMode';
+import { useCoachAssignedDisciplines } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { FlashListScrollComponent } from '@/shared/components/ui';
@@ -29,7 +25,6 @@ import { ScrollRevealCard } from '@/shared/animations';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
 import { useTheme } from '@/shared/theme';
 import { animations } from '@/shared/theme/animations';
-import { triggerLightImpact } from '@/shared/haptics';
 import type { PromotionCandidateItem } from '@/types/domain';
 
 type PromotionsHeaderMotionProps = {
@@ -41,7 +36,7 @@ function PromotionsHeaderMotion({ children, replayKey }: PromotionsHeaderMotionP
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(38);
 
-  useEffect(() => {
+  React.useEffect(() => {
     opacity.value = 0;
     translateY.value = 42;
     opacity.value = withDelay(0, withTiming(1, animations.timing.fade));
@@ -84,13 +79,19 @@ const CandidateRow = React.memo(function CandidateRow({
 });
 
 export default function CoachPromotionsScreen() {
-  const { colors, inset, gap, layout, radius, typography } = useTheme();
+  const { colors, inset, gap, layout, typography } = useTheme();
   const topInset = useAppTopInset();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
 
-  const [selectedDiscipline, setSelectedDiscipline] = useState<'bjj' | 'wrestling'>('bjj');
-  const candidatesQuery = usePromotionCandidates(selectedDiscipline);
+  const assignedDisciplinesQuery = useCoachAssignedDisciplines();
+  const assignedRankDiscipline = assignedDisciplinesQuery.primaryRankDiscipline;
+  const assignedRankDisciplineSlug = assignedDisciplinesQuery.primaryRankDisciplineSlug;
+  const hasAssignedRankDiscipline = assignedRankDisciplineSlug !== null;
+
+  const candidatesQuery = usePromotionCandidates(assignedRankDisciplineSlug, {
+    enabled: hasAssignedRankDiscipline && !assignedDisciplinesQuery.isLoading,
+  });
 
   const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
 
@@ -111,6 +112,8 @@ export default function CoachPromotionsScreen() {
 
   const handleCandidatePress = useCallback(
     (item: PromotionCandidateItem) => {
+      if (!assignedRankDisciplineSlug) return;
+
       router.push({
         pathname: '/(coach)/belt-review',
         params: {
@@ -119,11 +122,11 @@ export default function CoachPromotionsScreen() {
           memberEmail: item.email,
           memberRank: item.beltRank ?? 'Unranked',
           memberStripes: String(item.beltStripes),
-          discipline: selectedDiscipline,
+          discipline: assignedRankDisciplineSlug,
         },
       });
     },
-    [router, selectedDiscipline],
+    [assignedRankDisciplineSlug, router],
   );
 
   const handleRetry = useCallback(() => {
@@ -145,53 +148,38 @@ export default function CoachPromotionsScreen() {
   const listHeader = useMemo(
     () => (
       <PromotionsHeaderMotion replayKey={entranceReplayKey}>
-        <View style={[styles.heroTextSection, { gap: gap.sm, marginBottom: gap.md }]}>
-          <AcademyEyebrow label="Promotion queue" accent />
+        <View style={[styles.heroTextSection, { gap: gap.sm, marginBottom: gap.lg }]}>
+          <AcademyEyebrow
+            label={
+              assignedRankDiscipline
+                ? `${assignedRankDiscipline.displayName} promotion queue`
+                : 'Promotion queue'
+            }
+            accent
+          />
           <TabHeroTitle lines={[[{ text: 'Ready to ' }, { text: 'promote.', accent: true }]]} />
-        </View>
-
-        <View style={[styles.switcherContainer, { backgroundColor: colors.fill.secondary, borderRadius: radius.pill, padding: 4, flexDirection: 'row', marginBottom: gap.lg }]}>
-          {(['bjj', 'wrestling'] as const).map((discipline) => {
-            const isActive = selectedDiscipline === discipline;
-            return (
-              <TouchableOpacity
-                key={discipline}
-                onPress={() => {
-                  triggerLightImpact();
-                  setSelectedDiscipline(discipline);
-                }}
-                style={{
-                  flex: 1,
-                  backgroundColor: isActive ? colors.surface.primary : 'transparent',
-                  borderRadius: radius.pill,
-                  paddingVertical: 8,
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  shadowColor: '#000',
-                  shadowOffset: { width: 0, height: isActive ? 1 : 0 },
-                  shadowOpacity: isActive ? 0.08 : 0,
-                  shadowRadius: isActive ? 2 : 0,
-                  elevation: isActive ? 1 : 0,
-                }}
-              >
-                <Text
-                  style={[
-                    typography.textPresets.bodyStrong,
-                    {
-                      fontSize: 13,
-                      color: isActive ? colors.text.primary : colors.text.secondary,
-                    },
-                  ]}
-                >
-                  {discipline === 'bjj' ? 'BJJ' : 'Wrestling'}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
+          {assignedRankDiscipline ? (
+            <Text
+              style={[
+                typography.textPresets.body,
+                { color: colors.text.secondary, marginTop: gap.xs },
+              ]}
+            >
+              Showing members enrolled in {assignedRankDiscipline.displayName}.
+            </Text>
+          ) : null}
         </View>
       </PromotionsHeaderMotion>
     ),
-    [entranceReplayKey, gap.sm, gap.md, gap.lg, selectedDiscipline, colors, radius, typography],
+    [
+      assignedRankDiscipline,
+      colors.text.secondary,
+      entranceReplayKey,
+      gap.lg,
+      gap.sm,
+      gap.xs,
+      typography.textPresets.body,
+    ],
   );
 
   const listFooter = useMemo(() => {
@@ -212,7 +200,17 @@ export default function CoachPromotionsScreen() {
   }, [gap.sm, handleRetry, hasData, hasError]);
 
   const listEmpty = useMemo(() => {
+    if (assignedDisciplinesQuery.isLoading) return null;
     if (candidatesQuery.isLoading || hasError) return null;
+    if (!hasAssignedRankDiscipline) {
+      return (
+        <StateBlock
+          kind="empty"
+          title="No rank discipline assigned"
+          message="Promotion reviews appear when your coach profile is assigned to BJJ or Wrestling."
+        />
+      );
+    }
     return (
       <StateBlock
         kind="empty"
@@ -220,11 +218,20 @@ export default function CoachPromotionsScreen() {
         message="Members appear here when they reach 80%+ on current stripe requirements."
       />
     );
-  }, [candidatesQuery.isLoading, hasError]);
+  }, [
+    assignedDisciplinesQuery.isLoading,
+    candidatesQuery.isLoading,
+    hasAssignedRankDiscipline,
+    hasError,
+  ]);
+
+  const isLoading =
+    assignedDisciplinesQuery.isLoading ||
+    (hasAssignedRankDiscipline && candidatesQuery.isLoading);
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
-      {candidatesQuery.isLoading ? (
+      {isLoading ? (
         <View style={{ flex: 1, marginTop: screenPaddingTop }}>
           <StateBlock kind="loading" title="Loading candidates" />
         </View>
@@ -248,7 +255,7 @@ export default function CoachPromotionsScreen() {
       ) : (
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
-          data={candidates}
+          data={hasAssignedRankDiscipline ? candidates : []}
           keyExtractor={(item) => item.userId}
           ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}
@@ -269,8 +276,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   heroTextSection: {
     marginTop: 8,
-  },
-  switcherContainer: {
-    alignSelf: 'stretch',
   },
 });

@@ -13,10 +13,8 @@ type Props = {
   canShowActiveQr: boolean;
   planName?: string | null;
   expiryDate?: string | null;
-  showSimulate?: boolean;
-  simulating?: boolean;
-  simulateDisabled?: boolean;
-  onSimulate?: () => void;
+  isGuest?: boolean;
+  isRegistered?: boolean;
 };
 
 function LockedQrCard({ name }: { name: string }) {
@@ -53,10 +51,8 @@ export function FamilyQrPager({
   canShowActiveQr,
   planName,
   expiryDate,
-  showSimulate,
-  simulating,
-  simulateDisabled,
-  onSimulate,
+  isGuest = false,
+  isRegistered = false,
 }: Props) {
   if (!canShowActiveQr) {
     return <LockedQrCard name={memberName} />;
@@ -71,10 +67,8 @@ export function FamilyQrPager({
       beltLine={beltLine}
       planName={planName}
       expiryDate={expiryDate}
-      showSimulate={showSimulate}
-      simulating={simulating}
-      simulateDisabled={simulateDisabled}
-      onSimulate={onSimulate}
+      isGuest={isGuest}
+      isRegistered={isRegistered}
     />
   );
 }

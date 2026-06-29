@@ -65,7 +65,9 @@ function parseRouteFlags(segments: string[]): RouteFlags {
   const inVerifyEmailRoute = inAuthGroup && secondSegment === 'verify-email';
   const inResetVerifyOtpRoute = inAuthGroup && secondSegment === 'reset-verify-otp';
   const inSplashRoute = inAuthGroup && secondSegment === 'splash';
-  const inActivationRequiredRoute = inAuthGroup && secondSegment === 'activation-required';
+  const inActivationRequiredRoute =
+    firstSegment === 'activation-required' ||
+    (inAuthGroup && secondSegment === 'activation-required');
   const inOnboardingGroup = firstSegment === '(onboarding)';
   const inCoachGroup = firstSegment === '(coach)';
   const inGateGroup = firstSegment === '(gate)';
@@ -78,6 +80,7 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     firstSegment === 'notifications' ||
     firstSegment === 'attendance' ||
     firstSegment === 'family-trainees' ||
+    firstSegment === 'communities' ||
     firstSegment === 'edit-profile' ||
     firstSegment === 'delete-account' ||
     firstSegment === 'change-password' ||
@@ -111,7 +114,7 @@ export function memberRequiresActivation(
 
 export function getAuthenticatedEntryRoute(input: AuthenticatedRouteInput): Href {
   if (memberRequiresActivation(input.role, input.accountStatus)) {
-    return '/(auth)/activation-required';
+    return '/(tabs)';
   }
 
   if (input.needsOnboarding) {
@@ -150,19 +153,18 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
   const requiresActivation = memberRequiresActivation(role, accountStatus);
   const authenticatedEntry = getAuthenticatedEntryRoute({ role, accountStatus, needsOnboarding });
 
-  if (
-    isAuthenticated &&
-    requiresActivation &&
-    !inActivationRequiredRoute &&
-    !inChangePasswordRoute &&
-    !inVerifyEmailRoute &&
-    !inResetVerifyOtpRoute
-  ) {
-    return '/(auth)/activation-required';
+  // Pending-activation members must be able to open the activation screen even when
+  // EXPO_PUBLIC_SKIP_ACTIVATION_GATING bypasses tab-level blocking in local dev.
+  if (isAuthenticated && inActivationRequiredRoute) {
+    if (role === 'member' && accountStatus !== 'active') {
+      return null;
+    }
+    return authenticatedEntry;
   }
 
-  if (isAuthenticated && !requiresActivation && inActivationRequiredRoute) {
-    return authenticatedEntry;
+  // If they require activation but are on onboarding, send them to tabs (guest mode)
+  if (isAuthenticated && requiresActivation && route.inOnboardingGroup) {
+    return '/(tabs)';
   }
 
   if (inChangePasswordRoute && !canUseChangePasswordRoute) {
@@ -217,6 +219,12 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
     !completingSignupVerification &&
     !passwordRecoveryActive
   ) {
+    if (requiresActivation) {
+      const inAuthShellOnly = segments.length === 1;
+      if (inAuthShellOnly) {
+        return null;
+      }
+    }
     return authenticatedEntry;
   }
 

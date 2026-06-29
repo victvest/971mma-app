@@ -67,6 +67,12 @@ export interface CoachItem {
   bio: string | null;
   photoUrl: string | null;
   isHeadCoach: boolean;
+  coachingPhilosophy: string | null;
+  yearsExperience: number | null;
+  fightRecord: string | null;
+  titles: string[];
+  certifications: string[];
+  languages: string[];
 }
 
 export interface MemberProfile {
@@ -294,6 +300,9 @@ export interface BeltPathSummary {
   progress: BeltProgressItem;
   requirements: BeltRequirementItem[];
   promotions: PromotionItem[];
+  /** Rank levels configured for this discipline (from rank system). */
+  curriculumRanks: BeltRankItem[];
+  /** True when the discipline has no rank levels configured yet. */
   isPlaceholderCurriculum: boolean;
 }
 
@@ -380,6 +389,119 @@ export interface NotificationPreferences {
   guardianAlerts: boolean;
   community: boolean;
   updatedAt: string;
+}
+
+export interface GuardianChildMilestoneSummary {
+  id: string;
+  name: string;
+  earnedAt: string;
+}
+
+export interface GuardianChildAttendanceSummary {
+  id: string;
+  className: string;
+  checkedInAt: string;
+  discipline: string | null;
+}
+
+export interface GuardianChildSummary {
+  traineeUserId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  dateOfBirth: string | null;
+  accountMode: 'managed' | 'independent';
+  allowGuardianQr: boolean;
+  disciplines: string[];
+  currentStreak: number;
+  bestStreak: number;
+  streakStatus: 'inactive' | 'active' | 'grace' | 'broken';
+  rankName: string | null;
+  rankStripe: number | null;
+  pointsBalance: number;
+  recentMilestones: GuardianChildMilestoneSummary[];
+  recentAttendance: GuardianChildAttendanceSummary[];
+}
+
+export interface GuardianChildrenSummary {
+  children: GuardianChildSummary[];
+}
+
+export type CommunityPostKind = 'announcement' | 'system';
+export type CommunityAuthorRole = 'coach' | 'member';
+
+export interface CommunityChannelItem {
+  id: string;
+  title: string;
+  description: string | null;
+  disciplineName: string;
+  disciplineSlug: string;
+  coachName: string;
+  coachAvatarUrl: string | null;
+  latestPostAt: string | null;
+  lastMessageAt: string | null;
+  lastMessagePreview: string | null;
+  unreadCount: number;
+  memberCount: number;
+  isCoachOwner: boolean;
+}
+
+export interface CommunityChannelHeader {
+  id: string;
+  title: string;
+  description: string | null;
+  disciplineName: string;
+  disciplineSlug: string;
+  coachId: string;
+  coachName: string;
+  coachAvatarUrl: string | null;
+  memberCount: number;
+  isCoachOwner: boolean;
+  pinnedPost: CommunityPostItem | null;
+}
+
+export interface CommunityFeedCursor {
+  publishedAt: string;
+  id: string;
+}
+
+export interface CommunityChannelFeed {
+  pinnedPost: CommunityPostItem | null;
+  posts: CommunityPostItem[];
+  nextCursor: CommunityFeedCursor | null;
+}
+
+export interface CommunityPostItem {
+  id: string;
+  channelId: string;
+  authorId: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  authorRole: CommunityAuthorRole;
+  title: string | null;
+  body: string;
+  mediaUrl: string | null;
+  postKind: CommunityPostKind;
+  isPinned: boolean;
+  pinnedAt: string | null;
+  publishedAt: string;
+  reactionCounts: Record<string, number>;
+  replyCount: number;
+  myReactions: string[];
+}
+
+export interface CommunityReplyItem {
+  id: string;
+  postId: string;
+  userId: string;
+  authorName: string;
+  authorAvatarUrl: string | null;
+  body: string;
+  createdAt: string;
+}
+
+export interface CommunityPostThread {
+  post: CommunityPostItem;
+  replies: CommunityReplyItem[];
 }
 
 export interface DisciplineScoreSummary {

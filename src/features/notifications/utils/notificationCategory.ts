@@ -24,7 +24,13 @@ export function getNotificationCategory(item: NotificationItem): NotificationCat
   const t = item.type.toLowerCase();
   const title = (item.title || '').toLowerCase();
 
-  if (t === 'announcement' || t.includes('announcement') || title.includes('announcement')) {
+  if (
+    t === 'announcement' ||
+    t === 'community' ||
+    t.includes('announcement') ||
+    t.includes('community') ||
+    title.includes('announcement')
+  ) {
     return 'announcement';
   }
   if (

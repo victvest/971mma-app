@@ -20,6 +20,7 @@ type AuthState = {
 type AuthActions = {
   login: (user: AppUser) => void;
   logout: () => void;
+  loginAsGuest: () => void;
   setRole: (role: UserRole) => void;
   setNeedsOnboarding: (needsOnboarding: boolean) => void;
   markOnboardingComplete: (patch: { fullName: string; avatarUrl: string | null }) => void;
@@ -37,6 +38,9 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   logout: () =>
     set({ user: null, role: null, isAuthenticated: false, needsOnboarding: false }),
+
+  loginAsGuest: () =>
+    set({ user: null, role: 'guest', isAuthenticated: true, needsOnboarding: false }),
 
   setRole: (role) =>
     set((state) => ({

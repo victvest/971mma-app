@@ -13,7 +13,7 @@ export default function FamilyTraineesScreen() {
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top', 'bottom']}
     >
-      <AppBar title="Family trainees" showBackButton />
+      <AppBar title="Family profiles" showBackButton />
       <FamilyTraineesScreenContent />
     </SafeAreaView>
   );

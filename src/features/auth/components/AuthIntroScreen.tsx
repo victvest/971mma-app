@@ -1,29 +1,28 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
-  FlatList,
+  Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
-  useWindowDimensions,
-  type ListRenderItemInfo,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
+  type StyleProp,
+  type ViewStyle,
 } from 'react-native';
-import { Image as ExpoImage } from 'expo-image';
+import { useEventListener } from 'expo';
+import { Image } from 'expo-image';
+import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
+import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import {
   openAuthLoginFromIntro,
   openAuthRegisterFromIntro,
 } from '@/features/auth/navigation/authNavigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  Easing,
-  cancelAnimation,
   useAnimatedStyle,
   useSharedValue,
   withSpring,
-  withTiming,
 } from 'react-native-reanimated';
 import { useTheme } from '@/shared/theme';
 import {
@@ -31,117 +30,216 @@ import {
   useAuthSlideUpAnimation,
 } from '@/features/auth/hooks/useAuthEntranceAnimation';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
-import { UaeBrandAmbientGlow } from '@/shared/components/brand';
-import authBrandMark from '../../../../assets/brand/971-logo-official.webp';
-import introSlidePrimary from '../../../../assets/images/optimized/hero-nlbjj-card.jpg';
-import introSlideCoaches from '../../../../assets/images/optimized/academy-team-card.jpg';
-import introSlideRewards from '../../../../assets/images/optimized/discipline-boxing-card.jpg';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { triggerLightImpact } from '@/shared/haptics';
+import introBackgroundVideo from '../../../../assets/videos/video.mp4';
+import introBrandMark from '../../../../assets/brand/logo-notext.png';
 
-const AnimatedView = Animated.createAnimatedComponent(View);
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
+const AnimatedView = Animated.createAnimatedComponent(View);
 
-type IntroSlide = {
-  key: string;
-  source: number;
-  title: string;
-  description: string;
-};
+const INTRO_VIDEO_START_SEC = 7;
+const INTRO_VIDEO_END_SEC = 20;
+const INTRO_VIDEO_CLIP_DURATION = INTRO_VIDEO_END_SEC - INTRO_VIDEO_START_SEC;
+const INTRO_VIDEO_TARGET_VOLUME = 0.92;
+const INTRO_SHEET_OVERLAP = 32;
+const INTRO_TOP_LOGO_WIDTH = 88;
 
-const INTRO_SLIDES: IntroSlide[] = [
-  {
-    key: 'intro-schedule',
-    source: introSlidePrimary,
-    title: 'Explore Programs',
-    description: 'Browse the full class schedule across BJJ, Muay Thai, boxing, and MMA.',
-  },
-  {
-    key: 'intro-coaches',
-    source: introSlideCoaches,
-    title: 'Discover Coaches',
-    description: 'Meet the academy team and see who is teaching each session.',
-  },
-  {
-    key: 'intro-rewards',
-    source: introSlideRewards,
-    title: 'Earn By Attending',
-    description: 'Check in, build streaks, unlock rewards, and track your progression.',
-  },
-];
+/** Minimal white tint — lets the native clear glass refract video like water. */
+const INTRO_GLASS_TINT = 'rgba(255, 255, 255, 0.10)';
 
-const STORY_ADVANCE_INTERVALS = 8;
-const INTRO_SHEET_OVERLAP = 28;
-
-function getIntroLayoutMetrics(windowHeight: number) {
-  const isCompact = windowHeight < 740;
-
-  return {
-    isCompact,
-    titleSize: isCompact ? 26 : 30,
-    titleLineHeight: isCompact ? 30 : 34,
-    descriptionSize: isCompact ? 14 : 16,
-    logoScale: isCompact ? 0.95 : 1.1,
-  };
-}
-
-type MediaTopScrimProps = {
-  topInset: number;
-};
-
-function MediaTopScrim({ topInset }: MediaTopScrimProps) {
-  const topScrimHeight = topInset + 56;
-
-  return (
-    <LinearGradient
-      colors={['rgba(0,0,0,0.34)', 'rgba(0,0,0,0.12)', 'transparent']}
-      locations={[0, 0.45, 1]}
-      style={[styles.mediaTopScrim, { height: topScrimHeight }]}
-      pointerEvents="none"
-    />
-  );
-}
+const INTRO_PALETTE = {
+  canvas: '#0C0C0C',
+  flagRed: '#C8102E',
+  accentGreen: '#00843D',
+  headline: '#FFFFFF',
+  body: 'rgba(255,255,255,0.72)',
+  outlineBorder: 'rgba(255,255,255,0.32)',
+  guestText: 'rgba(255,255,255,0.68)',
+  glassBorder: 'rgba(255, 255, 255, 0.22)',
+  glassSpecular: 'rgba(255, 255, 255, 0.38)',
+  glassDim: 'rgba(0, 0, 0, 0.44)',
+} as const;
 
 type IntroActionButtonProps = {
   label: string;
   onPress: () => void;
-  variant: 'primary' | 'outline';
+  variant: 'primary' | 'outline' | 'ghost';
 };
 
+type IntroGlassSheetProps = {
+  borderRadius: number;
+  contentStyle: StyleProp<ViewStyle>;
+  children: React.ReactNode;
+};
+
+function IntroGlassSpecular({ borderRadius }: { borderRadius: number }) {
+  return (
+    <View
+      pointerEvents="none"
+      style={[
+        styles.glassSpecular,
+        {
+          borderTopLeftRadius: borderRadius,
+          borderTopRightRadius: borderRadius,
+          backgroundColor: INTRO_PALETTE.glassSpecular,
+        },
+      ]}
+    />
+  );
+}
+
+function IntroGlassDim() {
+  return (
+    <View
+      pointerEvents="none"
+      style={[styles.glassDim, { backgroundColor: INTRO_PALETTE.glassDim }]}
+    />
+  );
+}
+
+/** Bottom sheet glass — full-bleed video must sit behind this for the water refraction. */
+function IntroGlassSheet({ borderRadius, contentStyle, children }: IntroGlassSheetProps) {
+  const shellStyle = [
+    styles.glassShell,
+    {
+      borderRadius,
+      borderColor: INTRO_PALETTE.glassBorder,
+    },
+  ];
+
+  if (Platform.OS === 'ios' && isGlassEffectAPIAvailable()) {
+    return (
+      <GlassView
+        glassEffectStyle="clear"
+        colorScheme="dark"
+        tintColor={INTRO_GLASS_TINT}
+        style={shellStyle}
+      >
+        <IntroGlassDim />
+        <IntroGlassSpecular borderRadius={borderRadius} />
+        <View style={[styles.glassContent, contentStyle]}>{children}</View>
+      </GlassView>
+    );
+  }
+
+  return (
+    <BlurView
+      intensity={Platform.OS === 'ios' ? 78 : 52}
+      tint="dark"
+      style={[
+        shellStyle,
+        {
+          backgroundColor: 'rgba(255, 255, 255, 0.06)',
+        },
+      ]}
+    >
+      <IntroGlassDim />
+      <IntroGlassSpecular borderRadius={borderRadius} />
+      <View style={[styles.glassContent, contentStyle]}>{children}</View>
+    </BlurView>
+  );
+}
+
+function useIntroBackgroundVideo() {
+  const player = useVideoPlayer(introBackgroundVideo, (videoPlayer) => {
+    videoPlayer.loop = false;
+    videoPlayer.muted = false;
+    videoPlayer.volume = 0;
+    videoPlayer.timeUpdateEventInterval = 0.2;
+    videoPlayer.currentTime = INTRO_VIDEO_START_SEC;
+    videoPlayer.play();
+  });
+
+  const applyVolumeRamp = useCallback((currentTime: number) => {
+    if (currentTime < INTRO_VIDEO_START_SEC) {
+      player.volume = 0;
+      return;
+    }
+
+    const progress = Math.min(
+      1,
+      Math.max(0, (currentTime - INTRO_VIDEO_START_SEC) / INTRO_VIDEO_CLIP_DURATION),
+    );
+    player.volume = progress * INTRO_VIDEO_TARGET_VOLUME;
+  }, [player]);
+
+  useEventListener(player, 'statusChange', ({ status }) => {
+    if (status === 'readyToPlay') {
+      player.currentTime = INTRO_VIDEO_START_SEC;
+      player.volume = 0;
+      player.play();
+    }
+  });
+
+  useEventListener(player, 'timeUpdate', ({ currentTime }) => {
+    if (currentTime >= INTRO_VIDEO_END_SEC - 0.08) {
+      player.currentTime = INTRO_VIDEO_START_SEC;
+      player.volume = 0;
+      return;
+    }
+
+    applyVolumeRamp(currentTime);
+  });
+
+  useEventListener(player, 'playToEnd', () => {
+    player.currentTime = INTRO_VIDEO_START_SEC;
+    player.volume = 0;
+    player.play();
+  });
+
+  return player;
+}
+
 function IntroActionButton({ label, onPress, variant }: IntroActionButtonProps) {
-  const { colors, typography, layout, radius, animations } = useTheme();
+  const { typography, layout, radius, animations } = useTheme();
   const scale = useSharedValue<number>(animations.scale.resting);
   const isPrimary = variant === 'primary';
+  const isOutline = variant === 'outline';
+  const isGhost = variant === 'ghost';
 
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
   }));
 
+  const handlePressIn = () => {
+    scale.value = withSpring(animations.scale.pressed, animations.spring.snappy);
+  };
+
+  const handlePressOut = () => {
+    scale.value = withSpring(animations.scale.resting, animations.spring.snappy);
+  };
+
   return (
     <AnimatedPressable
       accessibilityRole="button"
       onPress={onPress}
-      onPressIn={() => {
-        scale.value = withSpring(animations.scale.pressed, animations.spring.snappy);
-      }}
-      onPressOut={() => {
-        scale.value = withSpring(animations.scale.resting, animations.spring.snappy);
-      }}
+      onPressIn={handlePressIn}
+      onPressOut={handlePressOut}
       style={[
         styles.introButton,
+        isGhost && styles.ghostButton,
         {
-          minHeight: layout.authButtonHeight,
+          minHeight: isGhost ? layout.authButtonHeight - 8 : layout.authButtonHeight,
           borderRadius: radius.button,
-          borderWidth: 1.5,
-          backgroundColor: isPrimary ? colors.accent.default : 'transparent',
-          borderColor: isPrimary ? colors.accent.default : colors.border.default,
+          borderWidth: isOutline ? 1.5 : 0,
+          backgroundColor: isPrimary ? INTRO_PALETTE.accentGreen : 'transparent',
+          borderColor: isOutline ? INTRO_PALETTE.outlineBorder : 'transparent',
         },
         pressStyle,
       ]}
     >
       <Text
-        style={{
-          ...typography.textPresets.button,
-          color: isPrimary ? colors.accent.onAccent : colors.text.primary,
-        }}
+        style={[
+          isGhost ? typography.textPresets.buttonSmall : typography.textPresets.button,
+          {
+            color: isPrimary
+              ? INTRO_PALETTE.headline
+              : isOutline
+                ? INTRO_PALETTE.headline
+                : INTRO_PALETTE.guestText,
+          },
+        ]}
       >
         {label}
       </Text>
@@ -149,319 +247,135 @@ function IntroActionButton({ label, onPress, variant }: IntroActionButtonProps) 
   );
 }
 
-type StorySlideProps = {
-  slide: IntroSlide;
-  active: boolean;
-  width: number;
-  height: number;
-};
-
-function StorySlide({ slide, active, width, height }: StorySlideProps) {
-  const { colors } = useTheme();
-
-  return (
-    <View style={{ width, height, overflow: 'hidden', backgroundColor: colors.background.primary }}>
-      <ExpoImage
-        source={slide.source}
-        style={StyleSheet.absoluteFill}
-        contentFit="cover"
-        contentPosition="center"
-        cachePolicy="memory-disk"
-        priority={active ? 'high' : 'normal'}
-        recyclingKey={slide.key}
-        transition={300}
-      />
-      <UaeBrandAmbientGlow variant="photo-card" />
-    </View>
-  );
-}
-
-type StoryCaptionProps = {
-  slide: IntroSlide;
-  titleSize: number;
-  titleLineHeight: number;
-  descriptionSize: number;
-};
-
-function StoryCaption({ slide, titleSize, titleLineHeight, descriptionSize }: StoryCaptionProps) {
-  const { colors, gap, layout, animations, fontWeight, resolveFontFamily } = useTheme();
-  const opacity = useSharedValue<number>(animations.alpha.hidden);
-  const translateY = useSharedValue<number>(layout.authEntranceOffset);
-
-  useEffect(() => {
-    opacity.value = animations.alpha.hidden;
-    translateY.value = layout.authEntranceOffset;
-    opacity.value = withTiming(animations.alpha.visible, animations.timing.page);
-    translateY.value = withSpring(animations.interactionState.idle, animations.spring.slow);
-  }, [
-    animations.alpha.hidden,
-    animations.alpha.visible,
-    animations.interactionState.idle,
-    animations.spring.slow,
-    animations.timing.page,
-    layout.authEntranceOffset,
-    opacity,
-    slide.key,
-    translateY,
-  ]);
-
-  const captionStyle = useAnimatedStyle(() => ({
-    opacity: opacity.value,
-    transform: [{ translateY: translateY.value }],
-  }));
-
-  return (
-    <AnimatedView style={[{ flex: 1, gap: gap.xs }, captionStyle]}>
-      <Text
-        style={{
-          fontFamily: resolveFontFamily('display', fontWeight.black),
-          fontSize: titleSize,
-          fontWeight: '400',
-          letterSpacing: -0.8,
-          lineHeight: titleLineHeight,
-          color: colors.text.primary,
-        }}
-      >
-        {slide.title}
-      </Text>
-      <Text
-        style={{
-          fontFamily: resolveFontFamily('body', fontWeight.medium),
-          fontSize: descriptionSize,
-          fontWeight: '400',
-          lineHeight: descriptionSize + 7,
-          letterSpacing: -0.2,
-          color: colors.text.secondary,
-        }}
-      >
-        {slide.description}
-      </Text>
-    </AnimatedView>
-  );
-}
-
-type StoryProgressBarProps = {
-  index: number;
-  activeIndex: number;
-  durationMs: number;
-};
-
-function StoryProgressBar({ index, activeIndex, durationMs }: StoryProgressBarProps) {
-  const { radius, spacing } = useTheme();
-  const progress = useSharedValue<number>(index < activeIndex ? 1 : 0);
-
-  useEffect(() => {
-    cancelAnimation(progress);
-
-    if (index < activeIndex) {
-      progress.value = 1;
-      return;
-    }
-
-    if (index > activeIndex) {
-      progress.value = 0;
-      return;
-    }
-
-    progress.value = 0;
-    progress.value = withTiming(1, {
-      duration: durationMs,
-      easing: Easing.linear,
-    });
-  }, [activeIndex, durationMs, index, progress]);
-
-  const fillStyle = useAnimatedStyle(() => ({
-    width: `${progress.value * 100}%`,
-  }));
-
-  return (
-    <View
-      style={[
-        styles.progressTrack,
-        {
-          height: spacing[1],
-          borderRadius: radius.pill,
-          backgroundColor: 'rgba(255,255,255,0.28)',
-        },
-      ]}
-    >
-      <AnimatedView
-        style={[
-          styles.progressFill,
-          { borderRadius: radius.pill, backgroundColor: '#FFFFFF' },
-          fillStyle,
-        ]}
-      />
-    </View>
-  );
-}
-
 export function AuthIntroScreen() {
   const safeInsets = useSafeAreaInsets();
-  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
-  const { colors, inset, gap, layout, animations, radius, shadows } = useTheme();
-  const listRef = useRef<FlatList<IntroSlide>>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-  const [mediaRegionHeight, setMediaRegionHeight] = useState(0);
-  const activeSlide = INTRO_SLIDES[activeIndex] ?? INTRO_SLIDES[0];
+  const { typography, inset, gap, animations, radius } = useTheme();
+  const player = useIntroBackgroundVideo();
+  const loginAsGuest = useAuthStore((s) => s.loginAsGuest);
 
-  const layoutMetrics = getIntroLayoutMetrics(windowHeight);
-  const { isCompact, titleSize, titleLineHeight, descriptionSize, logoScale } = layoutMetrics;
-  const introLogoSize = Math.round(layout.authIntroLogoSize * logoScale);
-  const storySlideHeight = mediaRegionHeight > 0 ? mediaRegionHeight : Math.round(windowHeight * 0.62);
-  const storyDurationMs = animations.duration.crawl * STORY_ADVANCE_INTERVALS;
-  const panelBackground = colors.background.primary;
-
-  const logoStyle = useAuthEntranceAnimation();
-  const loginButtonStyle = useAuthSlideUpAnimation({ delay: animations.duration.base });
-  const signUpButtonStyle = useAuthSlideUpAnimation({
+  const copyStyle = useAuthEntranceAnimation();
+  const getStartedStyle = useAuthSlideUpAnimation({ delay: animations.duration.base });
+  const loginStyle = useAuthSlideUpAnimation({
     delay: animations.duration.base + animations.stagger.base,
   });
+  const guestStyle = useAuthSlideUpAnimation({
+    delay: animations.duration.base + animations.stagger.base * 2,
+  });
 
-  const goToSlide = useCallback(
-    (index: number) => {
-      const nextIndex = (index + INTRO_SLIDES.length) % INTRO_SLIDES.length;
-      setActiveIndex(nextIndex);
-      listRef.current?.scrollToOffset({
-        offset: nextIndex * windowWidth,
-        animated: true,
-      });
-    },
-    [windowWidth],
-  );
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      goToSlide(activeIndex + 1);
-    }, storyDurationMs);
-
-    return () => clearInterval(timer);
-  }, [activeIndex, goToSlide, storyDurationMs]);
-
-  const handleMomentumScrollEnd = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const index = Math.round(event.nativeEvent.contentOffset.x / windowWidth);
-      setActiveIndex(index);
-    },
-    [windowWidth],
-  );
-
-  const renderSlide = useCallback(
-    ({ item, index }: ListRenderItemInfo<IntroSlide>) => (
-      <StorySlide slide={item} active={index === activeIndex} width={windowWidth} height={storySlideHeight} />
-    ),
-    [activeIndex, storySlideHeight, windowWidth],
-  );
-
-  const handleMediaRegionLayout = useCallback((height: number) => {
-    setMediaRegionHeight((current) => (current === height ? current : height));
-  }, []);
+  const handleContinueAsGuest = useCallback(() => {
+    triggerLightImpact();
+    loginAsGuest();
+  }, [loginAsGuest]);
 
   return (
-    <View style={[styles.root, { backgroundColor: panelBackground }]}>
-      <AppStatusBar backgroundColor={panelBackground} />
+    <View style={[styles.root, { backgroundColor: INTRO_PALETTE.canvas }]}>
+      <AppStatusBar style="light" backgroundColor="transparent" translucent />
+
+      <VideoView
+        player={player}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        nativeControls={false}
+        fullscreenOptions={{ enable: false }}
+        allowsPictureInPicture={false}
+      />
+
+      <LinearGradient
+        colors={['rgba(0,0,0,0.42)', 'rgba(0,0,0,0.12)', 'transparent']}
+        locations={[0, 0.55, 1]}
+        style={[styles.mediaTopScrim, { height: safeInsets.top + 72 }]}
+        pointerEvents="none"
+      />
+
+      <LinearGradient
+        colors={['transparent', 'rgba(0,0,0,0.18)', 'rgba(0,0,0,0.55)']}
+        locations={[0.35, 0.72, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
 
       <View
-        style={[styles.mediaRegion, { flex: 1 }]}
-        onLayout={(event) => handleMediaRegionLayout(event.nativeEvent.layout.height)}
+        style={[styles.topMarkWrap, { paddingTop: safeInsets.top + inset.sm }]}
+        pointerEvents="none"
       >
-        <FlatList
-          ref={listRef}
-          data={INTRO_SLIDES}
-          horizontal
-          pagingEnabled
-          bounces={false}
-          decelerationRate="fast"
-          removeClippedSubviews={false}
-          showsHorizontalScrollIndicator={false}
-          style={StyleSheet.absoluteFill}
-          keyExtractor={(item) => item.key}
-          renderItem={renderSlide}
-          onMomentumScrollEnd={handleMomentumScrollEnd}
-          getItemLayout={(_, index) => ({
-            length: windowWidth,
-            offset: windowWidth * index,
-            index,
-          })}
+        <Image
+          source={introBrandMark}
+          contentFit="contain"
+          cachePolicy="memory-disk"
+          accessibilityLabel="971 MMA"
+          style={[styles.topLogo, { tintColor: INTRO_PALETTE.headline }]}
         />
-
-        <MediaTopScrim topInset={safeInsets.top} />
-
-        <View
-          style={[
-            styles.progressRow,
-            {
-              gap: gap.xs,
-              paddingHorizontal: inset.md,
-              paddingTop: safeInsets.top + inset.sm,
-            },
-          ]}
-          pointerEvents="none"
-        >
-          {INTRO_SLIDES.map((_, index) => (
-            <StoryProgressBar
-              key={`story-progress-${index}`}
-              index={index}
-              activeIndex={activeIndex}
-              durationMs={storyDurationMs}
-            />
-          ))}
-        </View>
       </View>
 
-      <View
-        style={[
-          styles.panel,
-          shadows.card,
-          {
-            marginTop: -INTRO_SHEET_OVERLAP,
-            backgroundColor: panelBackground,
-            borderTopLeftRadius: radius.cardLarge,
-            borderTopRightRadius: radius.cardLarge,
+      <View style={styles.bottomAnchor} pointerEvents="box-none">
+        <IntroGlassSheet
+          borderRadius={radius.cardLarge}
+          contentStyle={{
             paddingHorizontal: inset.lg,
-            paddingTop: inset.sm + 10,
-            paddingBottom: Math.max(safeInsets.bottom, inset.xs),
-          },
-        ]}
-      >
-        <View style={[styles.panelContent, { gap: isCompact ? gap.sm : gap.md }]}>
-          <AnimatedView style={[styles.captionRow, { gap: gap.md }, logoStyle]}>
-            <ExpoImage
-              source={authBrandMark}
-              contentFit="contain"
-              cachePolicy="memory-disk"
-              style={{
-                width: introLogoSize,
-                height: introLogoSize,
-                tintColor: colors.text.primary,
-              }}
-            />
-            <StoryCaption
-              slide={activeSlide}
-              titleSize={titleSize}
-              titleLineHeight={titleLineHeight}
-              descriptionSize={descriptionSize}
-            />
+            paddingTop: inset.sm,
+            paddingBottom: Math.max(safeInsets.bottom, inset.sm),
+            gap: gap.md,
+          }}
+        >
+          <AnimatedView style={[styles.copyBlock, { gap: gap.sm }, copyStyle]}>
+            <Text
+              style={[
+                typography.textPresets.academyKicker,
+                styles.kicker,
+                { color: INTRO_PALETTE.flagRed },
+              ]}
+            >
+              971 MMA & Fitness Academy
+            </Text>
+
+            <Text
+              style={[
+                typography.textPresets.homeHero,
+                styles.heroTitle,
+                { color: INTRO_PALETTE.headline, lineHeight: 42 },
+              ]}
+            >
+              Earn your{' '}
+              <Text style={{ color: INTRO_PALETTE.accentGreen }}>level.</Text>
+            </Text>
+
+            <Text
+              style={[
+                typography.textPresets.bodyMedium,
+                styles.body,
+                { color: INTRO_PALETTE.body },
+              ]}
+            >
+              Train BJJ, Muay Thai, boxing, and MMA. Check in, track progress, unlock rewards.
+            </Text>
           </AnimatedView>
 
-          <View style={[styles.actions, { gap: isCompact ? gap.sm : gap.md }]}>
-            <AnimatedView style={loginButtonStyle}>
+          <View style={[styles.actions, { gap: gap.sm }]}>
+            <AnimatedView style={getStartedStyle}>
+              <IntroActionButton
+                label="Get Started"
+                variant="primary"
+                onPress={openAuthRegisterFromIntro}
+              />
+            </AnimatedView>
+
+            <AnimatedView style={loginStyle}>
               <IntroActionButton
                 label="Log In"
-                variant="primary"
+                variant="outline"
                 onPress={openAuthLoginFromIntro}
               />
             </AnimatedView>
 
-            <AnimatedView style={signUpButtonStyle}>
+            <AnimatedView style={guestStyle}>
               <IntroActionButton
-                label="Sign Up"
-                variant="outline"
-                onPress={openAuthRegisterFromIntro}
+                label="Continue as a guest"
+                variant="ghost"
+                onPress={handleContinueAsGuest}
               />
             </AnimatedView>
           </View>
-        </View>
+        </IntroGlassSheet>
       </View>
     </View>
   );
@@ -471,10 +385,6 @@ const styles = StyleSheet.create({
   root: {
     flex: 1,
   },
-  mediaRegion: {
-    overflow: 'hidden',
-    position: 'relative',
-  },
   mediaTopScrim: {
     left: 0,
     position: 'absolute',
@@ -482,27 +392,56 @@ const styles = StyleSheet.create({
     top: 0,
     zIndex: 1,
   },
-  progressRow: {
+  topMarkWrap: {
+    alignItems: 'center',
     left: 0,
     position: 'absolute',
     right: 0,
     top: 0,
     zIndex: 2,
-    flexDirection: 'row',
   },
-  progressTrack: {
+  topLogo: {
+    height: INTRO_TOP_LOGO_WIDTH,
+    width: INTRO_TOP_LOGO_WIDTH,
+  },
+  bottomAnchor: {
     flex: 1,
+    justifyContent: 'flex-end',
+    zIndex: 3,
+  },
+  glassShell: {
+    borderWidth: 0.5,
+    marginTop: -INTRO_SHEET_OVERLAP,
     overflow: 'hidden',
   },
-  progressFill: {
-    height: '100%',
-  },
-  panel: {
-    flexShrink: 0,
+  glassSpecular: {
+    height: 1,
+    left: 0,
+    position: 'absolute',
+    right: 0,
+    top: 0,
     zIndex: 2,
   },
-  panelContent: {
-    width: '100%',
+  glassDim: {
+    ...StyleSheet.absoluteFill,
+    zIndex: 1,
+  },
+  glassContent: {
+    position: 'relative',
+    zIndex: 3,
+  },
+  copyBlock: {
+    alignItems: 'center',
+  },
+  heroTitle: {
+    textAlign: 'center',
+  },
+  kicker: {
+    textAlign: 'center',
+  },
+  body: {
+    maxWidth: 340,
+    textAlign: 'center',
   },
   actions: {
     flexShrink: 0,
@@ -513,8 +452,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: 20,
   },
-  captionRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
+  ghostButton: {
+    marginTop: 2,
   },
 });

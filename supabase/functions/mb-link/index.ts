@@ -1,7 +1,7 @@
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireUser } from '../_shared/jwt.ts';
-import { mbFetch } from '../_shared/mindbody.ts';
+import { mbFetch, getToken } from '../_shared/mindbody.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
 type LinkMethod = 'matched_email' | 'matched_phone' | 'created' | 'manual';
@@ -305,6 +305,16 @@ function filterByExactPhone(clients: MbClient[], phone: string): MbClient[] {
   });
 }
 
+async function mindbodyAutoLinkReady(svc: ReturnType<typeof serviceClient>): Promise<boolean> {
+  if (isSandboxSite()) return true;
+  try {
+    await getToken(svc);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function searchClients(searchText: string): Promise<MbClient[]> {
   const query = new URLSearchParams({
     'request.searchText': searchText,
@@ -547,6 +557,32 @@ Deno.serve(async (req) => {
       );
     } else {
       // No match or ambiguous matches!
+      const autoLinkReady = await mindbodyAutoLinkReady(svc);
+
+      if (matchCount === 0 && !autoLinkReady) {
+        await svc.from('profiles')
+          .update({ account_status: 'activation_required' })
+          .eq('id', user.userId);
+
+        await svc.from('mindbody_link_attempts').insert({
+          user_id: user.userId,
+          verified_email: email,
+          verified_phone: profile.phone,
+          match_basis: matchBasis,
+          match_count: 0,
+          status: 'failed',
+          raw_matches: [{
+            reason: 'mindbody_user_token_unavailable',
+            note: 'Mindbody GetClients searchText requires a user token on production sites.',
+          }],
+        });
+
+        throw new MbError(
+          'MINDBODY_TOKEN_REQUIRED',
+          'Auto-link is unavailable until Mindbody activates the API integration for this site. Ask the front desk to link your account manually.',
+        );
+      }
+
       const status = matchCount > 1 ? 'ambiguous' : 'activation_required';
 
       await svc.from('profiles')

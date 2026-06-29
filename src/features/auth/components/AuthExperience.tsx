@@ -1,4 +1,15 @@
-import React, { forwardRef, useEffect, useState, type ComponentType, type ReactNode } from 'react';
+import React, {
+  createContext,
+  forwardRef,
+  useContext,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ComponentType,
+  type ReactNode,
+  type RefObject,
+} from 'react';
 import {
   ActivityIndicator,
   Platform,
@@ -8,12 +19,12 @@ import {
   TextInput,
   useWindowDimensions,
   View,
+  type ScrollView,
   type TextInputProps,
 } from 'react-native';
 import { Image } from 'expo-image';
-import type { ScrollView } from 'react-native-gesture-handler';
 import { OtpInput, type OtpInputRef } from 'react-native-otp-entry';
-import { AppScrollView, AppBarBackButton } from '@/shared/components/ui';
+import { AppBarBackButton } from '@/shared/components/ui';
 import { MotiPressable } from '@/shared/animations';
 import {
   AlertCircle,
@@ -27,6 +38,7 @@ import {
 import { type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
+  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -47,8 +59,16 @@ import {
 import type { AuthNavigateMode } from '@/features/auth/navigation/authNavigation';
 import { navigateAuth } from '@/features/auth/navigation/authNavigation';
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
-import authBrandMark from '../../../../assets/brand/971-logo-black.png';
+import authBrandMark from '../../../../assets/brand/logo-notext.png';
 import { GoogleLogo } from '@/features/auth/components/GoogleLogo';
+import { useAuthScrollToField } from '@/features/auth/hooks/useAuthScrollToField';
+import { useKeyboardBottomInset } from '@/shared/hooks';
+
+type AuthScrollContextValue = {
+  scrollFieldIntoView: (fieldRef: RefObject<View | null>) => void;
+};
+
+const AuthScrollContext = createContext<AuthScrollContextValue | null>(null);
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -74,8 +94,34 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
 ) {
   const { colors, typography, inset, gap, layout, animations } = useTheme();
   const safeInsets = useSafeAreaInsets();
+  const keyboard = useAnimatedKeyboard();
+  const keyboardBottomInset = useKeyboardBottomInset();
   const { height: windowHeight } = useWindowDimensions();
-  const contentTopOffset = showBackButton ? windowHeight * 0.08 : 0;
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollContentRef = useRef<View>(null);
+  const keyboardOpen = keyboardBottomInset > 0;
+  const contentTopOffset = showBackButton && !keyboardOpen ? windowHeight * 0.08 : 0;
+  const contentPaddingTop = safeInsets.top + inset.md + contentTopOffset;
+  const submitClearance = layout.authButtonHeight + gap.lg + inset.lg;
+  const basePaddingBottom = safeInsets.bottom + inset.xl;
+
+  const animatedScrollContentStyle = useAnimatedStyle(() => ({
+    paddingBottom:
+      basePaddingBottom +
+      (keyboard.height.value > 0 ? keyboard.height.value + submitClearance : 0),
+  }));
+
+  const { scrollFieldIntoView, onScrollOffsetChange } = useAuthScrollToField(
+    scrollRef,
+    scrollContentRef,
+    {
+      keyboardHeight: keyboardBottomInset,
+      windowHeight,
+      contentPaddingTop,
+    },
+  );
+
+  useImperativeHandle(ref, () => scrollRef.current as ScrollView);
 
   const headerStyle = useAuthEntranceAnimation();
   const bodyStyle = useAuthSlideUpAnimation({ delay: animations.duration.instant });
@@ -86,66 +132,75 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
   const logoSize = layout.authBrandMark;
 
   return (
-    <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
-      <AppStatusBar backgroundColor={colors.background.primary} />
-      {showBackButton && onBackPress ? (
-        <View
-          style={[
-            styles.backButtonRoot,
-            {
-              top: safeInsets.top + NAV_CHROME.topInset,
-              left: NAV_CHROME.horizontalInset,
-            },
-          ]}
-          pointerEvents="box-none"
-        >
-          <AppBarBackButton onPress={onBackPress} />
-        </View>
-      ) : null}
-      <AppScrollView
-        ref={ref}
-        style={styles.flex}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="none"
-        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-        contentContainerStyle={[
-          styles.scrollContent,
-          {
-            paddingTop: safeInsets.top + inset.md + contentTopOffset,
-            paddingBottom: safeInsets.bottom + inset.xl,
-            paddingHorizontal: inset.lg,
-          },
-        ]}
-        showsVerticalScrollIndicator={false}
-      >
+    <AuthScrollContext.Provider value={{ scrollFieldIntoView }}>
+      <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
+        <AppStatusBar backgroundColor={colors.background.primary} />
+        {showBackButton && onBackPress ? (
           <View
+            style={[
+              styles.backButtonRoot,
+              {
+                top: safeInsets.top + NAV_CHROME.topInset,
+                left: NAV_CHROME.horizontalInset,
+              },
+            ]}
+            pointerEvents="box-none"
+          >
+            <AppBarBackButton onPress={onBackPress} />
+          </View>
+        ) : null}
+        <Animated.ScrollView
+          ref={scrollRef}
+          style={styles.flex}
+          keyboardShouldPersistTaps="handled"
+          keyboardDismissMode="none"
+          nestedScrollEnabled
+          onScroll={(event) => {
+            onScrollOffsetChange(event.nativeEvent.contentOffset.y);
+          }}
+          scrollEventThrottle={16}
+          contentContainerStyle={[
+            styles.scrollContent,
+            !keyboardOpen && styles.scrollContentGrow,
+            {
+              paddingTop: contentPaddingTop,
+              paddingHorizontal: inset.lg,
+            },
+            animatedScrollContentStyle,
+          ]}
+          showsVerticalScrollIndicator={false}
+        >
+          <View
+            ref={scrollContentRef}
             style={[
               styles.panelWrap,
               {
                 maxWidth: layout.authContentMaxWidth,
-                gap: gap.xl,
+                gap: keyboardOpen ? gap.md : gap.xl,
               },
             ]}
           >
-            <AnimatedView style={[styles.logoWrap, headerStyle]}>
-              <Image
-                source={authBrandMark}
-                contentFit="contain"
-                cachePolicy="memory-disk"
-                style={{
-                  width: logoSize,
-                  height: logoSize,
-                  tintColor: colors.text.primary,
-                }}
-              />
-            </AnimatedView>
+            {!keyboardOpen ? (
+              <AnimatedView style={[styles.logoWrap, headerStyle]}>
+                <Image
+                  source={authBrandMark}
+                  contentFit="contain"
+                  cachePolicy="memory-disk"
+                  style={{
+                    width: logoSize,
+                    height: logoSize,
+                    tintColor: colors.text.primary,
+                  }}
+                />
+              </AnimatedView>
+            ) : null}
 
             <AnimatedView style={[{ gap: gap.sm }, headerStyle]}>
               <Text
                 style={{
                   ...typography.textPresets.authTitle,
-                  fontSize: 34,
-                  lineHeight: 38,
+                  fontSize: keyboardOpen ? 28 : 34,
+                  lineHeight: keyboardOpen ? 32 : 38,
                   letterSpacing: 0,
                   color: colors.text.primary,
                   textAlign: 'center',
@@ -153,15 +208,17 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
               >
                 {title}
               </Text>
-              <Text
-                style={{
-                  ...typography.textPresets.body,
-                  color: colors.text.secondary,
-                  textAlign: 'center',
-                }}
-              >
-                {subtitle}
-              </Text>
+              {!keyboardOpen ? (
+                <Text
+                  style={{
+                    ...typography.textPresets.body,
+                    color: colors.text.secondary,
+                    textAlign: 'center',
+                  }}
+                >
+                  {subtitle}
+                </Text>
+              ) : null}
             </AnimatedView>
 
             <AnimatedView style={[{ gap: gap.md }, bodyStyle]}>{children}</AnimatedView>
@@ -172,8 +229,9 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
               </AnimatedView>
             ) : null}
           </View>
-      </AppScrollView>
-    </View>
+        </Animated.ScrollView>
+      </View>
+    </AuthScrollContext.Provider>
   );
 });
 
@@ -204,6 +262,9 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
   ref,
 ) {
   const { colors, typography, inset, gap, layout, radius } = useTheme();
+  const authScroll = useContext(AuthScrollContext);
+  const keyboardBottomInset = useKeyboardBottomInset();
+  const fieldBlockRef = useRef<View>(null);
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(Boolean(password));
 
@@ -225,8 +286,19 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
     onDomainSuggestionApplied?.();
   }
 
+  function handleFocus(event: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) {
+    setFocused(true);
+    onFocus?.(event);
+    authScroll?.scrollFieldIntoView(fieldBlockRef);
+  }
+
+  useEffect(() => {
+    if (!focused || keyboardBottomInset === 0) return;
+    authScroll?.scrollFieldIntoView(fieldBlockRef);
+  }, [authScroll, focused, keyboardBottomInset]);
+
   return (
-    <View style={{ gap: gap.xs }}>
+    <View ref={fieldBlockRef} style={{ gap: gap.xs }}>
       <Text
         style={{
           ...typography.textPresets.label,
@@ -272,10 +344,7 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
           secureTextEntry={hidden}
           value={value}
           onChangeText={onChangeText}
-          onFocus={(event) => {
-            setFocused(true);
-            onFocus?.(event);
-          }}
+          onFocus={handleFocus}
           onBlur={(event) => {
             setFocused(false);
             onBlur?.(event);
@@ -724,6 +793,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
+    width: '100%',
+  },
+  scrollContentGrow: {
     flexGrow: 1,
   },
   panelWrap: {

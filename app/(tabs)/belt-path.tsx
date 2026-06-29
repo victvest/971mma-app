@@ -11,18 +11,23 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
 
 import { BeltPathAttendanceCard } from '@/features/belt/components/BeltPathAttendanceCard';
 import { BeltPathChallengeCard } from '@/features/belt/components/BeltPathChallengeCard';
 import { BeltPathHistoryCard } from '@/features/belt/components/BeltPathHistoryCard';
+import { BeltPathPendingCard } from '@/features/belt/components/BeltPathPendingCard';
+import { BeltPathRankSnapshot } from '@/features/belt/components/BeltPathRankSnapshot';
 import { BeltPathRequirementCard } from '@/features/belt/components/BeltPathRequirementCard';
 import { BeltPathSectionHeader } from '@/features/belt/components/BeltPathSectionHeader';
 import { BeltPathSectionTitle } from '@/features/belt/components/BeltPathSectionTitle';
 import { CurriculumAscentModule } from '@/features/belt/components/CurriculumAscentModule';
 import {
   BELT_PATH_PREVIEW_CHALLENGES,
+  BELT_PATH_PREVIEW_CURRICULUM,
   BELT_PATH_PREVIEW_PROMOTIONS,
-  BELT_PATH_PREVIEW_REQUIREMENTS,
+  mapCurriculumRanksToAscentStops,
 } from '@/features/belt/data/beltPathPreviewContent';
 import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
 import { useRankEligibility, useMemberDisciplines } from '@/features/auth/hooks/useMemberDisciplines';
@@ -34,8 +39,7 @@ import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
-import { ActiveProfileBanner } from '@/features/guardian/components/ActiveProfileBanner';
-import type { BeltRequirementItem, PromotionItem } from '@/types/domain';
+import type { PromotionItem } from '@/types/domain';
 
 const DEFAULT_8WEEKS_DATA = [0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -90,17 +94,48 @@ export default function BeltPathScreen() {
     ],
   }));
 
-  const summary = beltPathQuery.data;
-  const score = scoreQuery.data;
-  const rankEligible = rankEligibilityQuery.data?.eligible === true;
-  const rankEligibilityKnown = rankEligibilityQuery.data !== undefined;
-  const showNotEligible = rankEligibilityKnown && !rankEligible;
+  const role = useAuthStore((s) => s.role);
+  const userStore = useAuthStore((s) => s.user);
+  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
+
+  const summary = isGuest ? {
+    progress: {
+      userId: 'guest',
+      discipline: 'bjj',
+      rankId: null,
+      rankName: 'Blue Belt',
+      stripe: 2,
+      maxStripes: 4,
+      percent: 65,
+      trainingDays: 24,
+      updatedAt: new Date().toISOString(),
+    },
+    requirements: [],
+    promotions: [],
+    curriculumRanks: [],
+    isPlaceholderCurriculum: false
+  } : beltPathQuery.data;
+
+  const score = isGuest ? {
+    score: 85,
+    trainingDays: 24,
+    trainingDays30d: 12,
+    currentStreak: 3,
+    bestStreak: 8,
+    streakStatus: 'active' as const,
+    monthlyGoalPct: 0.65,
+    computedAt: new Date().toISOString(),
+    isPlaceholderWeights: false,
+  } : scoreQuery.data;
+  const rankEligible = isGuest ? true : (rankEligibilityQuery.data?.eligible === true);
+  const rankEligibilityKnown = isGuest ? true : (rankEligibilityQuery.data !== undefined);
+  const showNotEligible = isGuest ? false : (rankEligibilityKnown && !rankEligible);
 
   const hasError =
-    rankEligibilityQuery.isError || beltPathQuery.isError || scoreQuery.isError || week8Query.isError;
-  const hasData = summary !== undefined && summary !== null;
+    !isGuest && (rankEligibilityQuery.isError || beltPathQuery.isError || scoreQuery.isError || week8Query.isError);
+  const hasData = isGuest || (summary !== undefined && summary !== null);
   const isInitialLoading =
-    (rankEligibilityQuery.isLoading || (rankEligible && beltPathQuery.isLoading) || scoreQuery.isLoading) &&
+    !isGuest && (rankEligibilityQuery.isLoading || (rankEligible && beltPathQuery.isLoading) || scoreQuery.isLoading) &&
     !hasData &&
     !showNotEligible;
   const errorMessage =
@@ -133,13 +168,15 @@ export default function BeltPathScreen() {
 
   const weeksData = useMemo(() => week8Query.data ?? DEFAULT_8WEEKS_DATA, [week8Query.data]);
   const shouldShowCurriculumPending = summary?.isPlaceholderCurriculum === true;
+  const shouldShowRequirementsPending =
+    !shouldShowCurriculumPending && (summary?.requirements.length ?? 0) === 0;
 
-  const displayRequirements = useMemo((): BeltRequirementItem[] => {
-    if (!summary || shouldShowCurriculumPending || summary.requirements.length === 0) {
-      return BELT_PATH_PREVIEW_REQUIREMENTS;
+  const curriculumStops = useMemo(() => {
+    if (summary?.curriculumRanks?.length) {
+      return mapCurriculumRanksToAscentStops(summary.curriculumRanks);
     }
-    return summary.requirements;
-  }, [summary, shouldShowCurriculumPending]);
+    return BELT_PATH_PREVIEW_CURRICULUM;
+  }, [summary?.curriculumRanks]);
 
   const displayPromotions = useMemo((): PromotionItem[] => {
     if (!summary || summary.promotions.length === 0) {
@@ -202,8 +239,6 @@ export default function BeltPathScreen() {
         <Animated.View style={animatedHeroStyle}>
           <BeltPathSectionHeader />
         </Animated.View>
-
-        <ActiveProfileBanner />
 
         {hasError && hasData ? (
           <View style={{ marginBottom: gap.md }}>
@@ -287,13 +322,13 @@ export default function BeltPathScreen() {
                 ) : null}
 
                 {shouldShowCurriculumPending ? (
-                  <View style={[styles.pendingSection, { gap: gap.sm, marginBottom: gap.lg }]}>
-                    <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-                      Curriculum pending
-                    </Text>
-                  </View>
+                  <BeltPathRankSnapshot progress={summary.progress} />
                 ) : (
-                  <CurriculumAscentModule currentRankName={summary.progress.rankName} />
+                  <CurriculumAscentModule
+                    currentRankName={summary.progress.rankName}
+                    currentRankId={summary.progress.rankId}
+                    stops={curriculumStops}
+                  />
                 )}
 
                 <ScreenEntrance>
@@ -310,14 +345,14 @@ export default function BeltPathScreen() {
                 <View style={[styles.section, { gap: gap.sm }]}>
                   <BeltPathSectionTitle title="Requirements" />
                   <View style={[styles.list, { gap: gap.sm }]}>
-                    {shouldShowCurriculumPending ? (
-                      <View style={{ padding: inset.md, alignItems: 'center' }}>
-                        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-                          Requirements pending
-                        </Text>
-                      </View>
+                    {shouldShowRequirementsPending ? (
+                      <BeltPathPendingCard
+                        icon="list-outline"
+                        title={`${summary.progress.rankName} requirements coming soon`}
+                        message="Your coach is configuring stripe requirements for your current rank. Attendance and streaks still count toward your progress."
+                      />
                     ) : (
-                      displayRequirements.map((item) => (
+                      summary.requirements.map((item) => (
                         <BeltPathRequirementCard
                           key={item.id}
                           item={item}
@@ -350,6 +385,14 @@ export default function BeltPathScreen() {
           <ActivityIndicator style={styles.refreshLoader} color={colors.accent.default} />
         ) : null}
       </Animated.ScrollView>
+
+      {isGuest ? (
+        <PremiumLockOverlay
+          title="Martial Arts Journey"
+          description="Your martial arts journey. Link your membership to track your BJJ belts or Wrestling levels, check off requirements, and celebrate promotions."
+          topOffset={scrollTopInset}
+        />
+      ) : null}
     </SafeAreaView>
   );
 }
@@ -400,10 +443,5 @@ const styles = StyleSheet.create({
   },
   switcherButton: {
     flex: 1,
-  },
-  pendingSection: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

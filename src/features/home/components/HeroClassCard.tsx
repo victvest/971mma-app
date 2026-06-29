@@ -7,8 +7,8 @@ import { GlassMediaChip, AppScrollView } from '@/shared/components/ui';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { HomeAnimatedPressable } from '@/features/home/components/HomeAnimatedPressable';
 import { useTheme } from '@/shared/theme';
+import { academyAssets } from '@/features/academy/assets';
 import type { ClassItem } from '@/types/domain';
-import { resolveClassImage } from '@/features/schedule/utils/classImages';
 
 const CARD_PEEK = 20;
 /** Portrait hero ratio (width : height = 4 : 5), scaled down 20% */
@@ -104,7 +104,7 @@ const HeroClassCardItem = memo(function HeroClassCardItem({
   const cardHeight = width * HERO_CARD_HEIGHT_RATIO;
   const actionHeight = layout.coachActionHeight * HERO_ACTION_HEIGHT_SCALE;
 
-  const imageSource = resolveClassImage(classItem.discipline, classItem.imageUrl);
+  const imageSource = academyAssets.homeCarouselHero;
   const { statusText, isLive } = formatClassStatus(classItem);
   const spotsText = formatSpots(classItem);
 

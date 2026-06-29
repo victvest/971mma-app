@@ -1,24 +1,19 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AnnouncementsPanel } from '@/features/announcements/components/AnnouncementsPanel';
-import { AppBar } from '@/shared/components/ui';
-import { useTheme } from '@/shared/theme';
+import { useEffect } from 'react';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 
+/** Legacy route — coaches post directly in the group chat. */
 export default function CoachPostAnnouncementScreen() {
-  const { colors } = useTheme();
+  const router = useRouter();
+  const { channelId } = useLocalSearchParams<{ channelId?: string }>();
+  const initialChannelId = typeof channelId === 'string' ? channelId : undefined;
 
-  return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: colors.background.primary }]}
-      edges={['top']}
-    >
-      <AppBar title="Post announcement" showBackButton />
-      <AnnouncementsPanel canPost />
-    </SafeAreaView>
-  );
+  useEffect(() => {
+    if (initialChannelId) {
+      router.replace(`/communities/${initialChannelId}`);
+      return;
+    }
+    router.replace('/(coach)/communities');
+  }, [initialChannelId, router]);
+
+  return null;
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
-});

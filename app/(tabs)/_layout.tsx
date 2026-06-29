@@ -6,6 +6,8 @@ import { AppTabHeader } from '@/features/home/components/AppTabHeader';
 import { TabStatusBarChrome } from '@/features/home/components/navigation/TabStatusBarChrome';
 import { createStackScreenOptions } from '@/shared/navigation/stackScreenOptions';
 import { useTheme } from '@/shared/theme';
+import { PromotionCelebrationOverlay } from '@/features/belt/components/PromotionCelebrationOverlay';
+import { PersonaAssistantHost } from '@/features/persona';
 
 export default function TabsLayout() {
   const { colors } = useTheme();
@@ -23,8 +25,11 @@ export default function TabsLayout() {
           <Stack.Screen name="belt-path" options={pushOptions} />
         </Stack>
         <AppTabHeader floating={true} blurTargetRef={blurTargetRef} />
+        <PersonaAssistantHost />
       </BlurTargetView>
       <TabStatusBarChrome />
+      <PromotionCelebrationOverlay />
     </View>
   );
 }
+

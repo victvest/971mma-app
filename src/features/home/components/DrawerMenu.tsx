@@ -22,10 +22,12 @@ import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { IOSGlassSurface } from '@/shared/components/ui/IOSGlassSurface';
+import { DrawerMenuHeader } from '@/shared/components/navigation/DrawerMenuHeader';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
+import { useCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
 import { triggerLightImpact } from '@/shared/haptics';
 type NavItem = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -40,7 +42,8 @@ type DrawerMenuProps = {
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: 'people-outline', label: 'Family trainees', route: '/family-trainees' },
+  { icon: 'chatbubbles-outline', label: 'Communities', route: '/communities' },
+  { icon: 'people-outline', label: 'Family profiles', route: '/family-trainees' },
   { icon: 'ribbon-outline', label: 'Belt path', route: '/(tabs)/belt-path' },
   { icon: 'gift-outline', label: 'Rewards', route: '/(tabs)/rewards' },
   { icon: 'information-circle-outline', label: 'About', route: '/about' },
@@ -59,18 +62,20 @@ const OPEN_SPRING = {
 
 type DrawerNavItemProps = {
   item: NavItem;
+  badgeCount?: number;
   onNavigate: (route: string) => void;
 };
 
-const DrawerNavItem = memo(function DrawerNavItem({ item, onNavigate }: DrawerNavItemProps) {
+const DrawerNavItem = memo(function DrawerNavItem({ item, badgeCount = 0, onNavigate }: DrawerNavItemProps) {
   const { colors, typography, inset, gap, animations } = useTheme();
   const handlePress = useCallback(() => onNavigate(item.route), [item.route, onNavigate]);
+  const showBadge = badgeCount > 0;
 
   return (
     <Pressable
       onPressIn={triggerLightImpact}
       onPress={handlePress}
-      accessibilityLabel={item.label}
+      accessibilityLabel={showBadge ? `${item.label}, ${badgeCount} unread` : item.label}
       style={({ pressed }) => [
         styles.navItem,
         {
@@ -85,6 +90,13 @@ const DrawerNavItem = memo(function DrawerNavItem({ item, onNavigate }: DrawerNa
       <Text style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}>
         {item.label}
       </Text>
+      {showBadge ? (
+        <View style={[styles.badge, { backgroundColor: colors.status.error }]}>
+          <Text style={[typography.textPresets.caption, styles.badgeText, { color: colors.text.inverse }]}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 });
@@ -96,6 +108,7 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
   const { drawer } = useResponsiveLayout();
   const role = useAuthStore((s) => s.role);
   const rankEligibilityQuery = useRankEligibility();
+  const { unreadTotal: communityUnreadTotal } = useCommunityUnreadTotal(true);
   const canCoach = role === 'coach' || role === 'admin';
   const navItems = useMemo(
     () =>
@@ -243,24 +256,8 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
               },
             ]}
           >
-            <View style={[styles.drawerHeader, { marginBottom: headerBottomSpacing }]}>
-              <Pressable
-                onPressIn={triggerLightImpact}
-                onPress={requestClose}
-                accessibilityLabel="Close navigation menu"
-                style={({ pressed }) => [
-                  styles.closeBtn,
-                  {
-                    width: layout.appHeaderIconTouch,
-                    height: layout.appHeaderIconTouch,
-                    borderRadius: radius.pill,
-                    backgroundColor: colors.surface.primary,
-                    opacity: pressed ? animations.alpha.pressed : animations.alpha.visible,
-                  },
-                ]}
-              >
-                <Ionicons name="close" size={typography.fontSize.lg} color={colors.text.primary} />
-              </Pressable>
+            <View style={{ marginBottom: headerBottomSpacing }}>
+              <DrawerMenuHeader onClose={requestClose} />
             </View>
 
             <View style={[styles.taglineBlock, { gap: gap.md, marginBottom: gap.lg }]}>
@@ -288,7 +285,12 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
               contentContainerStyle={[styles.navContent, { gap: inset['2xs'], paddingBottom: inset.md }]}
             >
               {navItems.map((item) => (
-                <DrawerNavItem key={item.label} item={item} onNavigate={navigate} />
+                <DrawerNavItem
+                  key={item.label}
+                  item={item}
+                  badgeCount={item.route === '/communities' ? communityUnreadTotal : 0}
+                  onNavigate={navigate}
+                />
               ))}
             </AppScrollView>
 
@@ -341,15 +343,6 @@ const styles = StyleSheet.create({
   panelContent: {
     flex: 1,
   },
-  drawerHeader: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  closeBtn: {
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   taglineBlock: {},
   navScroll: {
     flex: 1,
@@ -362,6 +355,17 @@ const styles = StyleSheet.create({
   navLabel: {
     flex: 1,
     minWidth: 0,
+  },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 999,
+    justifyContent: 'center',
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontWeight: '700',
   },
   footer: {},
   footerBtn: {

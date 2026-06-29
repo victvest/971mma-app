@@ -2,7 +2,7 @@ import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireRole, requireUser } from '../_shared/jwt.ts';
 import { cacheGet, cacheSet, mbFetch } from '../_shared/mindbody.ts';
-import { serviceClient } from '../_shared/supabase.ts';
+import { serviceClient, userClient } from '../_shared/supabase.ts';
 
 const ROSTER_TTL_SEC = 60;
 const GYM_TZ = 'Asia/Dubai';
@@ -135,6 +135,20 @@ Deno.serve(async (req) => {
     const svc = serviceClient();
     const classRow = await resolveClass(svc, body);
     const mindbodyClassId = classRow.mindbody_class_id!;
+
+    if (classRow.id) {
+      const userSvc = userClient(req);
+      const { error: accessError } = await userSvc.rpc('assert_coach_class_access', {
+        p_class_id: classRow.id,
+      });
+      if (accessError) {
+        const message = accessError.message ?? 'Coach is not assigned to this class.';
+        if (message.includes('FORBIDDEN') || message.includes('not assigned')) {
+          throw new MbError('FORBIDDEN', message);
+        }
+        throw new MbError('UPSTREAM_ERROR', message);
+      }
+    }
 
     const cacheKey = `classvisits:${mindbodyClassId}`;
     if (!body.force) {

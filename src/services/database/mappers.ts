@@ -41,6 +41,11 @@ export function mapClassRow(row: ClassRow): ClassItem {
   };
 }
 
+function mapCoachStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+}
+
 export function mapCoachRow(row: CoachRow): CoachItem {
   return {
     id: row.id,
@@ -52,6 +57,12 @@ export function mapCoachRow(row: CoachRow): CoachItem {
     bio: row.bio,
     photoUrl: row.photo_url,
     isHeadCoach: row.is_head_coach,
+    coachingPhilosophy: row.coaching_philosophy,
+    yearsExperience: row.years_experience,
+    fightRecord: row.fight_record,
+    titles: mapCoachStringArray(row.titles),
+    certifications: mapCoachStringArray(row.certifications),
+    languages: row.languages ?? [],
   };
 }
 

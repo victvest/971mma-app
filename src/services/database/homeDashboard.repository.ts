@@ -119,6 +119,42 @@ async function getHomeDashboardFallback(userId: string): Promise<HomeDashboardSu
 }
 
 export async function getHomeDashboardSummary(userId: string): Promise<HomeDashboardSummary> {
+  if (!userId) {
+    const [upcomingClasses, coaches] = await Promise.all([
+      fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT),
+      getCoaches(),
+    ]);
+
+    return {
+      upcomingClasses,
+      coachPreview: coaches.slice(0, HOME_COACH_PREVIEW_LIMIT),
+      points: {
+        userId: '',
+        balance: 0,
+        tier: 'bronze',
+        lifetimePoints: 0,
+        updatedAt: null,
+      },
+      disciplineScore: {
+        score: 0,
+        currentStreak: 0,
+        bestStreak: 0,
+        trainingDays: 0,
+        trainingDays30d: 0,
+        monthlyGoalPct: 0,
+        computedAt: null,
+        isPlaceholderWeights: false,
+      },
+      weekActivity: [],
+      rankEligibility: {
+        eligible: false,
+        disciplineSlug: null,
+        disciplineName: null,
+      },
+      beltProgress: null,
+    };
+  }
+
   let summary: HomeDashboardSummary;
 
   try {

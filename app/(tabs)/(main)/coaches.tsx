@@ -334,6 +334,8 @@ const CoachGridCard = memo(function CoachGridCard({
   );
 });
 
+import { useAuthStore } from '@/stores/useAuthStore';
+
 export default function CoachesScreen() {
   const { colors, inset, gap, layout } = useTheme();
   usePerfRouteMount(PerfMark.routeCoachesMount);

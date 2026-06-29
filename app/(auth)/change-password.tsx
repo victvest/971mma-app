@@ -1,6 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Keyboard, TextInput } from 'react-native';
-import type { ScrollView } from 'react-native-gesture-handler';
 import { useRouter } from 'expo-router';
 import { Check, Lock, ShieldCheck } from 'lucide-react-native';
 import { useAuth } from '@/features/auth/context/AuthContext';
@@ -17,7 +16,6 @@ import { authToast } from '@/shared/components/Toast';
 export default function ChangePasswordScreen() {
   const { updatePassword, signOut, configError, passwordRecoveryActive } = useAuth();
   const router = useRouter();
-  const scrollRef = useRef<ScrollView>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
   const [password, setPassword] = useState('');
@@ -32,12 +30,6 @@ export default function ChangePasswordScreen() {
 
   function focusConfirmPasswordField() {
     confirmPasswordRef.current?.focus();
-  }
-
-  function scrollToConfirmField() {
-    requestAnimationFrame(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
-    });
   }
 
   function showPasswordError(message: string) {
@@ -73,7 +65,6 @@ export default function ChangePasswordScreen() {
 
   return (
     <AuthScreen
-      ref={scrollRef}
       title="Set a new password"
       subtitle={
         passwordRecoveryActive
@@ -109,7 +100,6 @@ export default function ChangePasswordScreen() {
         icon={ShieldCheck}
         returnKeyType="done"
         onSubmitEditing={handleUpdatePassword}
-        onFocus={scrollToConfirmField}
       />
 
       <AuthSubmitButton

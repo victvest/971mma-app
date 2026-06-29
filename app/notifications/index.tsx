@@ -49,7 +49,13 @@ function getNotificationVisuals(type: string, title: string, colors: AppColors) 
   const t = type.toLowerCase();
   const titleLower = title.toLowerCase();
 
-  if (t === 'announcement' || t.includes('announcement') || titleLower.includes('announcement')) {
+  if (
+    t === 'announcement' ||
+    t === 'community' ||
+    t.includes('announcement') ||
+    t.includes('community') ||
+    titleLower.includes('announcement')
+  ) {
     return {
       icon: 'megaphone-outline' as const,
       color: colors.accent.default,
@@ -68,6 +74,18 @@ function getNotificationVisuals(type: string, title: string, colors: AppColors) 
     return {
       icon: 'ribbon-outline' as const,
       color: colors.status.warning,
+    };
+  }
+
+  if (
+    t === 'parent_child' ||
+    t.includes('guardian') ||
+    titleLower.includes('trainee') ||
+    titleLower.includes('checked in')
+  ) {
+    return {
+      icon: 'people-outline' as const,
+      color: colors.accent.default,
     };
   }
 
@@ -315,6 +333,7 @@ export default function NotificationsScreen() {
       }
 
       if (action) {
+        action.beforeNavigate?.();
         router.push(action.href);
       }
     },

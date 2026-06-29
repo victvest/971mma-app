@@ -27,10 +27,14 @@ export function findCoachForProfile(
 }
 
 export function classBelongsToCoach(
-  classItem: Pick<ClassItem, 'coachName' | 'staffMindbodyId'>,
+  classItem: Pick<ClassItem, 'coachId' | 'coachName' | 'staffMindbodyId'>,
   coach: CoachItem | null,
 ): boolean {
   if (!coach) return false;
+
+  if (classItem.coachId) {
+    return classItem.coachId === coach.id;
+  }
 
   if (classItem.staffMindbodyId && coach.mindbodyStaffId) {
     return classItem.staffMindbodyId === coach.mindbodyStaffId;

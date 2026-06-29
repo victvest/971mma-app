@@ -99,13 +99,18 @@ export function useRefreshClassRoster(classId: string | null) {
   });
 }
 
-export function usePromotionCandidates(discipline = 'bjj') {
+export function usePromotionCandidates(
+  discipline: 'bjj' | 'wrestling' | null,
+  options: { enabled?: boolean } = {},
+) {
   const role = useAuthStore((s) => s.role);
+  const queryEnabled =
+    (options.enabled ?? true) && canUseCoachTools(role) && discipline !== null;
 
   return useQuery({
-    queryKey: [...promotionCandidatesKey, discipline],
-    queryFn: () => listPromotionCandidates(discipline),
-    enabled: canUseCoachTools(role),
+    queryKey: [...promotionCandidatesKey, discipline ?? 'none'],
+    queryFn: () => listPromotionCandidates(discipline!),
+    enabled: queryEnabled,
     staleTime: 60 * 1000,
   });
 }

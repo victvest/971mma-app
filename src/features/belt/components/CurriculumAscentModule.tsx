@@ -18,6 +18,7 @@ const SWATCH_HEIGHT = 8;
 
 type Props = {
   currentRankName?: string | null;
+  currentRankId?: string | null;
   stops?: BeltPathCurriculumPreviewItem[];
 };
 
@@ -111,6 +112,7 @@ const CurriculumStop = React.memo(function CurriculumStop({
 
 export function CurriculumAscentModule({
   currentRankName,
+  currentRankId,
   stops = BELT_PATH_PREVIEW_CURRICULUM,
 }: Props) {
   const { typography, gap, inset } = useTheme();
@@ -142,7 +144,10 @@ export function CurriculumAscentModule({
           <CurriculumStop
             key={stop.id}
             stop={stop}
-            isCurrent={stop.rankKey === currentRankKey}
+            isCurrent={
+              (currentRankId != null && stop.id === currentRankId) ||
+              (currentRankId == null && stop.rankKey === currentRankKey)
+            }
             isLast={index === stops.length - 1}
           />
         ))}

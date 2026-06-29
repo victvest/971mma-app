@@ -125,6 +125,22 @@ export async function getClassesByCoach(coach: CoachItem): Promise<ClassItem[]> 
 }
 
 export async function getClassesByCoachId(coachId: string): Promise<ClassItem[]> {
+  const { fromISO, toISO } = gymRangeIso();
+
+  const { data, error } = await getSupabaseClient()
+    .from('classes')
+    .select(CLASS_COLUMNS)
+    .eq('coach_id', coachId)
+    .eq('is_cancelled', false)
+    .gte('starts_at', fromISO)
+    .lte('starts_at', toISO)
+    .order('starts_at', { ascending: true });
+
+  if (error) throw error;
+
+  const byCoachId = ((data ?? []) as ClassRow[]).map(mapClassRow);
+  if (byCoachId.length > 0) return byCoachId;
+
   const coach = await getCoachById(coachId);
   if (!coach) return [];
   return getClassesByCoach(coach);

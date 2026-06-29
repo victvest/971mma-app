@@ -79,6 +79,7 @@
     "check:supabase": "node scripts/check-supabase.mjs",
     "check:mindbody": "node scripts/check-mindbody.mjs",
     "check:mindbody:fresh": "node scripts/check-mindbody.mjs --fresh",
+    "test:mindbody-source": "node scripts/test-mindbody-source.mjs",
     "invoke:edge": "node scripts/invoke-edge.mjs",
     "verify:phase0-performance": "node scripts/verify-phase0-performance.mjs",
     "verify:phase3-connectivity": "node scripts/verify-phase3-connectivity.mjs",
@@ -96,6 +97,7 @@
     "verify:phase11-images": "node scripts/verify-phase11-images.mjs",
     "optimize:images": "node scripts/optimize-bundled-images.mjs",
     "verify:phase11-membership": "node scripts/verify-phase11-membership.mjs",
+    "verify:phase11-community-chat": "node scripts/verify-phase11-community-chat.mjs",
     "verify:phase11-admin": "npm --prefix ../971mma-admin run verify",
     "verify:phase12-guardians": "node scripts/verify-phase12-guardians.mjs",
     "verify:phase12-admin-ops": "node scripts/verify-phase12-admin-ops.mjs",
@@ -113,6 +115,7 @@
     "verify:phase15-acceptance": "node scripts/verify-phase15-acceptance.mjs",
     "verify:phase15-runtime": "node scripts/verify-phase15-runtime.mjs",
     "verify:mindbody-parity": "node scripts/verify-mindbody-parity.mjs",
+    "verify:mindbody-linking": "node scripts/verify-mindbody-linking.mjs",
     "verify:phase16-matrix": "node scripts/verify-phase16-matrix.mjs",
     "verify:roll-call-schema": "node scripts/verify-roll-call-schema.mjs",
     "verify:roll-call-rpc": "node scripts/verify-roll-call-rpc.mjs",
@@ -136,7 +139,8 @@
     "verify:gate-display-ui": "node scripts/verify-gate-display-ui.mjs",
     "verify:gate-scan-ui": "node scripts/verify-gate-scan-ui.mjs",
     "verify:gate-all": "npm run verify:gate-entry",
-    "configure:auth-smtp": "node scripts/configure-auth-smtp.mjs"
+    "configure:auth-smtp": "node scripts/configure-auth-smtp.mjs",
+    "reset:supabase": "bash scripts/reset-supabase-safe.sh"
   },
   "private": true
 }

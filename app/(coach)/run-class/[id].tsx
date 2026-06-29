@@ -9,6 +9,7 @@ import {
   RunClassScanButton,
 } from '@/features/coach/components/RunClassActionPanel';
 import { RunClassMetaCard } from '@/features/coach/components/RunClassMetaCard';
+import { CoachPostClassNotesSection } from '@/features/coach/components/notes/CoachPostClassNotesSection';
 import { HomeAnimatedSection } from '@/features/home/components/HomeAnimatedSection';
 import { AppBar, AppScrollView, NativeButton } from '@/shared/components/ui';
 import {
@@ -177,6 +178,17 @@ export default function CoachRunClassScreen() {
           <HomeAnimatedSection index={2}>
             <RunClassScanButton onPress={openScanner} />
           </HomeAnimatedSection>
+
+          {isRollCallCompleted ? (
+            <HomeAnimatedSection index={3}>
+              <CoachPostClassNotesSection
+                classId={item.id}
+                disciplineId={item.disciplineId}
+                members={rollCallQuery.data?.deck ?? []}
+                enabled={isRollCallCompleted}
+              />
+            </HomeAnimatedSection>
+          ) : null}
         </AppScrollView>
       </View>
     </SafeAreaView>

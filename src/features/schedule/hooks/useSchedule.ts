@@ -7,6 +7,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { gymDayKey, gymRangeIso, gymTodayTomorrowRange } from '@/core/time/gymTime';
 import type { ScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
 import {
@@ -104,9 +105,13 @@ async function runScheduleMirrorSync(
 }
 
 export function useScheduleRefresh(range = gymTodayTomorrowRange()) {
+  const role = useAuthStore((s) => s.role);
+  const isGuest = role === 'guest';
+
   return useQuery({
     queryKey: scheduleRefreshKey(range),
     queryFn: () => runScheduleMirrorSync(range),
+    enabled: !isGuest,
     staleTime: SCHEDULE_MIRROR_STALE_MS,
   });
 }
@@ -138,9 +143,13 @@ export function useScheduleFocusSync(enabled = true) {
   const lastDayKeyRef = useRef(gymDayKey());
   const syncingRef = useRef(false);
 
+  const role = useAuthStore((s) => s.role);
+  const isGuest = role === 'guest';
+  const actualEnabled = enabled && !isGuest;
+
   const sync = useCallback(
     async (force = false) => {
-      if (!enabled || syncingRef.current) return;
+      if (!actualEnabled || syncingRef.current) return;
 
       const now = Date.now();
       const currentDayKey = gymDayKey();

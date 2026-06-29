@@ -1,31 +1,46 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { AppState } from 'react-native';
-import * as Notifications from 'expo-notifications';
+import type { NotificationResponse } from 'expo-notifications';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { isStartupBackgroundWorkComplete } from '@/core/startup/startupBackgroundState';
 import {
+  applyGuardianNotificationContext,
+  guardianNotificationHref,
+} from '@/features/guardian/utils/guardianNotificationNavigation';
+import {
   registerForPushNotifications,
   type PushRegistrationResult,
 } from '../services/pushRegistration';
+import {
+  ensureNotificationHandlerConfigured,
+  getNotificationsModule,
+  isPushNotificationsAvailable,
+} from '../services/notificationsNativeModule';
 
 export type { PushRegistrationResult } from '../services/pushRegistration';
 export { registerForPushNotifications } from '../services/pushRegistration';
-
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowBanner: true,
-    shouldShowList: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
 
 function notificationHref(data: Record<string, unknown>): string | null {
   const url = data.url;
   if (typeof url === 'string' && url.startsWith('/')) return url;
 
-  const type = typeof data.type === 'string' ? data.type : '';
+  const type = typeof data.type === 'string' ? data.type.toLowerCase() : '';
+  if (type === 'parent_child' || type.includes('guardian')) {
+    return guardianNotificationHref(data);
+  }
+  if (type === 'community' || type.includes('community')) {
+    const postId = data.postId ?? data.post_id;
+    const channelId = data.channelId ?? data.channel_id;
+    if (typeof postId === 'string' && postId.trim()) {
+      return `/communities/post/${postId.trim()}`;
+    }
+    if (typeof channelId === 'string' && channelId.trim()) {
+      return `/communities/${channelId.trim()}`;
+    }
+    return '/communities';
+  }
+
   const classId = data.classId ?? data.class_id;
   if (
     (type === 'class_reminder' || type === 'class_cancelled') &&
@@ -42,8 +57,9 @@ export function usePushNotifications() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const handledResponseRef = useRef<string | null>(null);
+  const pushAvailable = isPushNotificationsAvailable();
 
-  const handleResponse = useCallback((response: Notifications.NotificationResponse | null) => {
+  const handleResponse = useCallback((response: NotificationResponse | null) => {
     if (!response) return;
 
     const request = response.notification.request;
@@ -52,21 +68,32 @@ export function usePushNotifications() {
 
     const href = notificationHref(request.content.data ?? {});
     if (href) {
+      const payload = request.content.data ?? {};
+      const type = typeof payload.type === 'string' ? payload.type.toLowerCase() : '';
+      if (type === 'parent_child' || type.includes('guardian')) {
+        applyGuardianNotificationContext(payload);
+      }
       router.push(href);
     }
   }, []);
 
   useEffect(() => {
+    if (!pushAvailable) return undefined;
+
+    const Notifications = getNotificationsModule();
+    if (!Notifications) return undefined;
+
+    ensureNotificationHandlerConfigured();
     handleResponse(Notifications.getLastNotificationResponse());
 
     const subscription = Notifications.addNotificationResponseReceivedListener(handleResponse);
     return () => {
       subscription.remove();
     };
-  }, [handleResponse]);
+  }, [handleResponse, pushAvailable]);
 
   useEffect(() => {
-    if (!isAuthenticated || !userId) return undefined;
+    if (!pushAvailable || !isAuthenticated || !userId) return undefined;
 
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
@@ -77,7 +104,7 @@ export function usePushNotifications() {
     return () => {
       subscription.remove();
     };
-  }, [isAuthenticated, userId]);
+  }, [isAuthenticated, pushAvailable, userId]);
 
   return { registerForPushNotifications };
 }

@@ -1,7 +1,6 @@
 import { useMemo } from 'react';
 import { useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 
 /** Drawer panel height as a fraction of full screen height — consistent on every device. */
 export const DRAWER_HEIGHT_RATIO = 0.9;
@@ -9,11 +8,12 @@ export const DRAWER_HEIGHT_RATIO = 0.9;
 export function useResponsiveLayout() {
   const { width, height } = useWindowDimensions();
   const insets = useSafeAreaInsets();
-  const topInset = useAppTopInset();
 
   return useMemo(() => {
     const drawerHorizontalInset = Math.max(12, width * 0.042);
-    const drawerTop = topInset + Math.max(8, height * 0.012);
+    // Drawer renders in a root Modal (outside the offline banner shell), so always
+    // use the device safe-area inset — not useAppTopInset(), which is 0 when offline.
+    const drawerTop = insets.top + Math.max(8, height * 0.012);
     const drawerHeight = height * DRAWER_HEIGHT_RATIO;
     const drawerRightPeek = Math.max(32, width * 0.1);
     const drawerWidth = Math.max(280, width - drawerHorizontalInset - drawerRightPeek);
@@ -52,5 +52,5 @@ export function useResponsiveLayout() {
       contentBottomInset,
       window: { width, height },
     };
-  }, [height, insets.bottom, topInset, width]);
+  }, [height, insets.bottom, insets.top, width]);
 }

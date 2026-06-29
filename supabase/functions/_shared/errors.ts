@@ -14,7 +14,8 @@ export type MbErrorCode =
   | 'FORBIDDEN'
   | 'OUTSIDE_GEOFENCE'
   | 'AMBIGUOUS_MATCH'
-  | 'CLIENT_OWNED';
+  | 'CLIENT_OWNED'
+  | 'MINDBODY_TOKEN_REQUIRED';
 
 const statusByCode: Record<MbErrorCode, number> = {
   UNAUTHORIZED: 401,
@@ -31,6 +32,7 @@ const statusByCode: Record<MbErrorCode, number> = {
   OUTSIDE_GEOFENCE: 403,
   AMBIGUOUS_MATCH: 409,
   CLIENT_OWNED: 409,
+  MINDBODY_TOKEN_REQUIRED: 503,
 };
 
 export class MbError extends Error {

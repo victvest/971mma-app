@@ -8,6 +8,7 @@ import type { ImageSourcePropType } from 'react-native';
 
 import logoOfficial from '../../../assets/brand/971-logo-official.webp';
 import heroNlbjj from '../../../assets/images/optimized/hero-nlbjj-card.jpg';
+import coachFallbackHero from '../../../assets/images/optimized/coach-fallback-hero.jpg';
 import nextLevelBjj from '../../../assets/images/optimized/next-level-bjj-card.jpg';
 import academyMasterart from '../../../assets/images/optimized/academy-masterart-card.jpg';
 import academyTeam from '../../../assets/images/optimized/academy-team-card.jpg';
@@ -21,6 +22,9 @@ import disciplineYouth from '../../../assets/images/optimized/discipline-youth-c
 export const academyAssets = {
   logoOfficial,
   heroNlbjj,
+  /** Client-favorite coach hero — home carousel (member + coach). */
+  homeCarouselHero: coachFallbackHero,
+  coachFallbackHero,
   nextLevelBjj,
   academyMasterart,
   academyTeam,

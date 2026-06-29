@@ -34,6 +34,7 @@ export default function CoachLayout() {
           <Stack.Screen name="run-class/[id]" options={pushOptions} />
           <Stack.Screen name="scanner" options={pushOptions} />
           <Stack.Screen name="belt-review" options={pushOptions} />
+          <Stack.Screen name="communities" options={pushOptions} />
           <Stack.Screen name="post-announcement" options={pushOptions} />
           <Stack.Screen name="profile" options={pushOptions} />
           <Stack.Screen name="roll-call-preview" options={pushOptions} />
