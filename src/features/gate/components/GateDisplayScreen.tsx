@@ -52,6 +52,7 @@ function GateDisplayContent() {
 
   const token = gateQrQuery.data?.token;
   const loading = !token && (gateQrQuery.isLoading || gateQrQuery.isFetching);
+  const showStaleQr = Boolean(token) && !isOnline;
 
   usePerfOnceReady(PerfMark.gateQrVisible, Boolean(token));
 
@@ -116,6 +117,7 @@ function GateDisplayContent() {
             message="Unable to load the entrance QR. Check the connection and try again."
             actionLabel="Retry"
             onAction={() => void gateQrQuery.refetch()}
+            offlineAwareRetry
           />
         ) : (
           <View
@@ -142,13 +144,27 @@ function GateDisplayContent() {
                   styles.livePill,
                   {
                     borderRadius: radius.pill,
-                    backgroundColor: colors.accent.default + '22',
+                    backgroundColor: showStaleQr
+                      ? colors.status.warning + '22'
+                      : colors.accent.default + '22',
                   },
                 ]}
               >
-                <View style={[styles.liveDot, { backgroundColor: colors.accent.default }]} />
-                <Text style={[typography.textPresets.label, { color: colors.accent.default }]}>
-                  LIVE
+                <View
+                  style={[
+                    styles.liveDot,
+                    {
+                      backgroundColor: showStaleQr ? colors.status.warning : colors.accent.default,
+                    },
+                  ]}
+                />
+                <Text
+                  style={[
+                    typography.textPresets.label,
+                    { color: showStaleQr ? colors.status.warning : colors.accent.default },
+                  ]}
+                >
+                  {showStaleQr ? 'STALE' : 'LIVE'}
                 </Text>
               </View>
             </View>

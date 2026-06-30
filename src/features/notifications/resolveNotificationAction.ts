@@ -52,18 +52,32 @@ export function resolveNotificationAction(item: NotificationItem): NotificationA
     type.includes('reward') ||
     type.includes('redemption')
   ) {
+    const referralId = readPayloadId(payload, ['referralId', 'referral_id']);
+    if (referralId) {
+      return { href: '/referrals', label: 'View referrals' };
+    }
     return { href: '/(tabs)/rewards', label: 'View rewards' };
+  }
+
+  if (type === 'milestone') {
+    const url = readPayloadId(payload, ['url']);
+    return { href: url ?? '/(tabs)/rewards', label: 'View milestones' };
+  }
+
+  if (type === 'streak_warning' || type.includes('streak')) {
+    const url = readPayloadId(payload, ['url']);
+    return { href: url ?? '/(tabs)/rewards', label: 'View streak' };
   }
 
   if (
     type === 'belt' ||
     type === 'progression' ||
     type === 'promotion' ||
-    type === 'milestone' ||
     type.includes('belt') ||
     type.includes('progress')
   ) {
-    return { href: '/(tabs)/belt-path', label: 'View belt path' };
+    const url = readPayloadId(payload, ['url']);
+    return { href: url ?? '/(tabs)/belt-path', label: 'View belt path' };
   }
 
   if (

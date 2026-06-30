@@ -9,6 +9,8 @@ type Props = {
   trackColor: string;
   trackHeight?: number;
   minFillHeight?: number;
+  borderRadius?: number;
+  trackBorderColor?: string;
 };
 
 export function AnimatedBarFill({
@@ -19,11 +21,14 @@ export function AnimatedBarFill({
   trackColor,
   trackHeight = 40,
   minFillHeight = 4,
+  borderRadius = 8,
+  trackBorderColor,
 }: Props) {
   const clamped = Math.max(0, Math.min(100, percent));
   const fillHeight =
     clamped > 0 ? Math.max(minFillHeight, Math.round((clamped / 100) * trackHeight)) : 0;
   const fillColor = isHighlighted && highlightColor ? highlightColor : backgroundColor;
+  const isFull = fillHeight >= trackHeight;
 
   return (
     <View
@@ -31,6 +36,9 @@ export function AnimatedBarFill({
         styles.track,
         {
           backgroundColor: trackColor,
+          borderColor: trackBorderColor,
+          borderRadius,
+          borderWidth: trackBorderColor ? StyleSheet.hairlineWidth : 0,
           height: trackHeight,
         },
       ]}
@@ -42,6 +50,10 @@ export function AnimatedBarFill({
             {
               height: fillHeight,
               backgroundColor: fillColor,
+              borderBottomLeftRadius: borderRadius,
+              borderBottomRightRadius: borderRadius,
+              borderTopLeftRadius: isFull ? borderRadius : 0,
+              borderTopRightRadius: isFull ? borderRadius : 0,
             },
           ]}
         />
@@ -52,13 +64,11 @@ export function AnimatedBarFill({
 
 const styles = StyleSheet.create({
   track: {
-    borderRadius: 4,
     justifyContent: 'flex-end',
     overflow: 'hidden',
     width: '100%',
   },
   fill: {
-    borderRadius: 4,
     width: '100%',
   },
 });

@@ -3,7 +3,6 @@ import React, {
   forwardRef,
   useContext,
   useEffect,
-  useImperativeHandle,
   useRef,
   useState,
   type ComponentType,
@@ -12,14 +11,15 @@ import React, {
 } from 'react';
 import {
   ActivityIndicator,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
   useWindowDimensions,
   View,
-  type ScrollView,
   type TextInputProps,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -38,7 +38,6 @@ import {
 import { type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
-  useAnimatedKeyboard,
   useAnimatedStyle,
   useSharedValue,
   withSequence,
@@ -74,10 +73,13 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
 
 type AuthIcon = ComponentType<LucideProps>;
+type AuthAnimatedStyle = ReturnType<typeof useAuthEntranceAnimation>;
 
 const AUTH_ICON_SIZE = 20;
 const AUTH_ICON_STROKE = 2;
-const PASSWORD_RULE_DOT_SIZE = 6;
+const PASSWORD_RULE_SEGMENT_HEIGHT = 4;
+const AUTH_LOGO_COMPACT_SCALE = 0.7;
+const AUTH_LOGO_REGULAR_SCALE = 0.86;
 
 type AuthScreenProps = {
   title: string;
@@ -88,28 +90,26 @@ type AuthScreenProps = {
   onBackPress?: () => void;
 };
 
-export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthScreen(
-  { title, subtitle, children, footer, showBackButton = false, onBackPress },
-  ref,
-) {
+export function AuthScreen({
+  title,
+  subtitle,
+  children,
+  footer,
+  showBackButton = false,
+  onBackPress,
+}: AuthScreenProps) {
   const { colors, typography, inset, gap, layout, animations } = useTheme();
   const safeInsets = useSafeAreaInsets();
-  const keyboard = useAnimatedKeyboard();
   const keyboardBottomInset = useKeyboardBottomInset();
   const { height: windowHeight } = useWindowDimensions();
   const scrollRef = useRef<ScrollView>(null);
   const scrollContentRef = useRef<View>(null);
-  const keyboardOpen = keyboardBottomInset > 0;
-  const contentTopOffset = showBackButton && !keyboardOpen ? windowHeight * 0.08 : 0;
-  const contentPaddingTop = safeInsets.top + inset.md + contentTopOffset;
-  const submitClearance = layout.authButtonHeight + gap.lg + inset.lg;
-  const basePaddingBottom = safeInsets.bottom + inset.xl;
-
-  const animatedScrollContentStyle = useAnimatedStyle(() => ({
-    paddingBottom:
-      basePaddingBottom +
-      (keyboard.height.value > 0 ? keyboard.height.value + submitClearance : 0),
-  }));
+  const compactHeight = windowHeight < layout.authCompactHeight;
+  const contentPaddingTop = safeInsets.top + (showBackButton ? inset['3xl'] : inset.xl);
+  const scrollPaddingBottom = safeInsets.bottom + (compactHeight ? inset.xl : inset['3xl']);
+  const panelGap = compactHeight ? gap.lg : gap.xl;
+  const logoSize =
+    layout.authBrandMark * (compactHeight ? AUTH_LOGO_COMPACT_SCALE : AUTH_LOGO_REGULAR_SCALE);
 
   const { scrollFieldIntoView, onScrollOffsetChange } = useAuthScrollToField(
     scrollRef,
@@ -121,15 +121,11 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
     },
   );
 
-  useImperativeHandle(ref, () => scrollRef.current as ScrollView);
-
   const headerStyle = useAuthEntranceAnimation();
   const bodyStyle = useAuthSlideUpAnimation({ delay: animations.duration.instant });
   const footerStyle = useAuthEntranceAnimation({
     delay: animations.duration.base + animations.stagger.base,
   });
-
-  const logoSize = layout.authBrandMark;
 
   return (
     <AuthScrollContext.Provider value={{ scrollFieldIntoView }}>
@@ -149,66 +145,61 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
             <AppBarBackButton onPress={onBackPress} />
           </View>
         ) : null}
-        <Animated.ScrollView
-          ref={scrollRef}
+        <KeyboardAvoidingView
           style={styles.flex}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="none"
-          nestedScrollEnabled
-          onScroll={(event) => {
-            onScrollOffsetChange(event.nativeEvent.contentOffset.y);
-          }}
-          scrollEventThrottle={16}
-          contentContainerStyle={[
-            styles.scrollContent,
-            !keyboardOpen && styles.scrollContentGrow,
-            {
-              paddingTop: contentPaddingTop,
-              paddingHorizontal: inset.lg,
-            },
-            animatedScrollContentStyle,
-          ]}
-          showsVerticalScrollIndicator={false}
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={0}
         >
-          <View
-            ref={scrollContentRef}
-            style={[
-              styles.panelWrap,
+          <ScrollView
+            ref={scrollRef}
+            style={styles.flex}
+            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
+            nestedScrollEnabled
+            onScroll={(event) => {
+              onScrollOffsetChange(event.nativeEvent.contentOffset.y);
+            }}
+            scrollEventThrottle={16}
+            contentContainerStyle={[
+              styles.scrollContent,
               {
-                maxWidth: layout.authContentMaxWidth,
-                gap: keyboardOpen ? gap.md : gap.xl,
+                paddingTop: contentPaddingTop,
+                paddingHorizontal: inset.lg,
+                paddingBottom: scrollPaddingBottom,
               },
             ]}
+            showsVerticalScrollIndicator={false}
           >
-            {!keyboardOpen ? (
-              <AnimatedView style={[styles.logoWrap, headerStyle]}>
-                <Image
-                  source={authBrandMark}
-                  contentFit="contain"
-                  cachePolicy="memory-disk"
-                  style={{
-                    width: logoSize,
-                    height: logoSize,
-                    tintColor: colors.text.primary,
-                  }}
-                />
-              </AnimatedView>
-            ) : null}
+            <View
+              ref={scrollContentRef}
+              style={[
+                styles.panelWrap,
+                {
+                  maxWidth: layout.authContentMaxWidth,
+                  gap: panelGap,
+                },
+              ]}
+            >
+              <AuthBrandMark
+                size={logoSize}
+                tintColor={colors.text.primary}
+                animatedStyle={headerStyle}
+              />
 
-            <AnimatedView style={[{ gap: gap.sm }, headerStyle]}>
-              <Text
-                style={{
-                  ...typography.textPresets.authTitle,
-                  fontSize: keyboardOpen ? 28 : 34,
-                  lineHeight: keyboardOpen ? 32 : 38,
-                  letterSpacing: 0,
-                  color: colors.text.primary,
-                  textAlign: 'center',
-                }}
-              >
-                {title}
-              </Text>
-              {!keyboardOpen ? (
+              <AnimatedView style={[styles.copyBlock, { gap: gap.sm }, headerStyle]}>
+                <Text
+                  style={{
+                    ...typography.textPresets.authTitle,
+                    fontSize: 34,
+                    lineHeight: 38,
+                    letterSpacing: 0,
+                    color: colors.text.primary,
+                    textAlign: 'center',
+                  }}
+                >
+                  {title}
+                </Text>
                 <Text
                   style={{
                     ...typography.textPresets.body,
@@ -218,22 +209,49 @@ export const AuthScreen = forwardRef<ScrollView, AuthScreenProps>(function AuthS
                 >
                   {subtitle}
                 </Text>
-              ) : null}
-            </AnimatedView>
-
-            <AnimatedView style={[{ gap: gap.md }, bodyStyle]}>{children}</AnimatedView>
-
-            {footer ? (
-              <AnimatedView style={[{ gap: gap.sm, alignItems: 'center' }, footerStyle]}>
-                {footer}
               </AnimatedView>
-            ) : null}
-          </View>
-        </Animated.ScrollView>
+
+              <AnimatedView style={[styles.formStack, { gap: gap.md }, bodyStyle]}>
+                {children}
+              </AnimatedView>
+
+              {footer ? (
+                <AnimatedView style={[styles.footerStack, { gap: gap.sm }, footerStyle]}>
+                  {footer}
+                </AnimatedView>
+              ) : null}
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
       </View>
     </AuthScrollContext.Provider>
   );
-});
+}
+
+function AuthBrandMark({
+  size,
+  tintColor,
+  animatedStyle,
+}: {
+  size: number;
+  tintColor: string;
+  animatedStyle: AuthAnimatedStyle;
+}) {
+  return (
+    <AnimatedView style={[styles.logoWrap, animatedStyle]}>
+      <Image
+        source={authBrandMark}
+        contentFit="contain"
+        cachePolicy="memory-disk"
+        style={{
+          width: size,
+          height: size,
+          tintColor,
+        }}
+      />
+    </AnimatedView>
+  );
+}
 
 type AuthTextFieldProps = TextInputProps & {
   label: string;
@@ -268,11 +286,19 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(Boolean(password));
 
-  const emailValue = typeof value === 'string' ? value : '';
-  const showDomainSuggestion = !password && shouldShowEmailDomainSuggestion(emailValue);
-  const showPasswordRulesActive = showPasswordRules && emailValue.length > 0;
-  const passwordRules = getPasswordRules(emailValue);
-  const passwordRuleMet = [passwordRules.minLength, passwordRules.hasLetter, passwordRules.hasNumber];
+  const textValue = typeof value === 'string' ? value : '';
+  const isEmailField =
+    rest.keyboardType === 'email-address' ||
+    rest.autoComplete === 'email' ||
+    rest.textContentType === 'emailAddress';
+  const showDomainSuggestion =
+    isEmailField && !password && shouldShowEmailDomainSuggestion(textValue);
+  const passwordRules = getPasswordRules(textValue);
+  const passwordRuleMet = [
+    passwordRules.minLength,
+    passwordRules.hasLetter,
+    passwordRules.hasNumber,
+  ];
 
   const iconColor = hasError
     ? colors.status.error
@@ -281,7 +307,7 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
       : colors.text.tertiary;
 
   function handleDomainSuggestionPress() {
-    const nextEmail = applyEmailDomainSuggestion(emailValue);
+    const nextEmail = applyEmailDomainSuggestion(textValue);
     onChangeText?.(nextEmail);
     onDomainSuggestionApplied?.();
   }
@@ -341,6 +367,8 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
             style,
           ]}
           placeholderTextColor={colors.text.tertiary}
+          cursorColor={colors.accent.default}
+          selectionColor={colors.accent.default}
           secureTextEntry={hidden}
           value={value}
           onChangeText={onChangeText}
@@ -369,32 +397,63 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
             </Text>
           </Pressable>
         ) : null}
-        {showPasswordRulesActive ? (
-          <View style={[styles.passwordRulesInline, { gap: 4 }]}>
-            {passwordRuleMet.map((isMet, index) => (
-              <View
-                key={index}
-                style={[
-                  styles.passwordRuleDot,
-                  { backgroundColor: isMet ? colors.accent.default : colors.status.error },
-                ]}
-              />
-            ))}
-          </View>
-        ) : null}
         {password ? (
-          <Pressable onPress={() => setHidden((current) => !current)} hitSlop={inset.sm}>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={hidden ? 'Show password' : 'Hide password'}
+            onPress={() => setHidden((current) => !current)}
+            hitSlop={inset.sm}
+          >
             {hidden ? (
-              <Eye size={AUTH_ICON_SIZE} color={colors.text.tertiary} strokeWidth={AUTH_ICON_STROKE} />
+              <Eye
+                size={AUTH_ICON_SIZE}
+                color={colors.text.tertiary}
+                strokeWidth={AUTH_ICON_STROKE}
+              />
             ) : (
-              <EyeOff size={AUTH_ICON_SIZE} color={colors.text.tertiary} strokeWidth={AUTH_ICON_STROKE} />
+              <EyeOff
+                size={AUTH_ICON_SIZE}
+                color={colors.text.tertiary}
+                strokeWidth={AUTH_ICON_STROKE}
+              />
             )}
           </Pressable>
         ) : null}
       </View>
+      {showPasswordRules ? (
+        <AuthPasswordRuleMeter active={textValue.length > 0} rules={passwordRuleMet} />
+      ) : null}
     </View>
   );
 });
+
+function AuthPasswordRuleMeter({ active, rules }: { active: boolean; rules: boolean[] }) {
+  const { colors, gap } = useTheme();
+
+  return (
+    <View
+      accessibilityLabel="Password strength"
+      accessibilityValue={{ text: `${rules.filter(Boolean).length} of ${rules.length} rules met` }}
+      style={[styles.passwordRuleMeter, { gap: gap.xs }]}
+    >
+      {rules.map((isMet, index) => (
+        <View
+          key={index}
+          style={[
+            styles.passwordRuleSegment,
+            {
+              backgroundColor: !active
+                ? colors.border.default
+                : isMet
+                  ? colors.accent.default
+                  : colors.status.error,
+            },
+          ]}
+        />
+      ))}
+    </View>
+  );
+}
 
 type AuthOtpInputProps = {
   onChange: (code: string) => void;
@@ -489,6 +548,7 @@ export function AuthGoogleButton({ onPress, loading, disabled }: AuthGoogleButto
     <AnimatedPressable
       accessibilityRole="button"
       accessibilityLabel="Continue with Google"
+      accessibilityState={{ disabled: inactive }}
       disabled={inactive}
       onPress={onPress}
       onPressIn={() => {
@@ -537,7 +597,7 @@ export function AuthGoogleButton({ onPress, loading, disabled }: AuthGoogleButto
 }
 
 export function AuthOrDivider() {
-  const { colors, typography, inset, gap } = useTheme();
+  const { colors, typography, inset } = useTheme();
 
   return (
     <View style={styles.orDivider}>
@@ -583,13 +643,14 @@ export function AuthSubmitButton({
     transform: [{ scale: scale.value }],
   }));
 
-  const foreground = isPrimary || isDanger
-    ? inactive
-      ? colors.text.tertiary
-      : colors.accent.onAccent
-    : inactive
-      ? colors.text.tertiary
-      : colors.text.primary;
+  const foreground =
+    isPrimary || isDanger
+      ? inactive
+        ? colors.text.tertiary
+        : colors.accent.onAccent
+      : inactive
+        ? colors.text.tertiary
+        : colors.text.primary;
 
   const backgroundColor = isDanger
     ? inactive
@@ -601,17 +662,19 @@ export function AuthSubmitButton({
         : colors.accent.default
       : 'transparent';
 
-  const borderColor = isDanger
-    ? inactive
-      ? colors.fill.secondary
-      : colors.status.error
-    : isPrimary
-      ? colors.accent.default
-      : colors.border.default;
+  const borderColor = inactive
+    ? colors.fill.secondary
+    : isDanger
+      ? colors.status.error
+      : isPrimary
+        ? colors.accent.default
+        : colors.border.default;
 
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: inactive }}
       disabled={inactive}
       onPress={onPress}
       onPressIn={() => {
@@ -648,9 +711,7 @@ export function AuthSubmitButton({
           >
             {label}
           </Text>
-          {isPrimary || isDanger ? (
-            <Icon size={18} color={foreground} strokeWidth={2.5} />
-          ) : null}
+          {isPrimary || isDanger ? <Icon size={18} color={foreground} strokeWidth={2.5} /> : null}
         </>
       )}
     </AnimatedPressable>
@@ -745,11 +806,16 @@ type AuthFooterPromptProps = {
   navigate?: Exclude<AuthNavigateMode, 'back'>;
 };
 
-export function AuthFooterPrompt({ prompt, href, actionLabel, navigate = 'replace' }: AuthFooterPromptProps) {
+export function AuthFooterPrompt({
+  prompt,
+  href,
+  actionLabel,
+  navigate = 'replace',
+}: AuthFooterPromptProps) {
   const { colors, typography, gap } = useTheme();
 
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: gap.xs }}>
+    <View style={[styles.footerPrompt, { gap: gap.xs }]}>
       <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>{prompt}</Text>
       <AuthLink href={href} label={actionLabel} navigate={navigate} />
     </View>
@@ -769,6 +835,7 @@ export function AuthBackLink({ href, label, navigate = 'back' }: AuthBackLinkPro
     <Pressable
       accessibilityRole="button"
       onPress={() => navigateAuth(href, navigate)}
+      hitSlop={inset.xs}
       style={{
         flexDirection: 'row',
         alignItems: 'center',
@@ -793,10 +860,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   scrollContent: {
-    width: '100%',
-  },
-  scrollContentGrow: {
     flexGrow: 1,
+    justifyContent: 'center',
+    width: '100%',
   },
   panelWrap: {
     width: '100%',
@@ -810,9 +876,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     width: '100%',
   },
+  copyBlock: {
+    width: '100%',
+  },
+  formStack: {
+    width: '100%',
+  },
+  footerStack: {
+    alignItems: 'center',
+    width: '100%',
+  },
   field: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
   input: {
     flex: 1,
@@ -830,14 +907,21 @@ const styles = StyleSheet.create({
   messageText: {
     flex: 1,
   },
-  passwordRulesInline: {
+  passwordRuleMeter: {
     flexDirection: 'row',
     alignItems: 'center',
+    width: '100%',
   },
-  passwordRuleDot: {
-    width: PASSWORD_RULE_DOT_SIZE,
-    height: PASSWORD_RULE_DOT_SIZE,
-    borderRadius: PASSWORD_RULE_DOT_SIZE / 2,
+  passwordRuleSegment: {
+    flex: 1,
+    height: PASSWORD_RULE_SEGMENT_HEIGHT,
+    borderRadius: PASSWORD_RULE_SEGMENT_HEIGHT / 2,
+  },
+  footerPrompt: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'center',
   },
   googleButton: {
     flexDirection: 'row',

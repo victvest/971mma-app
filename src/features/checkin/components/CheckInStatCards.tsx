@@ -5,6 +5,7 @@ import { BadgeCheck, Dumbbell, Flame } from 'lucide-react-native';
 import { SkeletonRect } from '@/shared/animations/SkeletonLoader';
 import { HomeElevatedCard } from '@/features/home/components/HomeElevatedCard';
 import { useTheme, radii } from '@/shared/theme';
+import { formatMembershipExpiry } from '@/features/checkin/utils/memberDisplay';
 import type { DisciplineScoreSummary, MembershipSummary } from '@/types/domain';
 
 type Props = {
@@ -25,10 +26,12 @@ function membershipHeadline(membership: MembershipSummary | undefined): string {
 }
 
 function membershipFootnote(membership: MembershipSummary | undefined): string {
-  if (!membership?.planName) {
-    return membership?.status === 'active' ? 'Membership active' : 'No active plan';
-  }
-  return membership.planName;
+  const expiry = formatMembershipExpiry(membership?.expiresAt);
+  if (expiry) return expiry;
+  if (membership?.status === 'active') return 'Renewal date syncing from Mindbody';
+  if (membership?.status === 'paused') return 'Membership paused';
+  if (membership?.status === 'expired') return 'Membership expired';
+  return 'No active plan';
 }
 
 function membershipValueColor(

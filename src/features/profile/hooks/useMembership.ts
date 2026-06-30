@@ -9,6 +9,7 @@ import {
 } from '@/lib/queryCachePolicy';
 import { shouldInvalidateAfterMirrorSync } from '@/lib/queryRefresh';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { profileKey } from '@/features/profile/hooks/useProfile';
 
 export const membershipKey = (userId: string) => ['membership', userId] as const;
 export const membershipRefreshKey = (userId: string) => ['membership-refresh', userId] as const;
@@ -39,7 +40,10 @@ export function useMembershipRefresh(enabled = true) {
         activeMemberId !== authUserId ? { targetUserId: activeMemberId } : undefined,
       );
       if (shouldInvalidateAfterMirrorSync(result)) {
-        await queryClient.invalidateQueries({ queryKey: membershipKey(activeMemberId) });
+        await Promise.all([
+          queryClient.invalidateQueries({ queryKey: membershipKey(activeMemberId) }),
+          queryClient.invalidateQueries({ queryKey: profileKey(activeMemberId) }),
+        ]);
       }
       return result;
     },

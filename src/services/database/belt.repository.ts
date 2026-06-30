@@ -99,6 +99,14 @@ export async function getBeltPathSummary(
   if (discError) throw discError;
   const disciplineId = discData?.id;
 
+  if (disciplineId) {
+    try {
+      await refreshBeltProgress(userId, discipline);
+    } catch {
+      // Rank system may not be configured for this discipline yet.
+    }
+  }
+
   const [disciplineScore, progressResult, promotionsResult] = await Promise.all([
     getDisciplineScore(userId),
     disciplineId
@@ -123,7 +131,7 @@ export async function getBeltPathSummary(
   if (progressResult.error) throw progressResult.error;
   if (promotionsResult.error) throw promotionsResult.error;
 
-  let progressRow = progressResult.data as {
+  const progressRow = progressResult.data as {
     user_id: string;
     discipline_id: string;
     rank_level_id: string;
@@ -131,22 +139,6 @@ export async function getBeltPathSummary(
     percent_complete: number;
     updated_at: string;
   } | null;
-
-  if (disciplineId && !progressRow) {
-    try {
-      await refreshBeltProgress(userId, discipline);
-      const { data: seededProgress, error: seededError } = await getSupabaseClient()
-        .from('member_rank_progress')
-        .select('user_id, discipline_id, rank_level_id, stripe, percent_complete, updated_at')
-        .eq('user_id', userId)
-        .eq('discipline_id', disciplineId)
-        .maybeSingle();
-      if (seededError) throw seededError;
-      progressRow = seededProgress;
-    } catch {
-      // Rank system may not be configured for this discipline yet.
-    }
-  }
 
   const trainingDays = disciplineScore.trainingDays;
   const rankId = progressRow?.rank_level_id ?? defaultRank?.id ?? null;
@@ -222,6 +214,9 @@ export async function getBeltPathSummary(
 
   const curriculumRanks = [...rankMap.values()].sort((a, b) => a.order - b.order);
   const isPlaceholderCurriculum = curriculumRanks.length === 0;
+  const hasConfiguredRequirements = requirements.length > 0;
+  const targetStripe =
+    progress.stripe < progress.maxStripes ? progress.stripe + 1 : progress.maxStripes;
 
   const promotions: PromotionItem[] = ((promotionsResult.data ?? []) as any[]).map(
     (row) => ({
@@ -241,6 +236,8 @@ export async function getBeltPathSummary(
     promotions,
     curriculumRanks,
     isPlaceholderCurriculum,
+    hasConfiguredRequirements,
+    targetStripe,
   };
 }
 

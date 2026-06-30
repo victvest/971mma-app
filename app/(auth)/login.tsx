@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { authToast } from '@/shared/components/Toast';
 import {
   AuthGoogleButton,
+  AuthFooterPrompt,
   AuthLink,
   AuthOrDivider,
   AuthScreen,
@@ -42,14 +43,6 @@ export default function LoginScreen() {
 
   function focusPasswordField() {
     passwordRef.current?.focus();
-  }
-
-  function handleEmailChange(text: string) {
-    const wasValid = !validateEmail(email);
-    setEmail(text);
-    if (!wasValid && !validateEmail(text)) {
-      focusPasswordField();
-    }
   }
 
   async function handleSignIn() {
@@ -90,6 +83,7 @@ export default function LoginScreen() {
     try {
       const result = await signInWithGoogle();
       if (result.cancelled) return;
+      if (result.recovery) return;
       if (result.error) {
         authToast.error('Google Sign In Failed', result.error);
       }
@@ -106,6 +100,13 @@ export default function LoginScreen() {
       subtitle="Sign in to your account."
       showBackButton
       onBackPress={handleBack}
+      footer={
+        <AuthFooterPrompt
+          prompt="New here?"
+          href={authRoutes.register}
+          actionLabel="Create account"
+        />
+      }
     >
       <AuthGoogleButton
         onPress={handleGoogleSignIn}
@@ -119,7 +120,7 @@ export default function LoginScreen() {
         ref={emailRef}
         label="Email"
         value={email}
-        onChangeText={handleEmailChange}
+        onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"

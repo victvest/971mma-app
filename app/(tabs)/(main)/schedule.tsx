@@ -43,6 +43,13 @@ import {
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
 import type { ClassItem } from '@/types/domain';
@@ -179,6 +186,8 @@ export default function ScheduleScreen() {
     });
   }, [scheduleQuery]);
 
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
+
   const classes = useMemo(() => {
     return scheduleQuery.data?.pages.flat() ?? [];
   }, [scheduleQuery.data?.pages]);
@@ -223,10 +232,17 @@ export default function ScheduleScreen() {
   );
 
   const isInitialLoading =
-    !scheduleQuery.data && (refreshQuery.isFetching || scheduleQuery.isPending);
+    !scheduleQuery.data &&
+    isQueryActivelyLoading(scheduleQuery.isLoading, scheduleQuery.isFetching || refreshQuery.isFetching);
   const errorMessage = refreshQuery.error instanceof Error ? refreshQuery.error.message : null;
   const hasError = !!refreshQuery.error;
   const hasData = classes.length > 0;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
 
   usePerfOnceReady(PerfMark.routeScheduleFirstContent, !isInitialLoading);
 
@@ -263,6 +279,7 @@ export default function ScheduleScreen() {
               message={errorMessage}
               actionLabel="Retry"
               onAction={handleRetry}
+              offlineAwareRetry
             />
           </View>
         ) : null}
@@ -331,15 +348,27 @@ export default function ScheduleScreen() {
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
-      {hasError && !hasData && !isInitialLoading ? (
+      {isOfflineBlocked ? (
         <View style={[styles.centered, screenPadding]}>
           <StateBlock
             kind="error"
-            title="Schedule unavailable"
-            message={errorMessage ?? 'Please check your connection.'}
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
             actionLabel="Retry"
             onAction={handleRetry}
+            offlineAwareRetry
           />
+        </View>
+      ) : hasError && !hasData && !isInitialLoading ? (
+        <View style={[styles.centered, screenPadding]}>
+            <StateBlock
+              kind="error"
+              title="Schedule unavailable"
+              message={errorMessage ?? 'Please check your connection.'}
+              actionLabel="Retry"
+              onAction={handleRetry}
+              offlineAwareRetry
+            />
         </View>
       ) : (
         <LoadingCrossfade

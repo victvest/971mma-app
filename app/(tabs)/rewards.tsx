@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
-import { useRouter } from 'expo-router';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
@@ -22,8 +22,8 @@ import {
 import { toast } from '@/shared/components/Toast';
 import { useDialog } from '@/shared/components/Dialog';
 import { triggerSuccessNotification, triggerLightImpact } from '@/shared/haptics';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { MilestoneRow } from '@/features/rewards/components/MilestoneRow';
 import { PointsBalanceCard } from '@/features/rewards/components/PointsBalanceCard';
 import { RewardCatalogCard } from '@/features/rewards/components/RewardCatalogCard';
@@ -38,10 +38,17 @@ import {
   useRedemptions,
 } from '@/features/rewards/hooks/useRewards';
 import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useDisciplineScore, useGymWeekActivity } from '@/features/home/hooks/useHomeDashboard';
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { AppScrollView } from '@/shared/components/ui';
 import type {
   DisciplineScoreSummary,
@@ -182,7 +189,6 @@ function getLedgerReasonLabel(reason: PointsLedgerItem['reason']): string {
   if (reason === 'milestone') return 'Milestone award';
   if (reason === 'promotion') return 'Promotion award';
   if (reason === 'referral') return 'Referral award';
-  if (reason === 'birthday') return 'Birthday award';
   if (reason === 'adjustment') return 'Adjustment';
   return 'Bonus';
 }
@@ -192,7 +198,6 @@ function getLedgerIcon(reason: PointsLedgerItem['reason']): React.ComponentProps
   if (reason === 'milestone') return 'medal-outline';
   if (reason === 'promotion') return 'ribbon-outline';
   if (reason === 'referral') return 'person-add-outline';
-  if (reason === 'birthday') return 'sparkles-outline';
   if (reason === 'adjustment') return 'swap-horizontal-outline';
   if (reason === 'bonus') return 'add-circle-outline';
   return 'checkmark-circle-outline';
@@ -405,6 +410,8 @@ export default function RewardsScreen() {
   }));
 
   const viewingChild = useIsViewingChildProfile();
+  const accountStatus = useAuthStore((s) => s.user?.accountStatus ?? 'registered');
+  const canOpenReferrals = accountStatus === 'active' && !viewingChild;
   const pointsQuery = usePoints();
   const milestonesQuery = useMilestones();
   const catalogQuery = useCatalog();
@@ -413,38 +420,36 @@ export default function RewardsScreen() {
   const redeemMutation = useRedeem();
   const scoreQuery = useDisciplineScore();
   const weekActivityQuery = useGymWeekActivity();
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const [refreshing, setRefreshing] = useState(false);
 
-  const role = useAuthStore((s) => s.role);
-  const userStore = useAuthStore((s) => s.user);
-  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
+  const { isAnonymousGuest, needsActivation, hasLimitedAccess } = useIsGuest();
+  const { prompt, sheet } = useAccountActionSheet();
 
-  const mockScore = {
-    score: 85,
-    trainingDays: 15,
-    trainingDays30d: 8,
-    currentStreak: 3,
-    bestStreak: 8,
-    streakStatus: 'active' as const,
-    monthlyGoalPct: 0.5,
-    computedAt: new Date().toISOString(),
-    isPlaceholderWeights: false,
-  };
-  const mockWeekActivity: GymDayActivity[] = [];
+  useFocusEffect(
+    useCallback(() => {
+      if (!needsActivation && !isAnonymousGuest) return;
+      prompt('earn-rewards');
+      const timer = setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }, [isAnonymousGuest, needsActivation, prompt, router]),
+  );
 
-  const account = isGuest ? {
-    balance: 1250,
-    tier: 'silver' as const,
-    lifetimePoints: 2500,
-  } : (pointsQuery.data ?? {
+  const account = pointsQuery.data ?? {
     balance: 0,
     tier: 'bronze' as const,
     lifetimePoints: 0,
-  });
+  };
 
   const pendingRewardId = redeemMutation.variables ?? null;
-  const trainingDays = isGuest ? 15 : (scoreQuery.data?.trainingDays ?? 0);
+  const trainingDays = scoreQuery.data?.trainingDays ?? 0;
 
   const errorMessage =
     redeemMutation.error && typeof redeemMutation.error === 'object' && 'message' in redeemMutation.error
@@ -453,8 +458,8 @@ export default function RewardsScreen() {
 
   const milestones = useMemo(() => milestonesQuery.data ?? [], [milestonesQuery.data]);
   const rewards = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
-  const redemptions = useMemo(() => isGuest ? [] : (redemptionsQuery.data ?? []), [redemptionsQuery.data, isGuest]);
-  const ledgerItems = useMemo(() => isGuest ? [] : (ledgerQuery.data ?? []), [ledgerQuery.data, isGuest]);
+  const redemptions = useMemo(() => redemptionsQuery.data ?? [], [redemptionsQuery.data]);
+  const ledgerItems = useMemo(() => ledgerQuery.data ?? [], [ledgerQuery.data]);
 
   const sortedMilestones = useMemo(() => {
     return [...milestones].sort((a, b) => a.unlockDays - b.unlockDays);
@@ -469,13 +474,17 @@ export default function RewardsScreen() {
   const redemptionList = useMemo(() => buildRedemptionList(redemptions), [redemptions]);
 
   const streakInsights = useMemo(
-    () => buildStreakInsights(isGuest ? mockScore : scoreQuery.data, isGuest ? mockWeekActivity : (weekActivityQuery.data ?? []), sortedMilestones),
-    [scoreQuery.data, sortedMilestones, weekActivityQuery.data, isGuest],
+    () => buildStreakInsights(scoreQuery.data, weekActivityQuery.data ?? [], sortedMilestones),
+    [scoreQuery.data, sortedMilestones, weekActivityQuery.data],
   );
 
   const handleRedeem = useCallback(
     (rewardId: string) => {
       if (viewingChild) return;
+      if (hasLimitedAccess) {
+        prompt('earn-rewards');
+        return;
+      }
 
       const reward = rewards.find((item) => item.id === rewardId);
       if (!reward) return;
@@ -493,7 +502,7 @@ export default function RewardsScreen() {
         { confirmLabel: 'Redeem' },
       );
     },
-    [redeemMutation, rewards, showConfirm, viewingChild],
+    [hasLimitedAccess, prompt, redeemMutation, rewards, showConfirm, viewingChild],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -556,6 +565,12 @@ export default function RewardsScreen() {
     catalogQuery.data !== undefined;
 
   const isInitialLoading = loading && !hasData;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
 
   const scrollPadding = useMemo(
     () => ({
@@ -578,6 +593,10 @@ export default function RewardsScreen() {
             : ledgerQuery.error instanceof Error
               ? ledgerQuery.error.message
               : 'Please check your connection.';
+
+  if (needsActivation || isAnonymousGuest) {
+    return sheet;
+  }
 
   return (
     <SafeAreaView
@@ -610,7 +629,21 @@ export default function RewardsScreen() {
             </Text>
           </Animated.View>
 
-          <View style={styles.floatingNavSide} />
+          <View style={styles.floatingNavSide}>
+            {canOpenReferrals ? (
+              <GlassNavChrome
+                onPress={() => {
+                  triggerLightImpact();
+                  router.push('/referrals');
+                }}
+                accessibilityLabel="Refer a friend"
+                style={styles.floatingNavButton}
+                contentStyle={styles.floatingNavButtonInner}
+              >
+                <Ionicons name="person-add-outline" size={NAV_CHROME.iconSize} color={UAE.ink} />
+              </GlassNavChrome>
+            ) : null}
+          </View>
         </View>
       </View>
 
@@ -632,7 +665,18 @@ export default function RewardsScreen() {
           <RewardsSectionHeader />
         </Animated.View>
 
-        {hasError && !hasData ? (
+        {isOfflineBlocked ? (
+          <View style={{ marginTop: 40 }}>
+            <StateBlock
+              kind="error"
+              title={OFFLINE_TITLE}
+              message={OFFLINE_MESSAGE}
+              actionLabel="Retry"
+              onAction={handleRefresh}
+              offlineAwareRetry
+            />
+          </View>
+        ) : hasError && !hasData ? (
           <View style={{ marginTop: 40 }}>
             <StateBlock
               kind="error"
@@ -640,6 +684,7 @@ export default function RewardsScreen() {
               message={errorMsg}
               actionLabel="Retry"
               onAction={handleRefresh}
+              offlineAwareRetry
             />
           </View>
         ) : (
@@ -652,6 +697,7 @@ export default function RewardsScreen() {
                   message="Some items or points balance could not be refreshed."
                   actionLabel="Retry"
                   onAction={handleRefresh}
+                  offlineAwareRetry
                 />
               </View>
             ) : null}
@@ -773,14 +819,7 @@ export default function RewardsScreen() {
           </LoadingCrossfade>
         )}
       </Animated.ScrollView>
-
-      {isGuest ? (
-        <PremiumLockOverlay
-          title="Points & Rewards"
-          description="Earn as you train. Activate your membership to unlock the points economy, complete milestones, and redeem rewards."
-          topOffset={scrollTopInset}
-        />
-      ) : null}
+      {sheet}
     </SafeAreaView>
   );
 }

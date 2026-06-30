@@ -3,20 +3,31 @@ import { create } from 'zustand';
 type AppConnectivityState = {
   isOnline: boolean;
   connectionType: string | null;
+  networkStatusKnown: boolean;
   isAppFocused: boolean;
 };
 
 type AppConnectivityActions = {
-  setNetworkStatus: (patch: Pick<AppConnectivityState, 'isOnline' | 'connectionType'>) => void;
+  setNetworkStatus: (
+    patch: Pick<AppConnectivityState, 'isOnline' | 'connectionType'> & {
+      networkStatusKnown?: boolean;
+    },
+  ) => void;
   setAppFocused: (isAppFocused: boolean) => void;
 };
 
 export const useAppConnectivityStore = create<AppConnectivityState & AppConnectivityActions>((set) => ({
-  isOnline: true,
+  isOnline: false,
   connectionType: null,
+  networkStatusKnown: false,
   isAppFocused: true,
 
-  setNetworkStatus: (patch) => set(patch),
+  setNetworkStatus: (patch) =>
+    set((state) => ({
+      ...state,
+      ...patch,
+      networkStatusKnown: patch.networkStatusKnown ?? true,
+    })),
 
   setAppFocused: (isAppFocused) => set({ isAppFocused }),
 }));

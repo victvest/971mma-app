@@ -13,20 +13,20 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { AppScrollView } from '@/shared/components/ui';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { refetchQueryGroup } from '@/lib/queryRefresh';
 import { useTabEntranceReplay } from '@/shared/navigation/useTabEntranceReplay';
-import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
 import { CheckInSectionHeader } from '@/features/checkin/components/CheckInSectionHeader';
 import { CheckInEntranceSection } from '@/features/checkin/components/CheckInEntranceSection';
 import { CheckInStatCards } from '@/features/checkin/components/CheckInStatCards';
 import { RecentAttendanceSection } from '@/features/checkin/components/RecentAttendanceSection';
 import type { CheckInMode } from '@/features/checkin/components/CheckInModeToggle';
-import { buildBeltLine } from '@/features/checkin/utils/memberDisplay';
+import { formatMembershipExpiry } from '@/features/checkin/utils/memberDisplay';
 import {
   attendanceKey,
   attendanceRefreshKey,
@@ -35,10 +35,10 @@ import {
   useQrPass,
 } from '@/features/checkin/hooks/useCheckin';
 import { useDisciplineScore } from '@/features/home/hooks/useHomeDashboard';
-import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
-import { useMembership, membershipRefreshKey, useMembershipRefresh } from '@/features/profile/hooks/useMembership';
+import { useMembership, membershipKey, membershipRefreshKey, useMembershipRefresh } from '@/features/profile/hooks/useMembership';
+import { profileKey } from '@/features/profile/hooks/useProfile';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { isGymToday, GYM_TIME_ZONE } from '@/core/time/gymTime';
+import { isGymToday } from '@/core/time/gymTime';
 import {
   useActiveMemberId,
   useActiveProfileLabel,
@@ -50,6 +50,12 @@ import { useTheme } from '@/shared/theme';
 import { animations } from '@/shared/theme/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 
 const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
@@ -113,16 +119,26 @@ export default function CheckInScreen() {
     }, []),
   );
 
-  const qrPassEnabled = tabFocused && canShowChildQr && entranceMode === 'pass';
+  const { isAnonymousGuest, hasLimitedAccess } = useIsGuest();
+  const userStore = useAuthStore((s) => s.user);
+  const { prompt, sheet } = useAccountActionSheet();
+
+  const qrPassEnabled = tabFocused && canShowChildQr && entranceMode === 'pass' && !hasLimitedAccess;
   const qrPassQuery = useQrPass(qrPassEnabled);
   const attendanceRefresh = useAttendanceRefresh(tabFocused);
   const attendanceQuery = useAttendance();
   const profileQuery = useProfile();
-  const beltPathQuery = useBeltPath();
-  const rankEligibilityQuery = useRankEligibility();
   const disciplineQuery = useDisciplineScore();
   const membershipQuery = useMembership();
-  useMembershipRefresh(tabFocused);
+  const membershipRefresh = useMembershipRefresh(tabFocused);
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
+
+  useEffect(() => {
+    if (membershipRefresh.data?.refreshed) {
+      void queryClient.invalidateQueries({ queryKey: membershipKey(activeMemberId) });
+      void queryClient.invalidateQueries({ queryKey: profileKey(activeMemberId) });
+    }
+  }, [membershipRefresh.data?.refreshed, queryClient, activeMemberId]);
 
   useEffect(() => {
     if (attendanceRefresh.data?.refreshed) {
@@ -141,46 +157,33 @@ export default function CheckInScreen() {
 
   const topInset = useAppTopInset();
 
-  const role = useAuthStore((s) => s.role);
-  const userStore = useAuthStore((s) => s.user);
-  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
-
-  const memberName = isGuest
-    ? (userStore?.fullName || 'Anonymous guest')
+  const memberName = isAnonymousGuest
+    ? 'Guest preview'
     : (profileQuery.data?.fullName?.trim() || activeProfileLabel);
-  const beltLine = isGuest
-    ? 'Martial Arts Journey'
-    : (rankEligibilityQuery.data?.eligible
-        ? buildBeltLine(beltPathQuery.data, profileQuery.data ?? undefined)
-        : 'Training identity');
 
-  // Derive plan name and expiry for the digital card
-  const planName = isGuest ? '971 Premium' : (viewingChild ? null : (membershipQuery.data?.planName ?? null));
   const expiryDate = useMemo(() => {
-    if (isGuest) return null;
-    if (viewingChild) return null;
-    const raw = membershipQuery.data?.expiresAt;
-    if (!raw) return null;
-    try {
-      const date = new Date(raw);
-      return `Expires ${new Intl.DateTimeFormat('en-GB', {
-        timeZone: GYM_TIME_ZONE,
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-      }).format(date)}`;
-    } catch {
-      return null;
-    }
-  }, [membershipQuery.data?.expiresAt, viewingChild, isGuest]);
+    if (hasLimitedAccess || viewingChild) return null;
+    const raw =
+      membershipQuery.data?.expiresAt ??
+      profileQuery.data?.membershipExpiresAt ??
+      membershipRefresh.data?.summary?.expiresAt ??
+      null;
+    return formatMembershipExpiry(raw);
+  }, [
+    membershipQuery.data?.expiresAt,
+    membershipRefresh.data?.summary?.expiresAt,
+    profileQuery.data?.membershipExpiresAt,
+    viewingChild,
+    hasLimitedAccess,
+  ]);
 
   const checkedInToday = useMemo(
-    () => isGuest ? false : checkIns.some((row) => isGymToday(row.checked_in_at)),
-    [checkIns, isGuest],
+    () => hasLimitedAccess ? false : checkIns.some((row) => isGymToday(row.checked_in_at)),
+    [checkIns, hasLimitedAccess],
   );
   const todayCheckInAt = useMemo(
-    () => isGuest ? null : (checkIns.find((row) => isGymToday(row.checked_in_at))?.checked_in_at ?? null),
-    [checkIns, isGuest],
+    () => hasLimitedAccess ? null : (checkIns.find((row) => isGymToday(row.checked_in_at))?.checked_in_at ?? null),
+    [checkIns, hasLimitedAccess],
   );
   const totalHint = attendanceQuery.hasNextPage ? undefined : checkIns.length;
 
@@ -188,10 +191,8 @@ export default function CheckInScreen() {
     triggerLightImpact();
     void qrPassQuery.refetch();
     void attendanceQuery.refetch();
-    void beltPathQuery.refetch();
     void profileQuery.refetch();
     void disciplineQuery.refetch();
-    void rankEligibilityQuery.refetch();
     void membershipQuery.refetch();
     void refetchQueryGroup(
       queryClient,
@@ -204,35 +205,38 @@ export default function CheckInScreen() {
   }, [
     activeMemberId,
     attendanceQuery,
-    beltPathQuery,
     disciplineQuery,
     membershipQuery,
     profileQuery,
     qrPassQuery,
-    rankEligibilityQuery,
     queryClient,
   ]);
 
   const hasError =
-    !isGuest && (
+    !hasLimitedAccess && (
       qrPassQuery.isError ||
       attendanceQuery.isError ||
       profileQuery.isError ||
-      beltPathQuery.isError ||
-      rankEligibilityQuery.isError ||
       disciplineQuery.isError ||
       membershipQuery.isError
     );
 
   const hasData =
-    isGuest ||
+    hasLimitedAccess ||
     qrPassQuery.data !== undefined ||
     profileQuery.data !== undefined ||
-    beltPathQuery.data !== undefined ||
-    rankEligibilityQuery.data !== undefined ||
     disciplineQuery.data !== undefined ||
     membershipQuery.data !== undefined ||
     checkIns.length > 0;
+
+  const isOfflineBlocked =
+    !hasLimitedAccess &&
+    isOfflineWithoutCache({
+      networkStatusKnown,
+      isOnline,
+      hasData,
+      hasError,
+    });
 
   usePerfOnceReady(PerfMark.routeCheckinFirstContent, hasData);
   usePerfOnceReady(PerfMark.qrTokenVisible, qrPassEnabled && Boolean(qrPassQuery.data?.token), {
@@ -249,31 +253,20 @@ export default function CheckInScreen() {
     gap: gap.lg,
   };
 
-  const mockScoreForGuest = isGuest ? {
-    score: 85,
-    trainingDays: 12,
-    trainingDays30d: 6,
-    currentStreak: 3,
-    bestStreak: 8,
-    streakStatus: 'active' as const,
-    monthlyGoalPct: 0.45,
-    computedAt: new Date().toISOString(),
-    isPlaceholderWeights: false,
-  } : undefined;
-
-  const mockMembershipForGuest = isGuest ? {
-    planName: '971 Premium',
-    status: 'active' as const,
-    expiresAt: '2026-12-31T00:00:00Z',
-    autoRenew: true,
-    source: 'mindbody' as const,
-    lastSyncedAt: new Date().toISOString(),
-    records: [],
-  } : undefined;
-
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
-      {hasError && !hasData ? (
+      {isOfflineBlocked ? (
+        <View style={{ flex: 1, justifyContent: 'center', padding: inset.lg }}>
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={onRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : hasError && !hasData ? (
         <View style={{ flex: 1, justifyContent: 'center', padding: inset.lg }}>
           <StateBlock
             kind="error"
@@ -281,6 +274,7 @@ export default function CheckInScreen() {
             message="Please check your connection and try again."
             actionLabel="Retry"
             onAction={onRefresh}
+            offlineAwareRetry
           />
         </View>
       ) : (
@@ -295,6 +289,7 @@ export default function CheckInScreen() {
               message="Some information could not be updated."
               actionLabel="Retry"
               onAction={onRefresh}
+              offlineAwareRetry
             />
           ) : null}
           <CheckInAnimatedSection index={0} replayKey={entranceReplayKey} motion="title">
@@ -306,25 +301,34 @@ export default function CheckInScreen() {
               tabFocused={tabFocused}
               checkedInToday={checkedInToday}
               checkedInAt={todayCheckInAt}
-              token={isGuest ? 'guest-preview-token' : qrPassQuery.data?.token}
+              token={hasLimitedAccess ? null : qrPassQuery.data?.token}
               passLoading={
-                !isGuest &&
+                !hasLimitedAccess &&
                 qrPassEnabled &&
                 !qrPassQuery.data?.token &&
                 (qrPassQuery.isLoading || qrPassQuery.isFetching)
               }
               memberName={memberName}
-              beltLine={beltLine}
-              canShowActiveQr={isGuest ? true : canShowChildQr}
-              planName={planName}
+              canShowActiveQr={hasLimitedAccess ? true : canShowChildQr}
               expiryDate={expiryDate}
+              expiryLoading={
+                !hasLimitedAccess &&
+                !viewingChild &&
+                !expiryDate &&
+                (membershipQuery.isLoading ||
+                  membershipQuery.isFetching ||
+                  membershipRefresh.isLoading ||
+                  membershipRefresh.isFetching)
+              }
               onModeChange={setEntranceMode}
-              isGuest={isGuest}
+              isGuest={hasLimitedAccess}
+              requiresAccount={hasLimitedAccess}
               isRegistered={userStore !== null}
+              onRequireAccount={() => prompt('check-in')}
             />
           </CheckInAnimatedSection>
 
-          {!isGuest ? (
+          {!hasLimitedAccess ? (
             <CheckInAnimatedSection index={2} replayKey={entranceReplayKey} motion="content">
               <CheckInStatCards
                 score={disciplineQuery.data}
@@ -336,7 +340,7 @@ export default function CheckInScreen() {
             </CheckInAnimatedSection>
           ) : null}
 
-          {!isGuest ? (
+          {!hasLimitedAccess ? (
             <CheckInAnimatedSection index={3} replayKey={entranceReplayKey} motion="content">
               <RecentAttendanceSection
                 items={checkIns}
@@ -350,6 +354,7 @@ export default function CheckInScreen() {
           <View style={{ height: inset['3xl'] + inset['2xl'] + inset.xl }} />
         </AnimatedAppScrollView>
       )}
+      {sheet}
     </View>
   );
 }

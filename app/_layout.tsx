@@ -22,6 +22,7 @@ function RootStack() {
   return (
     <Stack screenOptions={pushOptions}>
       <Stack.Screen name="index" options={fadeOptions} />
+      <Stack.Screen name="auth/callback" options={{ ...fadeOptions, headerShown: false }} />
       <Stack.Screen name="activation-required" options={pushOptions} />
       <Stack.Screen name="(auth)" options={fadeOptions} />
       <Stack.Screen name="(onboarding)" options={fadeOptions} />
@@ -33,6 +34,7 @@ function RootStack() {
       <Stack.Screen name="about" options={pushOptions} />
       <Stack.Screen name="lineage" options={pushOptions} />
       <Stack.Screen name="notifications" options={pushOptions} />
+      <Stack.Screen name="referrals" options={pushOptions} />
       <Stack.Screen name="attendance" options={pushOptions} />
       <Stack.Screen name="family-trainees" options={pushOptions} />
       <Stack.Screen name="communities" options={pushOptions} />
@@ -40,6 +42,8 @@ function RootStack() {
       <Stack.Screen name="delete-account" options={pushOptions} />
       <Stack.Screen name="change-password" options={pushOptions} />
       <Stack.Screen name="help" options={pushOptions} />
+      <Stack.Screen name="legal" options={pushOptions} />
+      <Stack.Screen name="mindbody-info" options={pushOptions} />
       <Stack.Screen name="privacy" options={pushOptions} />
       <Stack.Screen name="terms" options={pushOptions} />
     </Stack>

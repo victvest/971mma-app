@@ -23,7 +23,7 @@ export async function resolveTargetUserId(
     .eq('id', callerUserId)
     .maybeSingle<{ role: string }>();
 
-  if (!profileError && profile?.role === 'admin') {
+  if (!profileError && (profile?.role === 'admin' || profile?.role === 'coach')) {
     return targetUserId;
   }
 

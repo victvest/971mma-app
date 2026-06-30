@@ -25,6 +25,8 @@ import { IOSGlassSurface } from '@/shared/components/ui/IOSGlassSurface';
 import { DrawerMenuHeader } from '@/shared/components/navigation/DrawerMenuHeader';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
+import type { AccountActionKey } from '@/shared/auth/accountActionCopy';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
 import { useCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
@@ -39,18 +41,27 @@ type DrawerMenuProps = {
   visible: boolean;
   onClose: () => void;
   blurTargetRef?: React.RefObject<View | null>;
+  onLockedRoute?: (actionKey: AccountActionKey) => void;
+};
+
+const LOCKED_ROUTE_ACTIONS: Record<string, AccountActionKey> = {
+  '/communities': 'access-communities',
+  '/mindbody-info': 'access-mindbody',
+  '/family-trainees': 'family-profiles',
+  '/(tabs)/belt-path': 'track-progress',
+  '/(tabs)/rewards': 'earn-rewards',
 };
 
 const NAV_ITEMS: NavItem[] = [
   { icon: 'chatbubbles-outline', label: 'Communities', route: '/communities' },
+  { icon: 'barcode-outline', label: 'Mindbody ID', route: '/mindbody-info' },
   { icon: 'people-outline', label: 'Family profiles', route: '/family-trainees' },
   { icon: 'ribbon-outline', label: 'Belt path', route: '/(tabs)/belt-path' },
   { icon: 'gift-outline', label: 'Rewards', route: '/(tabs)/rewards' },
   { icon: 'information-circle-outline', label: 'About', route: '/about' },
   { icon: 'star-outline', label: 'Lineage', route: '/lineage' },
   { icon: 'help-buoy-outline', label: 'Help & support', route: '/help' },
-  { icon: 'shield-checkmark-outline', label: 'Privacy policy', route: '/privacy' },
-  { icon: 'document-text-outline', label: 'Terms & conditions', route: '/terms' },
+  { icon: 'document-text-outline', label: 'Legal', route: '/legal' },
 ];
 
 const CLOSE_TIMING = { duration: 190 } as const;
@@ -101,7 +112,7 @@ const DrawerNavItem = memo(function DrawerNavItem({ item, badgeCount = 0, onNavi
   );
 });
 
-export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps) {
+export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: DrawerMenuProps) {
   const { colors, typography, inset, gap, radius, layout, animations } = useTheme();
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
@@ -109,13 +120,17 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
   const role = useAuthStore((s) => s.role);
   const rankEligibilityQuery = useRankEligibility();
   const { unreadTotal: communityUnreadTotal } = useCommunityUnreadTotal(true);
+  const { hasLimitedAccess, isAnonymousGuest, needsActivation } = useIsGuest();
   const canCoach = role === 'coach' || role === 'admin';
   const navItems = useMemo(
     () =>
-      NAV_ITEMS.filter(
-        (item) => item.route !== '/(tabs)/belt-path' || rankEligibilityQuery.data?.eligible === true,
-      ),
-    [rankEligibilityQuery.data?.eligible],
+      NAV_ITEMS.filter((item) => {
+        if (item.route === '/(tabs)/belt-path' && !isAnonymousGuest && !needsActivation) {
+          return rankEligibilityQuery.data?.eligible === true;
+        }
+        return true;
+      }),
+    [isAnonymousGuest, needsActivation, rankEligibilityQuery.data?.eligible],
   );
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(visible ? 1 : 0);
@@ -154,6 +169,15 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
     }
   }, [mounted, progress, visible]);
 
+  const finishLockedAction = useCallback(
+    (actionKey: AccountActionKey) => {
+      setMounted(false);
+      onClose();
+      onLockedRoute?.(actionKey);
+    },
+    [onClose, onLockedRoute],
+  );
+
   const requestClose = useCallback(() => {
     cancelAnimation(progress);
     progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
@@ -173,6 +197,36 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
       });
     },
     [finishNavigate, progress],
+  );
+
+  const getLockedAction = useCallback(
+    (route: string): AccountActionKey | undefined => {
+      const action = LOCKED_ROUTE_ACTIONS[route];
+      if (!action) return undefined;
+      if (needsActivation) return action;
+      if (isAnonymousGuest && route === '/(tabs)/belt-path') return action;
+      if (hasLimitedAccess) return action;
+      return undefined;
+    },
+    [hasLimitedAccess, isAnonymousGuest, needsActivation],
+  );
+
+  const handleNavPress = useCallback(
+    (route: string) => {
+      const lockedAction = getLockedAction(route);
+      if (lockedAction) {
+        cancelAnimation(progress);
+        progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
+          if (finished) {
+            runOnJS(finishLockedAction)(lockedAction);
+          }
+        });
+        return;
+      }
+
+      navigate(route);
+    },
+    [finishLockedAction, getLockedAction, navigate, progress],
   );
 
   const backdropStyle = useAnimatedStyle(() => ({
@@ -289,7 +343,7 @@ export function DrawerMenu({ visible, onClose, blurTargetRef }: DrawerMenuProps)
                   key={item.label}
                   item={item}
                   badgeCount={item.route === '/communities' ? communityUnreadTotal : 0}
-                  onNavigate={navigate}
+                  onNavigate={handleNavPress}
                 />
               ))}
             </AppScrollView>

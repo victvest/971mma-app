@@ -12,9 +12,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { ChevronRight, type LucideIcon } from 'lucide-react-native';
 
+import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
+import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 import { triggerLightImpact } from '@/shared/haptics';
-import { Button } from '@/shared/components/ui';
+import { BrandedLucideIconBadge, Button, type BrandedIconTone } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
 import { inset, layout } from '@/shared/theme/spacing';
 
@@ -214,6 +217,179 @@ type ProfileAccountFooterProps = {
   showDeleteAccount?: boolean;
   onSwitchToMemberMode?: () => void;
 };
+
+type ProfileGlassHeaderProps = {
+  safeTop: number;
+  onBackPress: () => void;
+  onEditPress?: () => void;
+  title?: string;
+};
+
+export function ProfileGlassHeader({
+  safeTop,
+  onBackPress,
+  onEditPress,
+  title = 'Profile',
+}: ProfileGlassHeaderProps) {
+  const { typography } = useTheme();
+
+  return (
+    <View
+      style={[
+        profileLayoutStyles.headerRoot,
+        {
+          top: safeTop + NAV_CHROME.topInset,
+        },
+      ]}
+      pointerEvents="box-none"
+    >
+      <GlassNavChrome
+        onPress={onBackPress}
+        accessibilityLabel="Go back"
+        style={profileLayoutStyles.headerSoloCluster}
+        contentStyle={profileLayoutStyles.headerSoloContent}
+      >
+        <Ionicons name="chevron-back" size={NAV_CHROME.iconSize} color={UAE.ink} />
+      </GlassNavChrome>
+
+      <GlassNavChrome
+        accessibilityLabel="Profile actions"
+        layout="bar"
+        style={profileLayoutStyles.headerActionCapsule}
+        contentStyle={[
+          profileLayoutStyles.headerActionCapsuleContent,
+          !onEditPress && { paddingRight: 16 },
+        ]}
+        borderRadius={NAV_CHROME.glassRadius}
+      >
+        <View style={profileLayoutStyles.headerTitleWrapper}>
+          <Text style={[typography.textPresets.bodyStrong, { color: UAE.ink, fontWeight: '700' }]}>
+            {title}
+          </Text>
+        </View>
+
+        {onEditPress ? (
+          <>
+            <View style={profileLayoutStyles.headerActionDivider} />
+            <Pressable
+              onPress={onEditPress}
+              accessibilityRole="button"
+              accessibilityLabel="Edit profile"
+              hitSlop={4}
+              style={({ pressed }) => [
+                profileLayoutStyles.headerActionCell,
+                pressed && profileLayoutStyles.headerPressed,
+              ]}
+            >
+              <Ionicons name="create-outline" size={24} color={UAE.ink} />
+            </Pressable>
+          </>
+        ) : null}
+      </GlassNavChrome>
+    </View>
+  );
+}
+
+type ProfilePerfMetricCardProps = {
+  label: string;
+  value: string | number;
+  subtitle: string;
+  iconName: keyof typeof Ionicons.glyphMap;
+  valueColor?: string;
+  textColor: string;
+  secondaryTextColor: string;
+};
+
+export const ProfilePerfMetricCard = React.memo(function ProfilePerfMetricCard({
+  label,
+  value,
+  subtitle,
+  iconName,
+  valueColor,
+  textColor,
+  secondaryTextColor,
+}: ProfilePerfMetricCardProps) {
+  return (
+    <View style={profileLayoutStyles.cardWrapper}>
+      <View style={profileLayoutStyles.watermarkContainer}>
+        <Ionicons
+          name={iconName}
+          size={80}
+          color="#000000"
+          style={{ opacity: 0.07, transform: [{ rotate: '-12deg' }] }}
+        />
+      </View>
+
+      <View style={profileLayoutStyles.perfCardHeader}>
+        <Text style={[profileLayoutStyles.perfCardLabel, { color: secondaryTextColor }]}>
+          {label}
+        </Text>
+      </View>
+
+      <Text style={[profileLayoutStyles.perfCardValue, { color: valueColor ?? textColor }]}>
+        {value}
+      </Text>
+
+      <Text style={[profileLayoutStyles.perfCardSub, { color: secondaryTextColor }]}>
+        {subtitle}
+      </Text>
+    </View>
+  );
+});
+
+type ProfileActionTileProps = {
+  icon: LucideIcon;
+  title: string;
+  subtitle: string;
+  onPress: () => void;
+  iconTone?: BrandedIconTone;
+  showDivider?: boolean;
+};
+
+export const ProfileActionTile = React.memo(function ProfileActionTile({
+  icon,
+  title,
+  subtitle,
+  onPress,
+  iconTone = 'neutral',
+  showDivider = false,
+}: ProfileActionTileProps) {
+  const { colors, typography, inset, mode } = useTheme();
+  const mutedBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+
+  return (
+    <Pressable
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={title}
+      style={({ pressed }) => [
+        profileLayoutStyles.actionTile,
+        showDivider && {
+          borderBottomColor: mutedBorder,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+        },
+        {
+          paddingHorizontal: inset.md,
+          paddingVertical: inset.sm + 4,
+          backgroundColor: pressed ? colors.fill.secondary : colors.surface.primary,
+        },
+      ]}
+    >
+      <BrandedLucideIconBadge icon={icon} tone={iconTone} />
+
+      <View style={profileLayoutStyles.actionTextCol}>
+        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+          {title}
+        </Text>
+        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+          {subtitle}
+        </Text>
+      </View>
+
+      <ChevronRight size={16} color={colors.text.tertiary} strokeWidth={2.25} />
+    </Pressable>
+  );
+});
 
 export function ProfileAccountFooter({
   versionLabel,
@@ -463,5 +639,159 @@ export const profileScreenStyles = StyleSheet.create({
   },
   versionText: {
     textAlign: 'center',
+  },
+});
+
+export const profileLayoutStyles = StyleSheet.create({
+  headerRoot: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    position: 'absolute',
+    left: NAV_CHROME.horizontalInset,
+    right: NAV_CHROME.horizontalInset,
+    zIndex: 1000,
+  },
+  headerSoloCluster: {
+    height: NAV_CHROME.clusterHeight,
+    width: NAV_CHROME.clusterHeight,
+  },
+  headerSoloContent: {
+    flex: 1,
+    height: NAV_CHROME.clusterHeight,
+    width: NAV_CHROME.clusterHeight,
+  },
+  headerActionCapsule: {
+    minHeight: NAV_CHROME.clusterHeight,
+  },
+  headerActionCapsuleContent: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    minHeight: NAV_CHROME.clusterHeight,
+    paddingLeft: 16,
+    paddingRight: 6,
+  },
+  headerTitleWrapper: {
+    justifyContent: 'center',
+    paddingRight: 4,
+  },
+  headerActionDivider: {
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    height: 30,
+    marginHorizontal: 8,
+    width: StyleSheet.hairlineWidth,
+  },
+  headerActionCell: {
+    alignItems: 'center',
+    height: NAV_CHROME.clusterHeight,
+    justifyContent: 'center',
+    width: 40,
+  },
+  headerPressed: {
+    opacity: 0.7,
+  },
+  identityContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '100%',
+    marginBottom: 16,
+  },
+  avatarGlowContainer: {
+    alignSelf: 'center',
+    borderRadius: 999,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.05,
+    shadowRadius: 16,
+    elevation: 4,
+    marginBottom: 16,
+    backgroundColor: '#FFFFFF',
+  },
+  centeredName: {
+    fontSize: 26,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.5,
+    marginBottom: 10,
+  },
+  memberSinceBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  memberSinceText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  sectionContainer: {
+    width: '100%',
+    marginBottom: 12,
+  },
+  perfCardsGrid: {
+    width: '100%',
+  },
+  perfCardsRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+    marginBottom: 0,
+  },
+  cardWrapper: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 32,
+    padding: 20,
+    position: 'relative',
+    overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    elevation: 3,
+    borderWidth: 0,
+  },
+  watermarkContainer: {
+    position: 'absolute',
+    bottom: -15,
+    right: -15,
+    zIndex: 0,
+  },
+  perfCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    zIndex: 1,
+  },
+  perfCardLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  perfCardValue: {
+    fontSize: 32,
+    fontWeight: '900',
+    letterSpacing: -0.6,
+    marginBottom: 4,
+    zIndex: 1,
+  },
+  perfCardSub: {
+    fontSize: 12,
+    fontWeight: '500',
+    zIndex: 1,
+  },
+  actionGroup: {
+    overflow: 'hidden',
+    width: '100%',
+  },
+  actionTile: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 14,
+    width: '100%',
+  },
+  actionTextCol: {
+    flex: 1,
+    gap: 2,
+    paddingRight: 8,
   },
 });

@@ -3,12 +3,10 @@ import { ENV } from '@/core/config/env';
 export const COACH_DEMO_CLASS_PREFIX = 'demo-coach-class-';
 export const COACH_DEMO_MEMBER_PREFIX = 'demo-candidate-';
 
-/** Coach-only demo layer — enabled in dev unless explicitly disabled. */
+/** Coach-only demo layer — opt-in via EXPO_PUBLIC_COACH_DEMO_MODE=true only. */
 export function isCoachDemoMode(): boolean {
   const flag = ENV.COACH_DEMO_MODE?.trim().toLowerCase();
-  if (flag === 'false' || flag === '0' || flag === 'off') return false;
-  if (flag === 'true' || flag === '1' || flag === 'on') return true;
-  return __DEV__;
+  return flag === 'true' || flag === '1' || flag === 'on';
 }
 
 export function isDemoCoachClassId(classId: string): boolean {

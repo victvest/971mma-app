@@ -9,6 +9,7 @@ export const authRoutes = {
   verifyEmail: '/(auth)/verify-email',
   resetVerifyOtp: '/(auth)/reset-verify-otp',
   changePassword: '/(auth)/change-password',
+  authCallback: '/auth/callback',
   onboarding: '/(onboarding)',
 } as const satisfies Record<string, Href>;
 

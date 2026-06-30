@@ -2,6 +2,7 @@ import type { Session } from '@supabase/supabase-js';
 import { getSupabaseClient } from '@/services/supabase/client';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { clearGuestMode, isGuestModePersisted } from '@/features/auth/services/guestModeStorage';
 import type { UserRole } from '../types';
 
 export type ProfileAuthInfo = {
@@ -61,9 +62,18 @@ export async function syncAuthProfileFromSession(session: Session | null): Promi
 
   if (!session?.user) {
     useActiveProfileStore.getState().reset();
+
+    const guestPersisted = await isGuestModePersisted();
+    if (guestPersisted) {
+      useAuthStore.getState().restoreGuestSession();
+      return;
+    }
+
     logout();
     return;
   }
+
+  await clearGuestMode();
 
   const { id, email, user_metadata } = session.user;
   const { profile, readFailed } = await readProfileAuthInfo(id);

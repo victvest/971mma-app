@@ -27,6 +27,9 @@ export default function AttendanceHistoryScreen() {
 
   const listHeader = (
     <View style={{ marginBottom: inset.md, gap: inset.sm }}>
+      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+        Visits synced when you check in at the academy. Training streaks use these records.
+      </Text>
       {hasError && hasData ? (
         <StateBlock
           kind="error"
@@ -42,7 +45,7 @@ export default function AttendanceHistoryScreen() {
         style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
       >
         <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-          Class attendance
+          Class roll call
         </Text>
         <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.default }]}>
           View all
@@ -53,10 +56,10 @@ export default function AttendanceHistoryScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
-      <AppBar title="Attendance history" />
+      <AppBar title="Gym visits" />
 
       {attendanceQuery.isLoading ? (
-        <StateBlock kind="loading" title="Loading visits" />
+        <StateBlock kind="loading" title="Loading gym visits" />
       ) : hasError && !hasData ? (
         <StateBlock
           kind="error"
@@ -68,8 +71,8 @@ export default function AttendanceHistoryScreen() {
       ) : !hasError && checkIns.length === 0 ? (
         <StateBlock
           kind="empty"
-          title="No visits yet"
-          message="Check in at the gym and your attendance history will show up here."
+          title="No gym visits yet"
+          message="When you check in at the academy, your visit history appears here. For per-class roll call (present/absent), see Class attendance."
         />
       ) : (
         <FlashList

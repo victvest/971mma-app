@@ -19,7 +19,7 @@ export function UaeFlagMark() {
         },
       ]}
     >
-      <View style={[styles.flagRed, { backgroundColor: colors.status.error }]} />
+      <View style={[styles.flagRed, { backgroundColor: colors.brand.red }]} />
       <View style={styles.flagStripes}>
         <View style={[styles.flagStripe, { backgroundColor: colors.accent.default }]} />
         <View style={[styles.flagStripe, { backgroundColor: colors.surface.primary }]} />

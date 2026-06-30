@@ -27,8 +27,8 @@ import {
   validateOnboardingName,
 } from '@/features/onboarding/services/onboardingValidation';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
-import { profileKey } from '@/features/profile/hooks/useProfile';
-import { uploadAvatar } from '@/features/profile/services/avatarUpload';
+import { syncProfileAfterMutation } from '@/features/profile/services/profileCacheSync';
+import { uploadAvatarWithRetry } from '@/features/profile/services/avatarUpload';
 import { completeOnboarding, getMyProfile } from '@/services/database/profiles.repository';
 import { authToast } from '@/shared/components/Toast';
 import { getDefaultHomeRoute } from '@/shared/navigation/defaultHomeRoute';
@@ -69,6 +69,8 @@ export default function OnboardingWizardScreen() {
   const [fullName, setFullName] = useState('');
   const [age, setAge] = useState('');
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [uploadedAvatarUrl, setUploadedAvatarUrl] = useState<string | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [hydratedProfile, setHydratedProfile] = useState(false);
 
@@ -179,6 +181,8 @@ export default function OnboardingWizardScreen() {
 
     if (!result.canceled && result.assets[0]?.uri) {
       setAvatarUri(result.assets[0].uri);
+      setUploadedAvatarUrl(null);
+      setUploadError(null);
     }
   }
 
@@ -210,8 +214,24 @@ export default function OnboardingWizardScreen() {
     }
 
     setLoading(true);
+    setUploadError(null);
     try {
-      const avatarUrl = await uploadAvatar(user.id, avatarUri);
+      let avatarUrl = uploadedAvatarUrl;
+      if (!avatarUrl) {
+        try {
+          avatarUrl = await uploadAvatarWithRetry(user.id, avatarUri);
+          setUploadedAvatarUrl(avatarUrl);
+        } catch (error) {
+          const message =
+            error instanceof Error
+              ? error.message
+              : 'Could not upload your photo. Check your connection and try again.';
+          setUploadError(message);
+          showError(message);
+          return;
+        }
+      }
+
       const profile = await completeOnboarding({
         fullName: fullName.trim(),
         dateOfBirth: ageToDateOfBirth(Number(age)),
@@ -228,8 +248,7 @@ export default function OnboardingWizardScreen() {
         avatarUrl: profile.avatarUrl,
       });
 
-      void queryClient.invalidateQueries({ queryKey: profileKey(user.id) });
-      void queryClient.invalidateQueries({ queryKey: ['active-profile-summaries'] });
+      await syncProfileAfterMutation(queryClient, profile);
 
       authFeedback.profileReady();
       router.replace(getDefaultHomeRoute(role));
@@ -242,6 +261,7 @@ export default function OnboardingWizardScreen() {
   }
 
   return (
+    <>
     <OnboardingScreen
       step={step}
       totalSteps={TOTAL_STEPS}
@@ -263,6 +283,7 @@ export default function OnboardingWizardScreen() {
           }
           loading={step === 2 ? loading : false}
           disabled={step === 2 ? !avatarUri : false}
+          finalLabel={uploadError ? 'Try again' : 'Get started'}
         />
       }
     >
@@ -296,9 +317,7 @@ export default function OnboardingWizardScreen() {
             placeholder="e.g. 28"
             icon={Calendar}
             maxLength={3}
-            inputAccessoryViewID={AGE_INPUT_ACCESSORY_ID}
-            returnKeyType="done"
-            onSubmitEditing={goToAvatarStep}
+            inputAccessoryViewID={Platform.OS === 'ios' ? AGE_INPUT_ACCESSORY_ID : undefined}
           />
         </>
       ) : null}
@@ -374,15 +393,26 @@ export default function OnboardingWizardScreen() {
             >
               Tap to choose from your library
             </Text>
+            {uploadError ? (
+              <Text
+                style={[
+                  typography.textPresets.footnote,
+                  { color: colors.status.errorEmphasis, textAlign: 'center' },
+                ]}
+              >
+                {uploadError}
+              </Text>
+            ) : null}
           </View>
         </>
       ) : null}
-      {Platform.OS === 'ios' ? (
-        <InputAccessoryView nativeID={AGE_INPUT_ACCESSORY_ID}>
-          <View style={styles.hiddenInputAccessory} />
-        </InputAccessoryView>
-      ) : null}
     </OnboardingScreen>
+    {Platform.OS === 'ios' ? (
+      <InputAccessoryView nativeID={AGE_INPUT_ACCESSORY_ID}>
+        <View style={styles.hiddenInputAccessory} />
+      </InputAccessoryView>
+    ) : null}
+    </>
   );
 }
 

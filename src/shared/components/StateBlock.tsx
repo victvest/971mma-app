@@ -1,6 +1,7 @@
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { Button } from '@/shared/components/ui';
+import { useOfflineRetry } from '@/shared/hooks/useOfflineRetry';
 import { useTheme } from '@/shared/theme';
 
 type Props = {
@@ -9,10 +10,21 @@ type Props = {
   message?: string;
   actionLabel?: string;
   onAction?: () => void;
+  /** When true, retry shows a toast instead of firing while offline. */
+  offlineAwareRetry?: boolean;
 };
 
-export function StateBlock({ kind, title, message, actionLabel, onAction }: Props) {
+export function StateBlock({
+  kind,
+  title,
+  message,
+  actionLabel,
+  onAction,
+  offlineAwareRetry = false,
+}: Props) {
   const { colors, typography } = useTheme();
+  const guardedAction = useOfflineRetry(onAction ?? (() => undefined));
+  const handleAction = offlineAwareRetry && onAction ? guardedAction : onAction;
 
   return (
     <View style={styles.wrap}>
@@ -23,8 +35,8 @@ export function StateBlock({ kind, title, message, actionLabel, onAction }: Prop
       {message ? (
         <Text style={[styles.message, { color: colors.text.secondary }]}>{message}</Text>
       ) : null}
-      {actionLabel && onAction ? (
-        <Button label={actionLabel} onPress={onAction} variant="outline" style={styles.action} />
+      {actionLabel && handleAction ? (
+        <Button label={actionLabel} onPress={handleAction} variant="outline" style={styles.action} />
       ) : null}
     </View>
   );

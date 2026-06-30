@@ -7,6 +7,7 @@ export type AuthResult = {
   error: string | null;
   cancelled?: boolean;
   needsConfirmation?: boolean;
+  recovery?: boolean;
   email?: string;
 };
 

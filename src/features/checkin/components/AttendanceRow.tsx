@@ -3,6 +3,7 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isGymToday } from '@/core/time/gymTime';
 import {
+  extractMindbodyVisitClassTitle,
   formatAttendanceHeadline,
   formatAttendanceSubtitle,
   formatCheckInMethod,
@@ -21,15 +22,15 @@ export const AttendanceRow = memo(function AttendanceRow({ item, compact = false
   const timeLabel = formatAttendanceSubtitle(item.checked_in_at);
   const dateLabel = formatAttendanceHeadline(item.checked_in_at);
 
-  const hasClassInfo = !!item.classes;
-  const title = item.classes?.title ?? 'Facility Visit';
+  const mindbodyClassTitle = extractMindbodyVisitClassTitle(item.raw_payload);
+  const hasClassInfo = !!item.classes || !!mindbodyClassTitle;
+  const title = item.classes?.title ?? mindbodyClassTitle ?? 'Facility Visit';
   const discipline = item.classes?.disciplines?.display_name ?? item.classes?.discipline;
   const coachName = item.classes?.coaches?.name ?? item.classes?.coach_name;
   const duration = item.classes?.duration_minutes;
   const didNotAttend = item.missed === true || item.late_cancelled === true || item.signed_in === false;
 
-  const methodLabel = formatCheckInMethod(item.method);
-  const sourceLabel = item.source === 'mindbody' ? 'MB Sync' : 'App';
+  const methodLabel = formatCheckInMethod(item.method, { hasClass: hasClassInfo });
 
   return (
     <View
@@ -107,7 +108,6 @@ export const AttendanceRow = memo(function AttendanceRow({ item, compact = false
         >
           <Text style={[styles.methodText, { color: colors.text.secondary }]}>{methodLabel}</Text>
         </View>
-        <Text style={[styles.sourceText, { color: colors.text.tertiary }]}>{sourceLabel}</Text>
       </View>
     </View>
   );
@@ -146,15 +146,11 @@ const styles = StyleSheet.create({
   methodBadge: {
     paddingHorizontal: 8,
     paddingVertical: 4,
-    maxWidth: 96,
+    maxWidth: 108,
   },
   methodText: {
     fontSize: 10,
     fontWeight: '600',
     textAlign: 'center',
-  },
-  sourceText: {
-    fontSize: 10,
-    fontWeight: '500',
   },
 });

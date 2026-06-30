@@ -12,7 +12,13 @@ import { useRouter } from 'expo-router';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseConfigError, isSupabaseConfigured } from '@/core/config/env';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { createSessionFromUrl } from '../services/authDeepLink';
+import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
+import { isGuestModePersisted } from '../services/guestModeStorage';
+import {
+  handleAuthDeepLink,
+  routeAuthDeepLinkOutcome,
+} from '../services/authDeepLinkHandler';
+import { isAuthCallbackUrl } from '../services/authRedirect';
 import { supabaseAuthService } from '../services/supabaseAuth';
 import { readSecureStoreChunkCount } from '@/lib/secureStorageAdapter';
 import { getSupabaseAuthStorageKey } from '@/services/supabase/client';
@@ -42,6 +48,7 @@ type AuthContextValue = {
   passwordRecoveryActive: boolean;
   needsOnboarding: boolean;
   completePasswordRecovery: () => void;
+  beginPasswordRecovery: () => void;
   markOnboardingComplete: (patch: { fullName: string; avatarUrl: string | null }) => void;
 };
 
@@ -64,19 +71,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let mounted = true;
 
     async function handleDeepLink(url: string | null) {
-      if (!url) return;
-      const result = await createSessionFromUrl(url);
+      if (!url || !isAuthCallbackUrl(url)) return;
+
+      const outcome = await handleAuthDeepLink(url);
       if (!mounted) return;
 
-      if (result.error) {
-        console.warn('[auth] Deep link session error:', result.error);
-        return;
-      }
-
-      if (result.recovery) {
+      await routeAuthDeepLinkOutcome(outcome, router.replace, () => {
         setPasswordRecoveryActive(true);
-        router.replace('/(auth)/change-password');
-      }
+      });
     }
 
     supabaseAuthService
@@ -93,7 +95,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setSession(next);
-        await syncAuthProfileFromSession(next);
+
+        if (next) {
+          await syncAuthProfileFromSession(next);
+        } else if (await isGuestModePersisted()) {
+          useAuthStore.getState().restoreGuestSession();
+        } else {
+          await syncAuthProfileFromSession(null);
+        }
+
         setInitializing(false);
 
         perfMarkOnce(PerfMark.authSessionRestored, {
@@ -102,9 +112,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           storageChunkCount,
         });
       })
-      .catch(() => {
+      .catch(async () => {
         if (!mounted) return;
-        void syncAuthProfileFromSession(null);
+        if (await isGuestModePersisted()) {
+          useAuthStore.getState().restoreGuestSession();
+        } else {
+          void syncAuthProfileFromSession(null);
+        }
         setInitializing(false);
       });
 
@@ -253,11 +267,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (configError) return;
     await supabaseAuthService.signOut();
     setSession(null);
-    await syncAuthProfileFromSession(null);
+    useAuthStore.getState().logout();
+    useActiveProfileStore.getState().reset();
   }, [configError]);
 
   const completePasswordRecovery = useCallback(() => {
     setPasswordRecoveryActive(false);
+  }, []);
+
+  const beginPasswordRecovery = useCallback(() => {
+    setPasswordRecoveryActive(true);
   }, []);
 
   const needsOnboarding = useAuthStore((state) => state.needsOnboarding);
@@ -291,6 +310,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       passwordRecoveryActive,
       needsOnboarding,
       completePasswordRecovery,
+      beginPasswordRecovery,
       markOnboardingComplete,
     }),
     [
@@ -313,6 +333,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       passwordRecoveryActive,
       needsOnboarding,
       completePasswordRecovery,
+      beginPasswordRecovery,
       markOnboardingComplete,
     ],
   );

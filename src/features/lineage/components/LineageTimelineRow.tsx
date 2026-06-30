@@ -18,6 +18,8 @@ export const LineageTimelineRow = memo(function LineageTimelineRow({
 
   const roleLine = [entry.role, entry.note].filter(Boolean).join(' · ');
 
+  const accentColor = isActive ? colors.accent.default : colors.brand.red;
+
   return (
     <View style={styles.row}>
       <View style={styles.railCol}>
@@ -28,7 +30,7 @@ export const LineageTimelineRow = memo(function LineageTimelineRow({
               ? { backgroundColor: colors.accent.default, borderColor: colors.accent.default }
               : {
                   backgroundColor: colors.background.primary,
-                  borderColor: colors.border.default,
+                  borderColor: colors.brand.red,
                   borderWidth: 2,
                 },
           ]}
@@ -42,7 +44,10 @@ export const LineageTimelineRow = memo(function LineageTimelineRow({
         <Text
           style={[
             typography.textPresets.metricLabel,
-            { color: colors.accent.default, textTransform: 'uppercase' },
+            {
+              color: accentColor,
+              textTransform: 'uppercase',
+            },
           ]}
         >
           {entry.yearLabel}

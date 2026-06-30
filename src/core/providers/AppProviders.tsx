@@ -74,17 +74,26 @@ function AppToastRoot() {
 function OfflineMonitor() {
   const { isOnline } = useNetworkStatus();
   const mounted = useRef(false);
+  const pendingOnlineRef = useRef(isOnline);
 
   useEffect(() => {
+    pendingOnlineRef.current = isOnline;
+
     if (!mounted.current) {
       mounted.current = true;
       return;
     }
-    if (!isOnline) {
-      toast.warning('No connection', 'Some features may be unavailable.');
-    } else {
-      toast.success('Back online', 'Your connection has been restored.');
-    }
+
+    const timer = setTimeout(() => {
+      if (pendingOnlineRef.current !== isOnline) return;
+      if (!isOnline) {
+        toast.warning('No connection', 'Some features may be unavailable.');
+      } else {
+        toast.success('Back online', 'Your connection has been restored.');
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
   }, [isOnline]);
 
   return null;

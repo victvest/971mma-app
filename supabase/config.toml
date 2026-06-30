@@ -12,6 +12,12 @@ port = 54322
 shadow_port = 54320
 major_version = 17
 
+# Skip storage during `supabase config push` — remote storage API no longer returns
+# legacy `databasePoolMode`, which breaks CLI <=2.107 when diffing storage config.
+# This does NOT disable hosted Storage; it only avoids syncing storage settings.
+[storage]
+enabled = false
+
 # Hosted auth settings — pushed via `supabase config push`.
 [auth]
 enabled = true
@@ -19,6 +25,7 @@ site_url = "nine71mma://auth/callback"
 additional_redirect_urls = [
   "nine71mma://**",
   "nine71mma://auth/callback",
+  "https://app.971mma.com/auth/callback",
   "exp://**",
 ]
 enable_signup = true
@@ -51,6 +58,9 @@ verify_jwt = true
 [functions.mb-link-manual]
 verify_jwt = true
 
+[functions.mb-link-auto]
+verify_jwt = true
+
 [functions.mb-programs]
 verify_jwt = true
 
@@ -63,7 +73,13 @@ verify_jwt = false
 [functions.push-send]
 verify_jwt = false
 
+[functions.community-push]
+verify_jwt = true
+
 [functions.class-reminders]
+verify_jwt = false
+
+[functions.streak-reminders]
 verify_jwt = false
 
 [functions.mb-staff]
@@ -84,6 +100,9 @@ verify_jwt = true
 [functions.mb-membership]
 verify_jwt = true
 
+[functions.mb-client-info]
+verify_jwt = true
+
 [functions.guardian-approve]
 verify_jwt = true
 
@@ -98,3 +117,9 @@ verify_jwt = true
 
 [functions.auth-sign-in]
 verify_jwt = false
+
+[functions.persona-chat]
+verify_jwt = true
+
+[functions.account-delete]
+verify_jwt = true

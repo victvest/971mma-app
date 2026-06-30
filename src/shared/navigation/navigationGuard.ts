@@ -11,6 +11,7 @@ type RouteFlags = {
   inVerifyEmailRoute: boolean;
   inResetVerifyOtpRoute: boolean;
   inSplashRoute: boolean;
+  inAuthCallbackRoute: boolean;
   inActivationRequiredRoute: boolean;
   inOnboardingGroup: boolean;
   inCoachGroup: boolean;
@@ -65,6 +66,7 @@ function parseRouteFlags(segments: string[]): RouteFlags {
   const inVerifyEmailRoute = inAuthGroup && secondSegment === 'verify-email';
   const inResetVerifyOtpRoute = inAuthGroup && secondSegment === 'reset-verify-otp';
   const inSplashRoute = inAuthGroup && secondSegment === 'splash';
+  const inAuthCallbackRoute = firstSegment === 'auth' && secondSegment === 'callback';
   const inActivationRequiredRoute =
     firstSegment === 'activation-required' ||
     (inAuthGroup && secondSegment === 'activation-required');
@@ -85,6 +87,7 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     firstSegment === 'delete-account' ||
     firstSegment === 'change-password' ||
     firstSegment === 'help' ||
+    firstSegment === 'legal' ||
     firstSegment === 'privacy' ||
     firstSegment === 'terms';
 
@@ -94,6 +97,7 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     inVerifyEmailRoute,
     inResetVerifyOtpRoute,
     inSplashRoute,
+    inAuthCallbackRoute,
     inActivationRequiredRoute,
     inOnboardingGroup,
     inCoachGroup,
@@ -146,12 +150,18 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
   const inResetVerifyOtpRoute =
     route.inResetVerifyOtpRoute || isOnAuthScreen(segments, pathname, 'reset-verify-otp');
   const inSplashRoute = route.inSplashRoute || isOnAuthScreen(segments, pathname, 'splash');
+  const inAuthCallbackRoute =
+    route.inAuthCallbackRoute || pathnameMatchesScreen(pathname, 'auth/callback');
   const defaultHome = getDefaultHomeRoute(role);
   const canUseCoachRoutes = role === 'coach';
   const canUseGateRoutes = role === 'gate';
   const canUseChangePasswordRoute = isAuthenticated || passwordRecoveryActive;
   const requiresActivation = memberRequiresActivation(role, accountStatus);
   const authenticatedEntry = getAuthenticatedEntryRoute({ role, accountStatus, needsOnboarding });
+
+  if (inAuthCallbackRoute) {
+    return null;
+  }
 
   // Pending-activation members must be able to open the activation screen even when
   // EXPO_PUBLIC_SKIP_ACTIVATION_GATING bypasses tab-level blocking in local dev.

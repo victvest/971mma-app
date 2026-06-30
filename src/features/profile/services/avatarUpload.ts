@@ -26,6 +26,12 @@ export async function uploadPendingTraineeAvatar(guardianUserId: string, localUr
   return uploadAvatarToPath(path, localUri);
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => {
+    setTimeout(resolve, ms);
+  });
+}
+
 async function uploadAvatarToPath(path: string, localUri: string): Promise<string> {
   const preparedUri = await prepareAvatarForUpload(localUri);
   const extension = extensionFromUri(preparedUri);
@@ -44,4 +50,28 @@ async function uploadAvatarToPath(path: string, localUri: string): Promise<strin
 
   const { data } = client.storage.from(AVATAR_BUCKET).getPublicUrl(path);
   return `${data.publicUrl}?v=${Date.now()}`;
+}
+
+export async function uploadAvatarWithRetry(
+  userId: string,
+  localUri: string,
+  options?: { maxAttempts?: number },
+): Promise<string> {
+  const maxAttempts = options?.maxAttempts ?? 3;
+  let lastError: unknown;
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    try {
+      return await uploadAvatar(userId, localUri);
+    } catch (error) {
+      lastError = error;
+      if (attempt < maxAttempts) {
+        await sleep(Math.min(1_000 * 2 ** (attempt - 1), 5_000));
+      }
+    }
+  }
+
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Could not upload your photo. Check your connection and try again.');
 }

@@ -23,10 +23,10 @@ const EDGE_CODE_MAP: Record<string, ApiErrorCode> = {
   EMAIL_NOT_CONFIRMED: 'FORBIDDEN',
   ACCOUNT_DISABLED: 'FORBIDDEN',
   BAD_REQUEST: 'UNKNOWN',
+  RATE_LIMITED: 'UNKNOWN',
   TOKEN_INVALID: 'UNKNOWN',
   TOKEN_EXPIRED: 'UNKNOWN',
   OUTSIDE_GEOFENCE: 'UNKNOWN',
-  RATE_LIMITED: 'UNKNOWN',
 };
 
 async function normalizeInvokeError(error: unknown): Promise<ApiError> {

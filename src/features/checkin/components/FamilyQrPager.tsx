@@ -9,12 +9,12 @@ type Props = {
   loading: boolean;
   checkedInToday: boolean;
   memberName: string;
-  beltLine: string;
   canShowActiveQr: boolean;
-  planName?: string | null;
   expiryDate?: string | null;
+  expiryLoading?: boolean;
   isGuest?: boolean;
   isRegistered?: boolean;
+  onRequireAccount?: () => void;
 };
 
 function LockedQrCard({ name }: { name: string }) {
@@ -47,12 +47,12 @@ export function FamilyQrPager({
   loading,
   checkedInToday,
   memberName,
-  beltLine,
   canShowActiveQr,
-  planName,
   expiryDate,
+  expiryLoading,
   isGuest = false,
   isRegistered = false,
+  onRequireAccount,
 }: Props) {
   if (!canShowActiveQr) {
     return <LockedQrCard name={memberName} />;
@@ -64,11 +64,11 @@ export function FamilyQrPager({
       loading={loading}
       checkedInToday={checkedInToday}
       memberName={memberName}
-      beltLine={beltLine}
-      planName={planName}
       expiryDate={expiryDate}
+      expiryLoading={expiryLoading}
       isGuest={isGuest}
       isRegistered={isRegistered}
+      onRequireAccount={onRequireAccount}
     />
   );
 }

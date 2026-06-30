@@ -1,4 +1,5 @@
-import { useEffect } from 'react';
+import { useCallback, useEffect } from 'react';
+import { useFocusEffect } from 'expo-router';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   getDisciplineScore,
@@ -50,6 +51,17 @@ export function useHomeDashboardSummary() {
       queryClient.removeQueries({ queryKey: beltPathKey(activeMemberId) });
     }
   }, [activeMemberId, query.data, queryClient]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (!activeMemberId) return;
+      void queryClient.refetchQueries({
+        queryKey: homeDashboardKey(activeMemberId),
+        type: 'active',
+        stale: true,
+      });
+    }, [activeMemberId, queryClient]),
+  );
 
   return query;
 }

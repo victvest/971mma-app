@@ -72,7 +72,7 @@ export function DeleteAccountScreenContent() {
       await requestAccountDeletion();
       toast.success(
         'Request submitted',
-        'Our team will review your account deletion request shortly.',
+        'Staff will review your request. Your account stays active until deletion is completed.',
       );
       router.back();
     } catch {
@@ -108,7 +108,7 @@ export function DeleteAccountScreenContent() {
       >
         <Animated.View style={introStyle}>
           <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-            This permanently removes your app account, profile, attendance history, belt progress, and points. Gym membership is separate — contact the front desk to cancel it.
+            This submits a request for academy staff to permanently remove your app account, profile, attendance history, belt progress, and points. Your account stays active until staff complete the request. Gym membership is separate — contact the front desk to cancel it.
           </Text>
         </Animated.View>
 

@@ -5,6 +5,8 @@ import { getSupabaseClient } from '@/services/supabase/client';
 import { createSessionFromUrl } from './authDeepLink';
 import { getAuthRedirectUri } from './authRedirect';
 import { formatAuthError } from './authValidation';
+import { syncAuthProfileFromSession } from './authProfileSync';
+import { completeSignupActivation } from './postSignupActivation';
 import type { AuthResult } from '../types';
 
 const GOOGLE_PROVIDER = 'google';
@@ -54,6 +56,17 @@ export async function continueWithGoogle(): Promise<AuthResult> {
   const sessionResult = await createSessionFromUrl(browserResult.url);
   if (sessionResult.error) {
     return { error: formatAuthError(sessionResult.error) };
+  }
+
+  if (sessionResult.recovery) {
+    return { error: null, recovery: true };
+  }
+
+  const session = await getSupabaseClient().auth.getSession();
+  const user = session.data.session?.user;
+  if (user) {
+    await syncAuthProfileFromSession(session.data.session);
+    await completeSignupActivation(user.id, user.email ?? '');
   }
 
   return { error: null };

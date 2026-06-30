@@ -11,6 +11,8 @@ type Props = {
   classTitle: string;
   startsAt: string;
   onBackPress: () => void;
+  onWalkInPress?: () => void;
+  onRosterPress?: () => void;
 };
 
 export const RollCallDeckHeader = memo(function RollCallDeckHeader({
@@ -18,20 +20,44 @@ export const RollCallDeckHeader = memo(function RollCallDeckHeader({
   classTitle,
   startsAt,
   onBackPress,
+  onWalkInPress,
+  onRosterPress,
 }: Props) {
   const router = useRouter();
   const { colors, inset, typography } = useTheme();
   const scheduleLabel = useMemo(() => formatRunClassSchedule(startsAt), [startsAt]);
 
   const scanAction = (
-    <AppBarIconButton
-      icon="qr-code-outline"
-      accessibilityLabel="Scan member QR"
-      onPress={() => {
-        triggerLightImpact();
-        router.push(`/(coach)/scanner?classId=${classId}`);
-      }}
-    />
+    <View style={styles.actions}>
+      {onRosterPress ? (
+        <AppBarIconButton
+          icon="list-outline"
+          accessibilityLabel="View roster"
+          onPress={() => {
+            triggerLightImpact();
+            onRosterPress();
+          }}
+        />
+      ) : null}
+      {onWalkInPress ? (
+        <AppBarIconButton
+          icon="person-add-outline"
+          accessibilityLabel="Add walk-in"
+          onPress={() => {
+            triggerLightImpact();
+            onWalkInPress();
+          }}
+        />
+      ) : null}
+      <AppBarIconButton
+        icon="qr-code-outline"
+        accessibilityLabel="Scan member QR"
+        onPress={() => {
+          triggerLightImpact();
+          router.push(`/(coach)/scanner?classId=${classId}`);
+        }}
+      />
+    </View>
   );
 
   return (
@@ -59,6 +85,11 @@ export const RollCallDeckHeader = memo(function RollCallDeckHeader({
 const styles = StyleSheet.create({
   wrap: {
     width: '100%',
+  },
+  actions: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
   },
   subtitle: {
     textAlign: 'center',

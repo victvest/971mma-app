@@ -8,7 +8,8 @@ import { AcademyEyebrow } from '@/shared/components/brand';
 import { useActiveProfileOptions, useGuardianLinks } from '@/features/guardian/hooks/useGuardian';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
-import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { useTheme } from '@/shared/theme';
 import type { GuardianLinkItem } from '@/types/domain';
 
@@ -106,9 +107,9 @@ export function FamilyTraineesScreenContent() {
   const { colors, typography, inset, gap, radius, layout } = useTheme();
   const router = useRouter();
   const user = useAuthStore((s) => s.user);
-  const role = useAuthStore((s) => s.role);
   const authUserId = useAuthStore((s) => s.user?.id ?? '');
-  const isGuest = role === 'guest' || (role === 'member' && user?.accountStatus !== 'active');
+  const { hasLimitedAccess } = useIsGuest();
+  const { prompt, sheet } = useAccountActionSheet();
   const activeUserId = useActiveProfileStore((s) => s.activeUserId);
   const setActiveUserId = useActiveProfileStore((s) => s.setActiveUserId);
   const linksQuery = useGuardianLinks();
@@ -146,19 +147,27 @@ export function FamilyTraineesScreenContent() {
   }, [linksQuery]);
 
   const handleSwitchToSelf = useCallback(() => {
+    if (hasLimitedAccess) {
+      prompt('family-profiles');
+      return;
+    }
     if (isSelfSelected) return;
     setActiveUserId(null);
     router.replace('/(tabs)');
-  }, [isSelfSelected, router, setActiveUserId]);
+  }, [hasLimitedAccess, isSelfSelected, prompt, router, setActiveUserId]);
 
   const handleSwitch = useCallback(
     (link: GuardianLinkItem) => {
+      if (hasLimitedAccess) {
+        prompt('family-profiles');
+        return;
+      }
       if (!link.traineeUserId || link.status !== 'approved') return;
       if (link.traineeUserId === selectedTraineeId) return;
       setActiveUserId(link.traineeUserId);
       router.replace('/(tabs)');
     },
-    [router, selectedTraineeId, setActiveUserId],
+    [hasLimitedAccess, prompt, router, selectedTraineeId, setActiveUserId],
   );
 
   const resolveLinkAvatar = useCallback(
@@ -204,7 +213,13 @@ export function FamilyTraineesScreenContent() {
             name={selfLabel}
             selected={isSelfSelected}
             avatarUrl={profileOptionsByUserId.get(authUserId)?.avatarUrl ?? null}
-            onPress={isSelfSelected ? undefined : handleSwitchToSelf}
+            onPress={
+              hasLimitedAccess
+                ? () => prompt('family-profiles')
+                : isSelfSelected
+                  ? undefined
+                  : handleSwitchToSelf
+            }
           />
 
           {listLinks.map((link) => {
@@ -219,7 +234,13 @@ export function FamilyTraineesScreenContent() {
                   selected={isSelected}
                   pending={link.status === 'pending'}
                   avatarUrl={resolveLinkAvatar(link)}
-                  onPress={canSwitch ? () => handleSwitch(link) : undefined}
+                  onPress={
+                    hasLimitedAccess
+                      ? () => prompt('family-profiles')
+                      : canSwitch
+                        ? () => handleSwitch(link)
+                        : undefined
+                  }
                 />
               </React.Fragment>
             );
@@ -243,13 +264,7 @@ export function FamilyTraineesScreenContent() {
           </Text>
         </View>
       ) : null}
-
-      {isGuest ? (
-        <PremiumLockOverlay
-          title="Family profiles"
-          description="Switch between family profiles after your membership is active."
-        />
-      ) : null}
+      {sheet}
     </View>
   );
 }

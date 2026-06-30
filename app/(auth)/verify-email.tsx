@@ -13,8 +13,8 @@ import {
 } from '@/features/auth/components/AuthExperience';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
 import { formatAuthError, validateEmail, validateOtpCode } from '@/features/auth/services/authValidation';
+import { completeSignupActivation } from '@/features/auth/services/postSignupActivation';
 import { useTheme } from '@/shared/theme';
-import { applyProfileAuthInfo } from '@/features/auth/services/authProfileSync';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export default function VerifyEmailScreen() {
@@ -59,20 +59,10 @@ export default function VerifyEmailScreen() {
           return;
         }
 
-        // Trigger Mindbody auto-linking immediately
-        try {
-          const { ensureMindbodyLink } = await import('@/features/auth/services/linkMindbody');
-          await ensureMindbodyLink();
-        } catch (linkError) {
-          console.warn('Auto-linking during signup verification failed/ambiguous:', linkError);
+        const userId = useAuthStore.getState().user?.id;
+        if (userId) {
+          await completeSignupActivation(userId, email);
         }
-
-        const currentUserId = useAuthStore.getState().user?.id;
-        if (currentUserId) {
-          await applyProfileAuthInfo(currentUserId, email);
-        }
-
-        authFeedback.accountCreated();
       } catch (authError) {
         authToast.error('Verification Failed', formatAuthError(authError));
         otpRef.current?.clear();

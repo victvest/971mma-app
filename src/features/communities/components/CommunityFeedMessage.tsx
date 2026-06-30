@@ -29,17 +29,14 @@ export function CommunityFeedMessage({
     <View style={[styles.root, { gap: gap.xs, paddingHorizontal: inset.md }]}>
       <CommunityChatBubble
         post={post}
-        variant={post.isPinned ? 'pinned' : 'feed'}
+        variant="feed"
         showAvatar
         onPress={onPress}
         onLongPress={onLongPress}
         onReact={onReact}
         readOnly={readOnly}
       />
-      <CommunityReplyPreview
-        replyCount={post.replyCount}
-        onPress={onOpenThread ?? onPress}
-      />
+      <CommunityReplyPreview replyCount={post.replyCount} onPress={onOpenThread ?? onPress} />
     </View>
   );
 }

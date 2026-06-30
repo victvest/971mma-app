@@ -1,11 +1,14 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { BackHandler, StyleSheet, View, useWindowDimensions } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RollCallDeck } from '@/features/coach/roll-call/components/RollCallDeck';
+import { RollCallRosterSheet } from '@/features/coach/roll-call/components/RollCallRosterSheet';
+import { RollCallWalkInSearch } from '@/features/coach/roll-call/components/RollCallWalkInSearch';
 import { useRollCallDeckMarking } from '@/features/coach/roll-call/hooks/useRollCallDeckMarking';
 import { useRollCallSession } from '@/features/coach/roll-call/hooks/useRollCallSession';
 import { DEFAULT_ROLL_CALL_CONFIG } from '@/features/coach/roll-call/types';
+import type { RollCallDeckMember } from '@/features/coach/roll-call/types';
 import {
   COACH_HOME_PATH,
   rollCallSummaryPath,
@@ -13,6 +16,8 @@ import {
 import { useCoachClass } from '@/features/coach/hooks/useCoachMode';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import { isQueryActivelyLoading } from '@/lib/offlineState';
 import { useTheme } from '@/shared/theme';
 import { PerfMark, usePerfRouteMount } from '@/shared/performance';
 
@@ -26,12 +31,14 @@ export default function RollCallScreen() {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const { showConfirm, showAlert, showDialog, hideDialog } = useDialog();
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const classQuery = useCoachClass(resolvedClassId || null);
   const {
     rollCallQuery,
     deck,
     isCompleted,
+    isInProgress,
     isStarting,
     unmarkedCount,
     hasProgress,
@@ -48,6 +55,17 @@ export default function RollCallScreen() {
     rollCallQuery.data?.config ?? DEFAULT_ROLL_CALL_CONFIG,
   );
 
+  const [walkInVisible, setWalkInVisible] = useState(false);
+  const [rosterVisible, setRosterVisible] = useState(false);
+  const [walkInMembers, setWalkInMembers] = useState<RollCallDeckMember[]>([]);
+
+  const deckMembers = useMemo(() => {
+    if (walkInMembers.length === 0) return deck;
+    const existingKeys = new Set(deck.map((member) => member.deckKey));
+    const additions = walkInMembers.filter((member) => !existingKeys.has(member.deckKey));
+    return additions.length > 0 ? [...deck, ...additions] : deck;
+  }, [deck, walkInMembers]);
+
   const cardWidth = width;
   const cardHeight = useMemo(
     () => Math.max(360, height - insets.top - insets.bottom - 220),
@@ -55,7 +73,17 @@ export default function RollCallScreen() {
   );
 
   const isLoading =
-    classQuery.isLoading || rollCallQuery.isLoading || (isStarting && deck.length === 0);
+    isQueryActivelyLoading(classQuery.isLoading, classQuery.isFetching) ||
+    isQueryActivelyLoading(rollCallQuery.isLoading, rollCallQuery.isFetching) ||
+    (isStarting && deck.length === 0);
+
+  const isOfflineBlocked =
+    networkStatusKnown &&
+    !isOnline &&
+    !isInProgress &&
+    !isCompleted &&
+    !isLoading &&
+    deck.length === 0;
 
   const classTitle =
     classQuery.data?.title ?? rollCallQuery.data?.classTitle ?? 'Class roll call';
@@ -168,6 +196,24 @@ export default function RollCallScreen() {
     return null;
   }
 
+  if (isOfflineBlocked) {
+    return (
+      <View style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+        <StateBlock
+          kind="error"
+          title="Connect to start roll call"
+          message="Roll call needs internet to load the roster and begin. Marks made earlier will sync when you reconnect."
+          actionLabel="Retry"
+          onAction={() => {
+            void classQuery.refetch();
+            void rollCallQuery.refetch();
+          }}
+          offlineAwareRetry
+        />
+      </View>
+    );
+  }
+
   if (classQuery.isError && rollCallQuery.isError) {
     return (
       <View style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
@@ -180,6 +226,7 @@ export default function RollCallScreen() {
             void classQuery.refetch();
             void rollCallQuery.refetch();
           }}
+          offlineAwareRetry
         />
       </View>
     );
@@ -200,7 +247,7 @@ export default function RollCallScreen() {
         classId={resolvedClassId}
         classTitle={classTitle}
         startsAt={startsAt}
-        members={deck}
+        members={deckMembers}
         screenWidth={cardWidth}
         screenHeight={height}
         cardHeight={cardHeight}
@@ -208,12 +255,29 @@ export default function RollCallScreen() {
         isRecording={isRecording || isAbandoning}
         reviewMode={isReviewFromSummary}
         onBackPress={confirmExit}
+        onWalkInPress={() => setWalkInVisible(true)}
+        onRosterPress={() => setRosterVisible(true)}
         onDeckComplete={() => {
           router.replace(rollCallSummaryPath(resolvedClassId));
         }}
         onRecordMark={recordWithStatus}
         onRevertMark={revertMark}
         onRecordError={handleRecordError}
+      />
+      <RollCallWalkInSearch
+        visible={walkInVisible}
+        classId={resolvedClassId}
+        onClose={() => setWalkInVisible(false)}
+        onAddWalkIn={(member) => {
+          setWalkInMembers((current) => [...current, member]);
+          setWalkInVisible(false);
+        }}
+        onError={handleRecordError}
+      />
+      <RollCallRosterSheet
+        visible={rosterVisible}
+        members={deckMembers}
+        onClose={() => setRosterVisible(false)}
       />
     </View>
   );

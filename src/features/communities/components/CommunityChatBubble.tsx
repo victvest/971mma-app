@@ -1,6 +1,5 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { CommunityOwnerBadge } from '@/features/communities/components/CommunityOwnerBadge';
@@ -18,6 +17,7 @@ type CommunityChatBubbleProps = {
   post: CommunityPostItem;
   variant?: CommunityChatBubbleVariant;
   showAvatar?: boolean;
+  showUnread?: boolean;
   onPress?: () => void;
   onLongPress?: () => void;
   onReact?: (emoji: string) => void;
@@ -28,16 +28,18 @@ export function CommunityChatBubble({
   post,
   variant = 'feed',
   showAvatar = true,
+  showUnread = true,
   onPress,
   onLongPress,
   onReact,
   readOnly = false,
 }: CommunityChatBubbleProps) {
-  const { colors, typography, gap, layout, shadows } = useTheme();
+  const { colors, typography, gap, layout } = useTheme();
   const isCoach = post.authorRole === 'coach';
   const timeLabel = formatCommunityMessageTime(post.publishedAt);
-  const isPinned = variant === 'pinned' || post.isPinned;
   const isInteractive = Boolean(onPress || onLongPress);
+  const showTime = variant === 'thread';
+  const isUnread = showUnread && Boolean(post.isUnread);
 
   const bubbleStyle = [
     styles.bubble,
@@ -45,11 +47,10 @@ export function CommunityChatBubble({
     variant === 'thread' ? styles.bubbleThread : styles.bubbleFeed,
     {
       backgroundColor: isCoach ? colors.accent.subtle : colors.surface.primary,
-      borderColor: isPinned ? colors.accent.default : isCoach ? colors.accent.default : colors.border.subtle,
-      borderWidth: isPinned ? 1.5 : layout.borderWidth,
+      borderColor: isUnread ? colors.accent.default : isCoach ? colors.accent.default : colors.border.subtle,
+      borderWidth: isUnread ? 1.5 : layout.borderWidth,
       gap: gap.xs,
     },
-    isPinned ? shadows.card : null,
   ];
 
   const bubbleBody = (
@@ -91,16 +92,24 @@ export function CommunityChatBubble({
           <View style={styles.avatarSpacer} />
         ) : null}
 
-        <View style={[styles.stack, variant === 'thread' ? styles.stackThread : styles.stackFeed, { gap: gap.xs }]}>
+        <View
+          style={[
+            styles.stack,
+            variant === 'thread' ? styles.stackThread : styles.stackFeed,
+            { gap: gap.xs },
+          ]}
+        >
           <View style={[styles.metaRow, { gap: gap.xs }]}>
-            <Text style={[typography.textPresets.captionMedium, { color: colors.text.primary }]} numberOfLines={1}>
+            <Text
+              style={[typography.textPresets.captionMedium, { color: colors.text.primary }]}
+              numberOfLines={1}
+            >
               {post.authorName}
             </Text>
             {isCoach ? <CommunityOwnerBadge compact /> : null}
-            {isPinned ? (
-              <View style={[styles.pinTag, { backgroundColor: colors.accent.subtle }]}>
-                <Ionicons name="pin" size={10} color={colors.accent.default} />
-                <Text style={[styles.pinText, { color: colors.accent.default }]}>Pinned</Text>
+            {isUnread ? (
+              <View style={[styles.unreadPill, { backgroundColor: colors.status.error }]}>
+                <Text style={[styles.unreadPillText, { color: colors.text.inverse }]}>New</Text>
               </View>
             ) : null}
           </View>
@@ -119,7 +128,7 @@ export function CommunityChatBubble({
             <View style={bubbleStyle}>{bubbleBody}</View>
           )}
 
-          {timeLabel ? (
+          {showTime && timeLabel ? (
             <Text style={[styles.time, { color: colors.text.tertiary }]}>{timeLabel}</Text>
           ) : null}
 
@@ -184,16 +193,14 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     paddingLeft: 4,
   },
-  pinTag: {
-    alignItems: 'center',
+  unreadPill: {
     borderRadius: 999,
-    flexDirection: 'row',
-    gap: 3,
     paddingHorizontal: 6,
     paddingVertical: 2,
   },
-  pinText: {
+  unreadPillText: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
+    letterSpacing: 0.2,
   },
 });

@@ -12,6 +12,7 @@ import {
   isDemoCommunityChannelId,
 } from '@/features/coach/demo/coachDemoFixtures';
 import { isCoachDemoMode } from '@/features/coach/demo/coachDemoMode';
+import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { getSupabaseClient } from '@/services/supabase/client';
 import type {
   CommunityAuthorRole,
@@ -74,6 +75,7 @@ function mapPost(row: Record<string, unknown>): CommunityPostItem {
     myReactions: Array.isArray(row.myReactions)
       ? row.myReactions.filter((item): item is string => typeof item === 'string')
       : [],
+    isUnread: readBoolean(row.isUnread ?? row.is_unread, false),
   };
 }
 
@@ -268,6 +270,19 @@ export async function markCommunityChannelRead(channelId: string): Promise<void>
   if (error) throw error;
 }
 
+export async function fanoutCommunityPush(input: {
+  postId?: string;
+  replyId?: string;
+}): Promise<void> {
+  if (isCoachDemoMode()) return;
+
+  try {
+    await invokeEdge<{ ok: boolean }>('community-push', input);
+  } catch {
+    // Push fanout is best-effort; in-app notifications are already persisted.
+  }
+}
+
 export async function pinCommunityPost(postId: string, coachId?: string): Promise<void> {
   const { error } = await getSupabaseClient().rpc('pin_community_post', {
     p_post_id: postId,
@@ -318,12 +333,19 @@ export async function createCommunityReply(postId: string, body: string): Promis
   if (error) throw error;
 
   const payload = (data ?? {}) as Record<string, unknown>;
-  return {
+  const thread = {
     post: mapPost((payload.post ?? {}) as Record<string, unknown>),
     replies: Array.isArray(payload.replies)
       ? payload.replies.map((row) => mapReply(row as Record<string, unknown>))
       : [],
   };
+
+  const latestReply = thread.replies.at(-1);
+  if (latestReply?.id) {
+    void fanoutCommunityPush({ replyId: latestReply.id });
+  }
+
+  return thread;
 }
 
 export async function publishCommunityPost(input: {
@@ -333,7 +355,7 @@ export async function publishCommunityPost(input: {
   body: string;
   postKind?: CommunityPostKind;
   pinOnPublish?: boolean;
-}): Promise<void> {
+}): Promise<string | null> {
   if (useDemoCommunityMutation(input.channelId)) {
     publishDemoCommunityPost({
       channelId: input.channelId,
@@ -342,10 +364,10 @@ export async function publishCommunityPost(input: {
       postKind: input.postKind,
       pinOnPublish: input.pinOnPublish,
     });
-    return;
+    return null;
   }
 
-  const { error } = await getSupabaseClient().rpc('publish_community_post', {
+  const { data, error } = await getSupabaseClient().rpc('publish_community_post', {
     p_channel_id: input.channelId,
     p_title: input.title ?? null,
     p_body: input.body,
@@ -354,4 +376,11 @@ export async function publishCommunityPost(input: {
     p_pin_on_publish: input.pinOnPublish ?? false,
   });
   if (error) throw error;
+
+  const row = (data ?? {}) as Record<string, unknown>;
+  const postId = typeof row.id === 'string' ? row.id : null;
+  if (postId) {
+    void fanoutCommunityPush({ postId });
+  }
+  return postId;
 }

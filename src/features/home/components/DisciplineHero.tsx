@@ -139,10 +139,15 @@ export function DisciplineHero({ score, weekActivity }: DisciplineHeroProps) {
     return count;
   }, [calendarWeek, trainedDaysMap]);
 
-  const streakLabel =
-    score?.currentStreak && score.currentStreak > 0
-      ? `${score.currentStreak} day streak`
-      : 'No active streak';
+  const streakLabel = (() => {
+    if (!score) return 'No active streak';
+    const streak = score.currentStreak ?? 0;
+    if (score.streakStatus === 'grace') {
+      return streak > 0 ? `${streak} day streak · grace active` : 'Grace window active';
+    }
+    if (streak > 0) return `${streak} day streak`;
+    return 'No active streak';
+  })();
 
   return (
     <View

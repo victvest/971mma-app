@@ -1,25 +1,5 @@
-import React from 'react';
-import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { AppBar } from '@/shared/components/ui';
-import { LegalDocumentView } from '@/features/legal/components/LegalDocumentView';
-import { PRIVACY_DOCUMENT } from '@/features/legal/data/legalContent';
-import { useTheme } from '@/shared/theme';
+import { Redirect } from 'expo-router';
 
 export default function PrivacyScreen() {
-  const { colors } = useTheme();
-
-  return (
-    <SafeAreaView
-      style={[styles.safe, { backgroundColor: colors.background.primary }]}
-      edges={['top', 'bottom']}
-    >
-      <AppBar title="Privacy Policy" showBackButton />
-      <LegalDocumentView document={PRIVACY_DOCUMENT} />
-    </SafeAreaView>
-  );
+  return <Redirect href="/legal?tab=privacy" />;
 }
-
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
-});

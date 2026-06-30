@@ -8,6 +8,7 @@ import {
   PHILOSOPHY_QUOTE,
   PHILOSOPHY_REITERATION,
 } from '@/features/about/content/academyContent';
+import { AboutContentCard } from '@/features/about/components/AboutContentCard';
 import { AboutSectionHeader } from '@/features/about/components/AboutSectionHeader';
 import { MediaBackground } from '@/shared/components/MediaBackground';
 import { RevealOnMount } from '@/shared/animations';
@@ -38,10 +39,12 @@ export function PhilosophySection() {
         </View>
       </MediaBackground>
 
-      <Text style={[styles.body, { color: colors.text.secondary }]}>
-        {PHILOSOPHY_BODY}
-        <Text style={{ color: colors.text.primary, fontWeight: '800' }}>{PHILOSOPHY_BODY_EMPHASIS}</Text>
-      </Text>
+      <AboutContentCard>
+        <Text style={[styles.body, { color: colors.text.secondary }]}>
+          {PHILOSOPHY_BODY}
+          <Text style={{ color: colors.accent.default, fontWeight: '800' }}>{PHILOSOPHY_BODY_EMPHASIS}</Text>
+        </Text>
+      </AboutContentCard>
     </RevealOnMount>
   );
 }

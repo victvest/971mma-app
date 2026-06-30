@@ -3,7 +3,7 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { usePersonaChat } from '../hooks/usePersonaChat';
+import { usePersonaChat, usePersonaSuggestions } from '../hooks/usePersonaChat';
 import { usePersonaStore } from '../store/usePersonaStore';
 import type { PersonaBubblePosition } from '../types';
 import { PERSONA_BUBBLE_SIZE, PersonaFloatingBubble } from './PersonaFloatingBubble';
@@ -39,6 +39,7 @@ export function PersonaAssistantHost() {
   const setBubblePosition = usePersonaStore((state) => state.setBubblePosition);
   const hydrateBubblePosition = usePersonaStore((state) => state.hydrateBubblePosition);
   const { messages, isTyping, sendMessage } = usePersonaChat();
+  const suggestions = usePersonaSuggestions();
   const hydratedRef = useRef(false);
 
   const isMemberSurface = isAuthenticated && role !== 'coach' && role !== 'admin';
@@ -114,6 +115,7 @@ export function PersonaAssistantHost() {
         visible={isChatOpen}
         messages={messages}
         isTyping={isTyping}
+        suggestions={suggestions}
         onClose={closeChat}
         onSend={sendMessage}
       />

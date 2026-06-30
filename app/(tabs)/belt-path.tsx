@@ -9,13 +9,12 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
-import { useRouter } from 'expo-router';
+import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { PremiumLockOverlay } from '@/shared/components/PremiumLockOverlay';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
 
 import { BeltPathAttendanceCard } from '@/features/belt/components/BeltPathAttendanceCard';
-import { BeltPathChallengeCard } from '@/features/belt/components/BeltPathChallengeCard';
 import { BeltPathHistoryCard } from '@/features/belt/components/BeltPathHistoryCard';
 import { BeltPathPendingCard } from '@/features/belt/components/BeltPathPendingCard';
 import { BeltPathRankSnapshot } from '@/features/belt/components/BeltPathRankSnapshot';
@@ -23,12 +22,7 @@ import { BeltPathRequirementCard } from '@/features/belt/components/BeltPathRequ
 import { BeltPathSectionHeader } from '@/features/belt/components/BeltPathSectionHeader';
 import { BeltPathSectionTitle } from '@/features/belt/components/BeltPathSectionTitle';
 import { CurriculumAscentModule } from '@/features/belt/components/CurriculumAscentModule';
-import {
-  BELT_PATH_PREVIEW_CHALLENGES,
-  BELT_PATH_PREVIEW_CURRICULUM,
-  BELT_PATH_PREVIEW_PROMOTIONS,
-  mapCurriculumRanksToAscentStops,
-} from '@/features/belt/data/beltPathPreviewContent';
+import { mapCurriculumRanksToAscentStops } from '@/features/belt/data/beltPathPreviewContent';
 import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
 import { useRankEligibility, useMemberDisciplines } from '@/features/auth/hooks/useMemberDisciplines';
 import { useDisciplineScore, useGym8WeeksActivity } from '@/features/home/hooks/useHomeDashboard';
@@ -37,9 +31,14 @@ import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome
 import { MotiEntrance, ScreenEntrance, LoadingCrossfade, BeltPathSkeleton } from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
-import type { PromotionItem } from '@/types/domain';
 
 const DEFAULT_8WEEKS_DATA = [0, 0, 0, 0, 0, 0, 0, 0];
 
@@ -68,6 +67,7 @@ export default function BeltPathScreen() {
   const beltPathQuery = useBeltPath(activeDisciplineSlug);
   const scoreQuery = useDisciplineScore();
   const week8Query = useGym8WeeksActivity();
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const [refreshing, setRefreshing] = useState(false);
   const scrollY = useSharedValue(0);
@@ -94,52 +94,49 @@ export default function BeltPathScreen() {
     ],
   }));
 
-  const role = useAuthStore((s) => s.role);
-  const userStore = useAuthStore((s) => s.user);
-  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
+  const { isAnonymousGuest, needsActivation } = useIsGuest();
+  const { prompt, sheet } = useAccountActionSheet();
 
-  const summary = isGuest ? {
-    progress: {
-      userId: 'guest',
-      discipline: 'bjj',
-      rankId: null,
-      rankName: 'Blue Belt',
-      stripe: 2,
-      maxStripes: 4,
-      percent: 65,
-      trainingDays: 24,
-      updatedAt: new Date().toISOString(),
-    },
-    requirements: [],
-    promotions: [],
-    curriculumRanks: [],
-    isPlaceholderCurriculum: false
-  } : beltPathQuery.data;
+  useFocusEffect(
+    useCallback(() => {
+      if (!needsActivation && !isAnonymousGuest) return;
+      prompt('track-progress');
+      const timer = setTimeout(() => {
+        if (router.canGoBack()) {
+          router.back();
+        } else {
+          router.replace('/(tabs)');
+        }
+      }, 0);
+      return () => clearTimeout(timer);
+    }, [isAnonymousGuest, needsActivation, prompt, router]),
+  );
 
-  const score = isGuest ? {
-    score: 85,
-    trainingDays: 24,
-    trainingDays30d: 12,
-    currentStreak: 3,
-    bestStreak: 8,
-    streakStatus: 'active' as const,
-    monthlyGoalPct: 0.65,
-    computedAt: new Date().toISOString(),
-    isPlaceholderWeights: false,
-  } : scoreQuery.data;
-  const rankEligible = isGuest ? true : (rankEligibilityQuery.data?.eligible === true);
-  const rankEligibilityKnown = isGuest ? true : (rankEligibilityQuery.data !== undefined);
-  const showNotEligible = isGuest ? false : (rankEligibilityKnown && !rankEligible);
+  if (needsActivation || isAnonymousGuest) {
+    return sheet;
+  }
+
+  const summary = beltPathQuery.data;
+  const score = scoreQuery.data;
+  const rankEligible = rankEligibilityQuery.data?.eligible === true;
+  const rankEligibilityKnown = rankEligibilityQuery.data !== undefined;
+  const showNotEligible = rankEligibilityKnown && !rankEligible;
 
   const hasError =
-    !isGuest && (rankEligibilityQuery.isError || beltPathQuery.isError || scoreQuery.isError || week8Query.isError);
-  const hasData = isGuest || (summary !== undefined && summary !== null);
+    rankEligibilityQuery.isError || beltPathQuery.isError || scoreQuery.isError || week8Query.isError;
+  const hasData = summary !== undefined && summary !== null;
   const isInitialLoading =
-    !isGuest && (rankEligibilityQuery.isLoading || (rankEligible && beltPathQuery.isLoading) || scoreQuery.isLoading) &&
+    (rankEligibilityQuery.isLoading || (rankEligible && beltPathQuery.isLoading) || scoreQuery.isLoading) &&
     !hasData &&
     !showNotEligible;
   const errorMessage =
     beltPathQuery.error instanceof Error ? beltPathQuery.error.message : 'Please check your connection.';
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
 
   const onRefresh = useCallback(async () => {
     triggerLightImpact();
@@ -168,24 +165,39 @@ export default function BeltPathScreen() {
 
   const weeksData = useMemo(() => week8Query.data ?? DEFAULT_8WEEKS_DATA, [week8Query.data]);
   const shouldShowCurriculumPending = summary?.isPlaceholderCurriculum === true;
-  const shouldShowRequirementsPending =
-    !shouldShowCurriculumPending && (summary?.requirements.length ?? 0) === 0;
-
   const curriculumStops = useMemo(() => {
-    if (summary?.curriculumRanks?.length) {
-      return mapCurriculumRanksToAscentStops(summary.curriculumRanks);
+    if (!summary?.curriculumRanks?.length) {
+      return [];
     }
-    return BELT_PATH_PREVIEW_CURRICULUM;
+    return mapCurriculumRanksToAscentStops(summary.curriculumRanks);
   }, [summary?.curriculumRanks]);
 
-  const displayPromotions = useMemo((): PromotionItem[] => {
-    if (!summary || summary.promotions.length === 0) {
-      return BELT_PATH_PREVIEW_PROMOTIONS;
-    }
-    return summary.promotions;
-  }, [summary]);
-
   const trainingDaysForRequirements = summary?.progress.trainingDays ?? 0;
+
+  const requirementsState = useMemo(() => {
+    if (!summary) {
+      return {
+        showPending: false,
+        showPromotionReady: false,
+        items: [],
+      };
+    }
+
+    const targetStripeRequirements = summary.requirements.filter(
+      (item) => item.stripe === summary.targetStripe,
+    );
+    const targetStripeComplete =
+      targetStripeRequirements.length > 0 &&
+      targetStripeRequirements.every((item) => item.status === 'done');
+    const atMaxStripe = summary.progress.stripe >= summary.progress.maxStripes;
+
+    return {
+      showPending: !summary.hasConfiguredRequirements && !shouldShowCurriculumPending,
+      showPromotionReady:
+        summary.hasConfiguredRequirements && atMaxStripe && targetStripeComplete,
+      items: summary.requirements,
+    };
+  }, [shouldShowCurriculumPending, summary]);
 
   return (
     <SafeAreaView
@@ -240,7 +252,18 @@ export default function BeltPathScreen() {
           <BeltPathSectionHeader />
         </Animated.View>
 
-        {hasError && hasData ? (
+        {isOfflineBlocked ? (
+          <View style={{ marginTop: 40 }}>
+            <StateBlock
+              kind="error"
+              title={OFFLINE_TITLE}
+              message={OFFLINE_MESSAGE}
+              actionLabel="Retry"
+              onAction={onRefresh}
+              offlineAwareRetry
+            />
+          </View>
+        ) : hasError && hasData ? (
           <View style={{ marginBottom: gap.md }}>
             <StateBlock
               kind="error"
@@ -248,11 +271,12 @@ export default function BeltPathScreen() {
               message="Some metrics could not be refreshed."
               actionLabel="Retry"
               onAction={onRefresh}
+              offlineAwareRetry
             />
           </View>
         ) : null}
 
-        {showNotEligible ? (
+        {!isOfflineBlocked && showNotEligible ? (
           <View style={{ marginTop: 40 }}>
             <StateBlock
               kind="empty"
@@ -262,7 +286,7 @@ export default function BeltPathScreen() {
               onAction={() => router.back()}
             />
           </View>
-        ) : hasError && !hasData ? (
+        ) : !isOfflineBlocked && hasError && !hasData ? (
           <View style={{ marginTop: 40 }}>
             <StateBlock
               kind="error"
@@ -270,9 +294,10 @@ export default function BeltPathScreen() {
               message={errorMessage}
               actionLabel="Retry"
               onAction={onRefresh}
+              offlineAwareRetry
             />
           </View>
-        ) : (
+        ) : !isOfflineBlocked ? (
           <LoadingCrossfade isLoaded={!isInitialLoading} skeleton={<BeltPathSkeleton />}>
             {summary ? (
               <>
@@ -321,7 +346,7 @@ export default function BeltPathScreen() {
                   </View>
                 ) : null}
 
-                {shouldShowCurriculumPending ? (
+                {shouldShowCurriculumPending || curriculumStops.length === 0 ? (
                   <BeltPathRankSnapshot progress={summary.progress} />
                 ) : (
                   <CurriculumAscentModule
@@ -345,14 +370,20 @@ export default function BeltPathScreen() {
                 <View style={[styles.section, { gap: gap.sm }]}>
                   <BeltPathSectionTitle title="Requirements" />
                   <View style={[styles.list, { gap: gap.sm }]}>
-                    {shouldShowRequirementsPending ? (
+                    {requirementsState.showPending ? (
                       <BeltPathPendingCard
                         icon="list-outline"
-                        title={`${summary.progress.rankName} requirements coming soon`}
-                        message="Your coach is configuring stripe requirements for your current rank. Attendance and streaks still count toward your progress."
+                        title={`${summary.progress.rankName} requirements not published yet`}
+                        message="Stripe requirements for this rank are not in the app yet. Keep training — your attendance and streaks still count toward progress."
+                      />
+                    ) : requirementsState.showPromotionReady ? (
+                      <BeltPathPendingCard
+                        icon="ribbon-outline"
+                        title="Ready for promotion review"
+                        message="You have completed all stripe requirements for this rank. Your coach will review you for the next promotion."
                       />
                     ) : (
-                      summary.requirements.map((item) => (
+                      requirementsState.items.map((item) => (
                         <BeltPathRequirementCard
                           key={item.id}
                           item={item}
@@ -364,35 +395,18 @@ export default function BeltPathScreen() {
                 </View>
 
                 <View style={[styles.section, { gap: gap.sm }]}>
-                  <BeltPathSectionTitle title="Challenges" />
-                  <View style={[styles.list, { gap: gap.sm }]}>
-                    {BELT_PATH_PREVIEW_CHALLENGES.map((item) => (
-                      <BeltPathChallengeCard key={item.id} item={item} />
-                    ))}
-                  </View>
-                </View>
-
-                <View style={[styles.section, { gap: gap.sm }]}>
                   <BeltPathSectionTitle title="Promotion history" />
-                  <BeltPathHistoryCard promotions={displayPromotions} />
+                  <BeltPathHistoryCard promotions={summary.promotions} />
                 </View>
               </>
             ) : null}
           </LoadingCrossfade>
-        )}
+        ) : null}
 
         {beltPathQuery.isFetching && !beltPathQuery.isLoading ? (
           <ActivityIndicator style={styles.refreshLoader} color={colors.accent.default} />
         ) : null}
       </Animated.ScrollView>
-
-      {isGuest ? (
-        <PremiumLockOverlay
-          title="Martial Arts Journey"
-          description="Your martial arts journey. Link your membership to track your BJJ belts or Wrestling levels, check off requirements, and celebrate promotions."
-          topOffset={scrollTopInset}
-        />
-      ) : null}
     </SafeAreaView>
   );
 }

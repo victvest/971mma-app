@@ -31,3 +31,8 @@ export { CollapsibleAppBar, CollapsibleAppBarAction } from './CollapsibleAppBar'
 export { AppScrollView, FlashListScrollComponent } from './AppScrollView';
 export type { AppScrollViewProps } from './AppScrollView';
 
+export { ScreenSectionHeader } from './ScreenSectionHeader';
+
+export { BrandedLucideIconBadge } from './BrandedLucideIconBadge';
+export type { BrandedIconTone } from './BrandedLucideIconBadge';
+

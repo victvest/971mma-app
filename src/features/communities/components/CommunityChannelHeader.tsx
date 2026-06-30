@@ -8,13 +8,34 @@ import type { CommunityChannelHeader as CommunityChannelHeaderData } from '@/typ
 
 type CommunityChannelHeaderProps = {
   header: CommunityChannelHeaderData;
+  role?: 'coach' | 'member' | 'guardian';
 };
 
-export function CommunityChannelHeader({ header }: CommunityChannelHeaderProps) {
-  const { colors, typography, inset, gap, radius } = useTheme();
+export function CommunityChannelHeader({ header, role = 'member' }: CommunityChannelHeaderProps) {
+  const { colors, typography, inset, gap, radius, layout, shadows } = useTheme();
+  const title = header.title.replace(` • ${header.disciplineName}`, '').trim();
+  const helper =
+    role === 'guardian'
+      ? `Read-only updates from ${header.coachName}`
+      : `Led by ${header.coachName}`;
 
   return (
-    <View style={[styles.root, { gap: gap.md, paddingHorizontal: inset.lg, paddingVertical: inset.md }]}>
+    <View
+      style={[
+        styles.root,
+        shadows.card,
+        {
+          backgroundColor: colors.surface.primary,
+          borderColor: colors.border.subtle,
+          borderRadius: radius.cardLarge,
+          borderWidth: layout.borderWidth,
+          gap: gap.sm,
+          marginHorizontal: inset.lg,
+          paddingHorizontal: inset.md,
+          paddingVertical: inset.md,
+        },
+      ]}
+    >
       <View style={[styles.topRow, { gap: gap.md }]}>
         <MemberAvatar
           name={header.coachName}
@@ -25,28 +46,44 @@ export function CommunityChannelHeader({ header }: CommunityChannelHeaderProps) 
         />
 
         <View style={[styles.copy, { gap: gap.xs }]}>
-          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]} numberOfLines={2}>
-            {header.title}
+          <Text
+            style={[typography.textPresets.title, { color: colors.text.primary }]}
+            numberOfLines={2}
+          >
+            {title || header.coachName}
           </Text>
           <View style={[styles.metaRow, { gap: gap.xs }]}>
-            <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={1}>
-              {header.coachName}
+            <Text
+              style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+              numberOfLines={1}
+            >
+              {helper}
             </Text>
             {header.isCoachOwner ? <CommunityOwnerBadge compact /> : null}
           </View>
-          <View style={[styles.statsRow, { gap: gap.sm }]}>
-            <View style={styles.stat}>
-              <Ionicons name="people-outline" size={13} color={colors.text.tertiary} />
-              <Text style={[styles.statText, { color: colors.text.tertiary }]}>
-                {header.memberCount} member{header.memberCount === 1 ? '' : 's'}
-              </Text>
-            </View>
-            <View style={[styles.disciplinePill, { backgroundColor: colors.fill.secondary, borderRadius: radius.pill }]}>
-              <Text style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}>
-                {header.disciplineName}
-              </Text>
-            </View>
-          </View>
+        </View>
+      </View>
+
+      {header.description ? (
+        <Text
+          style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+          numberOfLines={3}
+        >
+          {header.description}
+        </Text>
+      ) : null}
+
+      <View style={[styles.statsRow, { gap: gap.sm }]}>
+        <View
+          style={[
+            styles.infoPill,
+            { backgroundColor: colors.fill.secondary, borderRadius: radius.pill },
+          ]}
+        >
+          <Ionicons name="people-outline" size={13} color={colors.text.tertiary} />
+          <Text style={[styles.statText, { color: colors.text.secondary }]}>
+            {header.memberCount} member{header.memberCount === 1 ? '' : 's'}
+          </Text>
         </View>
       </View>
     </View>
@@ -75,16 +112,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
   },
-  stat: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-  },
   statText: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  disciplinePill: {
+  infoPill: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 5,
     paddingHorizontal: 10,
     paddingVertical: 4,
   },

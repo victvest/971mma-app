@@ -1,42 +1,37 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Image } from 'expo-image';
 import {
   RefreshControl,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
-import Animated, {
-  Extrapolation,
-  interpolate,
-  runOnJS,
-  useAnimatedReaction,
-  useAnimatedScrollHandler,
-  useAnimatedStyle,
-  useSharedValue,
-} from 'react-native-reanimated';
-import { LinearGradient } from 'expo-linear-gradient';
+import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
-import { useAuth } from '@/features/auth/context/AuthContext';
+import { Ionicons } from '@expo/vector-icons';
 import {
-  getCoachRankLabel,
-  getCoachRoleLabel,
-  getCoachSpecialtyLabel,
-} from '@/features/coaches/components/CoachVisuals';
-import { DisciplinePill } from '@/features/coaches/components/CoachVisuals';
+  Bell,
+  LogOut,
+  PersonStanding,
+  ShieldCheck,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react-native';
+
+import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { getCoachRankLabel, getCoachRoleLabel, getCoachSpecialtyLabel } from '@/features/coaches/components/CoachVisuals';
 import { useCoachDashboardStats } from '@/features/coach/hooks/useCoachMode';
 import {
   useMyCoachClasses,
-  useMyCoachDisciplines,
   useMyCoachRecord,
 } from '@/features/coach/hooks/useMyCoachRecord';
 import {
-  PROFILE_HERO_HEIGHT,
-  ProfileAccountFooter,
+  ProfileActionTile,
+  ProfileGlassHeader,
+  ProfilePerfMetricCard,
   SpringPressable,
-  StatCard,
+  profileLayoutStyles,
   profileScreenStyles,
   profileScrollContentPadding,
   useSectionEntrance,
@@ -46,30 +41,33 @@ import { triggerLightImpact } from '@/shared/haptics';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { CollapsibleAppBar, CollapsibleAppBarAction } from '@/shared/components/ui';
+import { UaeFlagMark } from '@/shared/components/brand';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
+import { type BrandedIconTone } from '@/shared/components/ui';
 import { useDialog } from '@/shared/components/Dialog';
 import { useTheme } from '@/shared/theme';
-import { UaeFlagMark } from '@/shared/components/brand';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { getAppVersionLabel } from '@/core/config/appVersion';
 
-import coverImage from '../../../../../assets/images/optimized/class-bjj-cover.jpg';
-
 export function CoachProfileScreen() {
-  const { colors, inset, radius, gap, layout } = useTheme();
+  const { colors, typography, inset, radius, layout, mode } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut } = useAuth();
   const { showConfirm } = useDialog();
   const user = useAuthStore((s) => s.user);
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const { coach, profileQuery, isLoading, isError } = useMyCoachRecord();
   const classesQuery = useMyCoachClasses(coach);
-  const disciplines = useMyCoachDisciplines(coach, classesQuery.data);
   const statsQuery = useCoachDashboardStats();
 
   const [refreshing, setRefreshing] = useState(false);
-  const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
 
   const versionLabel = useMemo(() => getAppVersionLabel(), []);
 
@@ -78,69 +76,28 @@ export function CoachProfileScreen() {
   const weekClassCount = classesQuery.data?.length ?? 0;
 
   const displayName = profile?.fullName ?? user?.email?.split('@')[0] ?? 'Coach';
-  const roleLabel = 'Coach';
 
-  const heroKicker = useMemo(() => {
-    if (coach) return getCoachRoleLabel(coach).toUpperCase();
-    return 'COACH PROFILE';
-  }, [coach]);
-
-  const heroKickerColor = colors.accent.default;
-
-  const heroMetaChips = useMemo(() => {
-    const chips: string[] = [];
-    if (coach) {
-      chips.push(getCoachSpecialtyLabel(coach));
-      if (weekClassCount > 0) {
-        chips.push(`${weekClassCount} classes this week`);
+  const coachBadgeLabel = useMemo(() => {
+    if (coach) return getCoachRoleLabel(coach);
+    if (profile?.memberSince) {
+      try {
+        return `Coach since ${new Date(profile.memberSince).getFullYear()}`;
+      } catch {
+        return 'Coach';
       }
     }
-    return chips;
-  }, [coach, weekClassCount]);
+    return 'Coach';
+  }, [coach, profile?.memberSince]);
 
   const hasData = profile !== undefined || coach !== null || stats !== undefined;
+  const hasError = isError;
   const isInitialLoading = isLoading && !hasData;
   const dataReady = hasData && !isInitialLoading;
-  const showErrorOnly = isError && !hasData;
-  const showSkeletonOnly = isInitialLoading && !isError && !hasData;
-  const showContent = !showErrorOnly && !showSkeletonOnly;
-
-  const scrollY = useSharedValue(0);
-  const scrollHandler = useAnimatedScrollHandler((ev) => {
-    scrollY.value = ev.contentOffset.y;
-  });
-
-  const heroTotalH = PROFILE_HERO_HEIGHT + safeInsets.top;
-  const headerRevealStart = heroTotalH - 100;
-  const headerRevealEnd = heroTotalH - 10;
-
-  useAnimatedReaction(
-    () => scrollY.value >= headerRevealStart,
-    (isSolid, previous) => {
-      if (isSolid !== previous) {
-        runOnJS(setStatusBarStyle)(isSolid ? 'dark' : 'light');
-      }
-    },
-    [headerRevealStart],
-  );
-
-  const heroImgStyle = useAnimatedStyle(() => ({
-    transform: [
-      {
-        translateY: interpolate(
-          scrollY.value,
-          [0, heroTotalH],
-          [0, -heroTotalH * 0.4],
-          Extrapolation.CLAMP,
-        ),
-      },
-    ],
-  }));
 
   const heroEntrance = useSectionEntrance(0, dataReady);
   const statsEntrance = useSectionEntrance(120, dataReady);
-  const disciplinesEntrance = useSectionEntrance(240, dataReady);
-  const credentialsEntrance = useSectionEntrance(340, dataReady);
+  const credentialsEntrance = useSectionEntrance(240, dataReady);
+  const actionsEntrance = useSectionEntrance(340, dataReady);
   const bottomEntrance = useSectionEntrance(420, dataReady);
 
   const handleRefresh = useCallback(async () => {
@@ -166,36 +123,99 @@ export function CoachProfileScreen() {
     );
   }, [showConfirm, signOut]);
 
+  const handleRequestDeletion = useCallback(() => {
+    router.push('/delete-account');
+  }, [router]);
+
+  const accountOptions = useMemo(() => {
+    const list: Array<{
+      icon: LucideIcon;
+      title: string;
+      subtitle: string;
+      onPress: () => void;
+      iconTone?: BrandedIconTone;
+    }> = [
+      {
+        icon: PersonStanding,
+        iconTone: 'neutral',
+        title: 'Switch to member mode',
+        subtitle: 'Return to your member experience',
+        onPress: () => router.replace('/(tabs)'),
+      },
+      {
+        icon: ShieldCheck,
+        iconTone: 'neutral',
+        title: 'Change Password',
+        subtitle: 'Update security credentials',
+        onPress: () => router.push('/change-password'),
+      },
+      {
+        icon: Bell,
+        iconTone: 'neutral',
+        title: 'Notification Preferences',
+        subtitle: 'Choose academy, class, and reward alerts',
+        onPress: () => router.push('/notifications/preferences'),
+      },
+      {
+        icon: Trash2,
+        iconTone: 'neutral',
+        title: 'Delete Account',
+        subtitle: 'Request account deletion',
+        onPress: handleRequestDeletion,
+      },
+      {
+        icon: LogOut,
+        iconTone: 'danger',
+        title: 'Logout',
+        subtitle: 'Exit your current session',
+        onPress: handleSignOut,
+      },
+    ];
+
+    return list;
+  }, [handleRequestDeletion, handleSignOut, router]);
+
   const contentPadding = useMemo(
     () => profileScrollContentPadding(safeInsets.bottom, inset.lg, inset.md),
     [inset.lg, inset.md, safeInsets.bottom],
   );
 
-  const appBarHeight = layout.headerHeight;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
 
-  const profileAppBarRight = (
-    <CollapsibleAppBarAction
-      icon="create-outline"
-      onPress={() => router.push('/edit-profile')}
-      accessibilityLabel="Edit profile"
-      scrollY={scrollY}
-      collapseStart={headerRevealStart}
-      collapseEnd={headerRevealEnd}
-    />
-  );
+  const showOfflineOnly = isOfflineBlocked;
+  const showErrorOnly = hasError && !hasData && !showOfflineOnly;
+  const showSkeletonOnly = isInitialLoading && !hasError && !hasData && !showOfflineOnly;
+  const showContent = !showOfflineOnly && !showErrorOnly && !showSkeletonOnly;
+  const appBarHeight = layout.headerHeight;
+  const actionGroupBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
 
   return (
     <View style={[profileScreenStyles.screen, { backgroundColor: colors.background.primary }]}>
-      <AppStatusBar style={statusBarStyle} translucent backgroundColor="transparent" />
+      <AppStatusBar style="dark" translucent backgroundColor="transparent" />
 
-      <CollapsibleAppBar
-        title="Profile"
-        scrollY={scrollY}
-        collapseStart={headerRevealStart}
-        collapseEnd={headerRevealEnd}
+      <ProfileGlassHeader
+        safeTop={safeInsets.top}
         onBackPress={() => router.back()}
-        rightElement={profileAppBarRight}
+        onEditPress={() => router.push('/edit-profile')}
       />
+
+      {showOfflineOnly ? (
+        <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={handleRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : null}
 
       {showErrorOnly ? (
         <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
@@ -205,6 +225,7 @@ export function CoachProfileScreen() {
             message="Please check your connection and try again."
             actionLabel="Retry"
             onAction={handleRefresh}
+            offlineAwareRetry
           />
         </View>
       ) : null}
@@ -217,8 +238,6 @@ export function CoachProfileScreen() {
 
       {showContent ? (
         <Animated.ScrollView
-          onScroll={scrollHandler}
-          scrollEventThrottle={16}
           showsVerticalScrollIndicator={false}
           contentInsetAdjustmentBehavior="never"
           contentContainerStyle={contentPadding}
@@ -232,91 +251,55 @@ export function CoachProfileScreen() {
         >
           <Animated.View
             style={[
-              profileScreenStyles.heroSection,
-              { height: heroTotalH, marginHorizontal: -inset.lg },
+              profileLayoutStyles.identityContainer,
+              {
+                paddingTop: safeInsets.top + NAV_CHROME.clusterHeight + 24,
+              },
               heroEntrance,
             ]}
           >
-            <Animated.View style={[StyleSheet.absoluteFill, heroImgStyle]}>
-              <Image
-                source={coverImage}
-                style={[profileScreenStyles.heroImage, { height: heroTotalH + 140 }]}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                transition={0}
+            <View style={profileLayoutStyles.avatarGlowContainer}>
+              <MemberAvatar
+                name={displayName}
+                avatarUrl={profile?.avatarUrl}
+                size={110}
+                borderWidth={4}
+                borderColor="#FFFFFF"
+                backgroundColor={colors.accent.default}
+                textColor={colors.text.inverse}
+                initialsStyle={{ fontSize: 36, fontWeight: '900' }}
               />
-            </Animated.View>
+            </View>
 
-            <LinearGradient
-              colors={['transparent', 'rgba(0,0,0,0.08)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.94)']}
-              locations={[0, 0.3, 0.62, 1]}
-              style={StyleSheet.absoluteFill}
-            />
+            <Text style={[profileLayoutStyles.centeredName, { color: colors.text.primary }]}>
+              {displayName}
+            </Text>
 
-            <View
-              style={[
-                profileScreenStyles.heroContent,
-                {
-                  paddingTop: safeInsets.top + 62,
-                  paddingHorizontal: inset.lg,
-                  paddingBottom: 28,
-                },
-              ]}
-            >
-              <View
+            {user?.email ? (
+              <Text
                 style={[
-                  profileScreenStyles.heroKickerBadge,
-                  {
-                    backgroundColor: `${heroKickerColor}25`,
-                    borderColor: `${heroKickerColor}55`,
-                  },
+                  typography.textPresets.body,
+                  { color: colors.text.secondary, textAlign: 'center', marginTop: 4 },
                 ]}
               >
-                <UaeFlagMark />
-                <Text style={[profileScreenStyles.heroKickerText, { color: heroKickerColor }]}>
-                  {heroKicker}
-                </Text>
-              </View>
+                {user.email}
+              </Text>
+            ) : null}
 
-              <View style={[profileScreenStyles.identityRow, { marginTop: 14 }]}>
-                <MemberAvatar
-                  name={displayName}
-                  avatarUrl={profile?.avatarUrl}
-                  size={80}
-                  borderWidth={2.5}
-                  borderColor={colors.accent.default}
-                  backgroundColor={colors.accent.default}
-                  textColor={colors.text.inverse}
-                  initialsStyle={profileScreenStyles.avatarInitials}
-                />
-
-                <View style={profileScreenStyles.identityText}>
-                  <Text style={profileScreenStyles.heroName} numberOfLines={1}>
-                    {displayName}
-                  </Text>
-                  <Text style={profileScreenStyles.heroRole} numberOfLines={1}>
-                    {roleLabel}
-                  </Text>
-                  {heroMetaChips.length > 0 ? (
-                    <View style={profileScreenStyles.heroMetaRow}>
-                      {heroMetaChips.map((chip) => (
-                        <Text key={chip} style={profileScreenStyles.heroMetaChip} numberOfLines={1}>
-                          {chip}
-                        </Text>
-                      ))}
-                    </View>
-                  ) : null}
-                  {user?.email ? (
-                    <Text style={profileScreenStyles.heroEmail} numberOfLines={1}>
-                      {user.email}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
+            <View style={[profileLayoutStyles.memberSinceBadge, { marginTop: 10 }]}>
+              <Ionicons
+                name="calendar-outline"
+                size={13}
+                color={colors.text.secondary}
+                style={{ marginRight: 4 }}
+              />
+              <Text style={[profileLayoutStyles.memberSinceText, { color: colors.text.secondary }]}>
+                {coachBadgeLabel}
+              </Text>
             </View>
           </Animated.View>
 
-          {isError && hasData ? (
+          {hasError && hasData ? (
             <View style={{ marginBottom: 4 }}>
               <StateBlock
                 kind="error"
@@ -328,82 +311,50 @@ export function CoachProfileScreen() {
             </View>
           ) : null}
 
-          <Animated.View style={statsEntrance}>
-            <Text style={[profileScreenStyles.sectionEyebrow, { color: colors.text.tertiary }]}>
-              COACHING SNAPSHOT
-            </Text>
-            <View style={[profileScreenStyles.statsGrid, { gap: gap.sm }]}>
-              <View style={profileScreenStyles.statsRow}>
-                <StatCard
-                  value={stats?.todayClassCount ?? 0}
+          <Animated.View style={[profileLayoutStyles.sectionContainer, statsEntrance, { marginBottom: 8 }]}>
+            <View style={[profileLayoutStyles.perfCardsGrid, { gap: 12 }]}>
+              <View style={profileLayoutStyles.perfCardsRow}>
+                <ProfilePerfMetricCard
                   label="Today's Classes"
-                  accentColor={colors.accent.default}
-                  bgColor={colors.background.elevated}
-                  textColor={colors.text.primary}
-                  labelColor={colors.text.tertiary}
-                  borderColor={`${colors.accent.default}30`}
-                  cardRadius={radius.cardLarge}
+                  value={stats?.todayClassCount ?? 0}
+                  subtitle="Scheduled Today"
                   iconName="calendar-outline"
-                />
-                <StatCard
-                  value={stats?.todayCheckIns ?? 0}
-                  label="Check-ins"
-                  accentColor={colors.status.success}
-                  bgColor={colors.background.elevated}
                   textColor={colors.text.primary}
-                  labelColor={colors.text.tertiary}
-                  borderColor={colors.status.successBorder}
-                  cardRadius={radius.cardLarge}
+                  secondaryTextColor={colors.text.secondary}
+                />
+                <ProfilePerfMetricCard
+                  label="Check-ins"
+                  value={stats?.todayCheckIns ?? 0}
+                  subtitle="Today's Attendance"
                   iconName="people-outline"
+                  textColor={colors.text.primary}
+                  secondaryTextColor={colors.text.secondary}
+                  valueColor="#00843D"
                 />
               </View>
-              <View style={profileScreenStyles.statsRow}>
-                <StatCard
-                  value={stats?.promotionCandidateCount ?? 0}
+
+              <View style={[profileLayoutStyles.perfCardsRow, { marginTop: 12 }]}>
+                <ProfilePerfMetricCard
                   label="In Queue"
-                  accentColor={colors.status.warning}
-                  bgColor={colors.background.elevated}
-                  textColor={colors.text.primary}
-                  labelColor={colors.text.tertiary}
-                  borderColor={colors.status.warningBorder}
-                  cardRadius={radius.cardLarge}
+                  value={stats?.promotionCandidateCount ?? 0}
+                  subtitle="Promotion Reviews"
                   iconName="ribbon-outline"
-                />
-                <StatCard
-                  value={weekClassCount}
-                  label="This Week"
-                  accentColor={colors.accent.default}
-                  bgColor={colors.background.elevated}
                   textColor={colors.text.primary}
-                  labelColor={colors.text.tertiary}
-                  borderColor={`${colors.accent.default}30`}
-                  cardRadius={radius.cardLarge}
+                  secondaryTextColor={colors.text.secondary}
+                />
+                <ProfilePerfMetricCard
+                  label="This Week"
+                  value={weekClassCount}
+                  subtitle="Classes Scheduled"
                   iconName="time-outline"
+                  textColor={colors.text.primary}
+                  secondaryTextColor={colors.text.secondary}
                 />
               </View>
             </View>
           </Animated.View>
 
-          <Animated.View style={disciplinesEntrance}>
-            <Text style={[profileScreenStyles.sectionEyebrow, { color: colors.text.tertiary }]}>
-              DISCIPLINES
-            </Text>
-            {disciplines.length > 0 ? (
-              <View style={profileScreenStyles.disciplineRow}>
-                {disciplines.map((label) => (
-                  <DisciplinePill key={label} label={label} elevated />
-                ))}
-              </View>
-            ) : (
-              <Text style={[profileScreenStyles.promoSubtitle, { color: colors.text.secondary }]}>
-                {coach
-                  ? `${getCoachSpecialtyLabel(coach)} sessions at 971 MMA`
-                  : 'Link your staff profile to show disciplines here.'}
-              </Text>
-            )}
-          </Animated.View>
-
-          <Animated.View style={credentialsEntrance}>
+          <Animated.View style={[profileLayoutStyles.sectionContainer, credentialsEntrance, { marginBottom: 8 }]}>
             <SpringPressable>
               <View
                 style={[
@@ -442,14 +393,41 @@ export function CoachProfileScreen() {
             </SpringPressable>
           </Animated.View>
 
+          <Animated.View style={[profileLayoutStyles.sectionContainer, actionsEntrance, { marginBottom: 8 }]}>
+            <View
+              style={[
+                profileLayoutStyles.actionGroup,
+                {
+                  backgroundColor: colors.surface.primary,
+                  borderColor: actionGroupBorder,
+                  borderRadius: radius.card,
+                  borderWidth: StyleSheet.hairlineWidth,
+                },
+              ]}
+            >
+              {accountOptions.map((opt, index) => (
+                <ProfileActionTile
+                  key={opt.title}
+                  icon={opt.icon}
+                  title={opt.title}
+                  subtitle={opt.subtitle}
+                  onPress={opt.onPress}
+                  iconTone={opt.iconTone}
+                  showDivider={index < accountOptions.length - 1}
+                />
+              ))}
+            </View>
+          </Animated.View>
+
           <Animated.View style={[bottomEntrance, { gap: inset.md }]}>
-            <ProfileAccountFooter
-              versionLabel={versionLabel}
-              onEditProfile={() => router.push('/edit-profile')}
-              onSwitchToMemberMode={() => router.replace('/(tabs)')}
-              onSignOut={handleSignOut}
-              onChangePassword={() => router.push('/change-password')}
-            />
+            <Text
+              style={[
+                typography.textPresets.caption,
+                { color: colors.text.tertiary, textAlign: 'center', marginTop: 32 },
+              ]}
+            >
+              {versionLabel}
+            </Text>
           </Animated.View>
         </Animated.ScrollView>
       ) : null}

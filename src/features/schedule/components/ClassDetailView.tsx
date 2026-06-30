@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { StyleSheet, View, Text, Pressable, Linking, useWindowDimensions } from 'react-native';
+import React, { useMemo, useCallback } from 'react';
+import { StyleSheet, View, Text, Pressable, Linking, useWindowDimensions, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -7,7 +7,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { AlertTriangle, Calendar, MapPin } from 'lucide-react-native';
 import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
 
-import { isClassLiveNow, GYM_TIME_ZONE, formatGymTime12h } from '@/core/time/gymTime';
+import { isClassLiveNow, isClassUpcoming, GYM_TIME_ZONE, formatGymTime12h } from '@/core/time/gymTime';
+import type { ClassItem, CoachItem } from '@/types/domain';
+import {
+  CLASS_REMINDER_BAR_HEIGHT,
+  ClassReminderSubscribeBar,
+} from '@/features/schedule/components/ClassReminderSubscribeBar';
 import { getCoachImageSource, getCoachRatingLabel } from '@/features/coaches/components/CoachVisuals';
 import { GlassNavChrome, GlassSurface } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
@@ -15,8 +20,6 @@ import { resolveClassImage } from '@/features/schedule/utils/classImages';
 import { formatDisciplineLabel, plainClassDescription } from '@/features/schedule/utils/classDisplay';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { triggerLightImpact, triggerMediumImpact } from '@/shared/haptics';
-import type { ClassItem, CoachItem } from '@/types/domain';
-
 import { useAuthStore } from '@/stores/useAuthStore';
 
 type Props = {
@@ -41,10 +44,6 @@ export function ClassDetailView({
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-
-  const role = useAuthStore((s) => s.role);
-  const userStore = useAuthStore((s) => s.user);
-  const isGuest = role === 'guest' || (role === 'member' && userStore?.accountStatus !== 'active');
 
   const scrollY = useSharedValue(0);
 
@@ -145,6 +144,21 @@ export function ClassDetailView({
     void Linking.openURL(`https://maps.apple.com/?q=${query}`);
   };
 
+  const shareClass = useCallback(async () => {
+    triggerMediumImpact();
+    try {
+      await Share.share({
+        message: `${item.title}\n${calendarHeadline}\n${disciplineLabel}\n971 MMA — Dubai`,
+      });
+    } catch {
+      // User dismissed the share sheet.
+    }
+  }, [calendarHeadline, disciplineLabel, item.title]);
+
+  const canSubscribeToClass = !item.isCancelled && isClassUpcoming(item.startsAt);
+  const userId = useAuthStore((state) => state.user?.id);
+  const showSubscribeBar = Boolean(userId) && canSubscribeToClass;
+
   const capacityFraction = item.bookedCount / capacityTotal;
   const progressPercentage = Math.min(Math.max(capacityFraction, 0), 1) * 100;
 
@@ -154,7 +168,10 @@ export function ClassDetailView({
         showsVerticalScrollIndicator={false}
         onScroll={handleScroll}
         scrollEventThrottle={16}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[
+          styles.scrollContent,
+          showSubscribeBar && { paddingBottom: safeInsets.bottom + CLASS_REMINDER_BAR_HEIGHT },
+        ]}
       >
         {/* Hero Image */}
         <View style={[styles.hero, { height: heroHeight }]}>
@@ -164,13 +181,10 @@ export function ClassDetailView({
           <UaeBrandAmbientGlow variant="photo-hero" topInset={safeInsets.top} />
         </View>
 
-        {/* Floating liquid-glass title card overlapping hero */}
+        {/* Floating title card overlapping hero */}
         <View style={styles.floatingCardWrap}>
-          <GlassSurface
-            borderRadius={24}
-            style={styles.floatingCardGlass}
-            contentStyle={styles.floatingCardContent}
-          >
+          <View style={styles.floatingCard}>
+            <View style={styles.floatingCardContent}>
             <View style={styles.tagRow}>
               {item.discipline ? (
                 <View style={styles.disciplineTag}>
@@ -205,7 +219,8 @@ export function ClassDetailView({
             </View>
 
             <Text style={styles.disciplineLine}>{disciplineLabel}</Text>
-          </GlassSurface>
+            </View>
+          </View>
         </View>
 
         {/* Detail cards */}
@@ -319,20 +334,10 @@ export function ClassDetailView({
             <View style={styles.capacityDivider} />
           </GlassSurface>
 
-          {isGuest ? (
-            <GlassSurface
-              borderRadius={32}
-              style={[styles.detailCardGlass, { borderColor: '#D71920' + '33', borderWidth: 1 }]}
-              contentStyle={[styles.detailCardContent, { flexDirection: 'row', gap: 12, alignItems: 'center' }]}
-            >
-              <Ionicons name="information-circle-outline" size={24} color="#D71920" />
-              <Text style={{ flex: 1, fontFamily: 'Inter_500Medium', fontSize: 13, color: '#333333', lineHeight: 18 }}>
-                Membership required. To attend this class, please activate your membership or contact the front desk.
-              </Text>
-            </GlassSurface>
-          ) : null}
         </View>
       </Animated.ScrollView>
+
+      <ClassReminderSubscribeBar item={item} canSubscribe={canSubscribeToClass} />
 
       {/* Floating liquid-glass nav chrome over hero */}
       <View
@@ -358,10 +363,7 @@ export function ClassDetailView({
         </GlassNavChrome>
 
         <GlassNavChrome
-          onPress={() => {
-            triggerMediumImpact();
-            // Share functionality placeholder
-          }}
+          onPress={shareClass}
           accessibilityLabel="Share class"
           style={styles.floatingNavButton}
           contentStyle={styles.floatingNavButtonInner}
@@ -406,12 +408,20 @@ const styles = StyleSheet.create({
     width: NAV_CHROME.clusterHeight,
   },
   floatingCardWrap: {
-    borderRadius: 24,
     marginHorizontal: 16,
-    marginTop: -40,
+    marginTop: -50,
     zIndex: 5,
   },
-  floatingCardGlass: {
+  floatingCard: {
+    backgroundColor: '#FFFFFF',
+    borderColor: '#EFEFEF',
+    borderRadius: 24,
+    borderWidth: 1,
+    elevation: 2,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     width: '100%',
   },
   floatingCardContent: {
@@ -419,6 +429,7 @@ const styles = StyleSheet.create({
     alignSelf: 'stretch',
     justifyContent: 'flex-start',
     padding: 20,
+    gap: 10,
   },
   tagRow: {
     flexDirection: 'row',

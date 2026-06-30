@@ -21,13 +21,14 @@ type Props = {
   token: string | null | undefined;
   passLoading: boolean;
   memberName: string;
-  beltLine: string;
   canShowActiveQr: boolean;
-  planName?: string | null;
   expiryDate?: string | null;
+  expiryLoading?: boolean;
   onModeChange?: (mode: CheckInMode) => void;
   isGuest?: boolean;
+  requiresAccount?: boolean;
   isRegistered?: boolean;
+  onRequireAccount?: () => void;
 };
 
 export function CheckInEntranceSection({
@@ -37,13 +38,14 @@ export function CheckInEntranceSection({
   token,
   passLoading,
   memberName,
-  beltLine,
   canShowActiveQr,
-  planName,
   expiryDate,
+  expiryLoading,
   onModeChange,
   isGuest = false,
+  requiresAccount = false,
   isRegistered = false,
+  onRequireAccount,
 }: Props) {
   const { gap } = useTheme();
   const [mode, setMode] = useState<CheckInMode>('pass');
@@ -81,8 +83,12 @@ export function CheckInEntranceSection({
   }));
 
   const handleModeChange = useCallback((next: CheckInMode) => {
+    if (requiresAccount && next === 'scan') {
+      onRequireAccount?.();
+      return;
+    }
     setMode(next);
-  }, []);
+  }, [requiresAccount, onRequireAccount]);
 
   return (
     <View style={{ gap: gap.md }}>
@@ -101,12 +107,12 @@ export function CheckInEntranceSection({
               loading={passLoading}
               checkedInToday={checkedInToday}
               memberName={memberName}
-              beltLine={beltLine}
               canShowActiveQr={canShowActiveQr}
-              planName={planName}
               expiryDate={expiryDate}
+              expiryLoading={expiryLoading}
               isGuest={isGuest}
               isRegistered={isRegistered}
+              onRequireAccount={onRequireAccount}
             />
           </View>
         </Animated.View>

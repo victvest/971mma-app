@@ -4,6 +4,7 @@ import {
   Linking,
   Platform,
   Pressable,
+  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -17,9 +18,8 @@ import Animated, {
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
-import { AcademyEyebrow } from '@/shared/components/brand';
 import { RevealOnMount } from '@/shared/animations';
-import { AppScrollView, Button } from '@/shared/components/ui';
+import { AppScrollView, Button, Card, ScreenSectionHeader } from '@/shared/components/ui';
 import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -83,36 +83,38 @@ const ContactRow = memo(function ContactRow({ action }: { action: ContactAction 
       onPress={handlePress}
       accessibilityRole="button"
       accessibilityLabel={`${action.label}: ${action.value}`}
-      style={({ pressed }) => [
-        styles.contactRow,
-        {
-          backgroundColor: colors.background.elevated,
-          borderColor: colors.border.subtle,
-          borderRadius: radius.cardLarge,
-          paddingHorizontal: inset.md,
-          paddingVertical: inset.md,
-          gap: gap.md,
-          opacity: pressed ? 0.7 : 1,
-        },
-      ]}
+      style={({ pressed }) => [{ opacity: pressed ? 0.7 : 1 }]}
     >
-      <View
+      <Card
+        padded={false}
         style={[
-          styles.contactIcon,
-          { backgroundColor: colors.accent.subtle, borderRadius: radius.pill },
+          styles.contactRow,
+          {
+            borderRadius: radius.cardLarge,
+            paddingHorizontal: inset.md,
+            paddingVertical: inset.md,
+            gap: gap.md,
+          },
         ]}
       >
-        <Ionicons name={action.icon} size={20} color={colors.accent.default} />
-      </View>
-      <View style={styles.contactText}>
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
-          {action.label}
-        </Text>
-        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={1}>
-          {action.value}
-        </Text>
-      </View>
-      <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+        <View
+          style={[
+            styles.contactIcon,
+            { backgroundColor: colors.accent.subtle, borderRadius: radius.pill },
+          ]}
+        >
+          <Ionicons name={action.icon} size={20} color={colors.accent.default} />
+        </View>
+        <View style={styles.contactText}>
+          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+            {action.label}
+          </Text>
+          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={1}>
+            {action.value}
+          </Text>
+        </View>
+        <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
+      </Card>
     </Pressable>
   );
 });
@@ -157,12 +159,12 @@ const FaqAccordionItem = memo(function FaqAccordionItem({
   }, [item.id, onToggle]);
 
   return (
-    <View
+    <Card
+      padded={false}
       style={[
         styles.faqCard,
         {
-          backgroundColor: colors.background.elevated,
-          borderColor: expanded ? `${colors.accent.default}55` : colors.border.subtle,
+          borderColor: expanded ? colors.accent.default : colors.border.subtle,
           borderRadius: radius.cardLarge,
         },
       ]}
@@ -180,21 +182,32 @@ const FaqAccordionItem = memo(function FaqAccordionItem({
           {item.question}
         </Text>
         <Animated.View style={chevronStyle}>
-          <Ionicons name="chevron-down" size={18} color={colors.text.tertiary} />
+          <Ionicons
+            name="chevron-down"
+            size={18}
+            color={expanded ? colors.accent.default : colors.text.tertiary}
+          />
         </Animated.View>
       </Pressable>
 
       <Animated.View style={[styles.faqBodyClip, bodyStyle]}>
         <View
           onLayout={handleLayout}
-          style={[styles.faqBodyMeasure, { paddingHorizontal: inset.md, paddingBottom: inset.md }]}
+          style={[
+            styles.faqBodyMeasure,
+            {
+              paddingHorizontal: inset.md,
+              paddingBottom: inset.md,
+              backgroundColor: colors.surface.primary,
+            },
+          ]}
         >
           <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
             {item.answer}
           </Text>
         </View>
       </Animated.View>
-    </View>
+    </Card>
   );
 });
 
@@ -219,8 +232,8 @@ const CategoryChip = memo(function CategoryChip({
       style={[
         styles.chip,
         {
-          backgroundColor: selected ? colors.accent.default : colors.background.secondary,
-          borderColor: selected ? colors.accent.default : colors.border.default,
+          backgroundColor: selected ? colors.brand.red : colors.surface.primary,
+          borderColor: selected ? colors.brand.red : colors.border.default,
           borderRadius: radius.pill,
         },
       ]}
@@ -228,7 +241,7 @@ const CategoryChip = memo(function CategoryChip({
       <Text
         style={[
           typography.textPresets.buttonSmall,
-          { color: selected ? colors.accent.onAccent : colors.text.secondary },
+          { color: selected ? colors.brand.onRed : colors.text.primary },
         ]}
       >
         {label}
@@ -249,10 +262,6 @@ export function HelpScreenContent() {
   const [email, setEmail] = useState('');
   const [subject, setSubject] = useState('');
   const [message, setMessage] = useState('');
-  const [fullNameFocused, setFullNameFocused] = useState(false);
-  const [emailFocused, setEmailFocused] = useState(false);
-  const [subjectFocused, setSubjectFocused] = useState(false);
-  const [messageFocused, setMessageFocused] = useState(false);
 
   const submitMutation = useSubmitSupportMessage();
 
@@ -310,19 +319,25 @@ export function HelpScreenContent() {
       style={styles.flex}
       contentContainerStyle={{
         paddingHorizontal: inset.lg,
-        paddingTop: inset.sm,
-        paddingBottom: inset['2xl'],
+        paddingTop: 8,
+        paddingBottom: inset.xl,
         gap: gap.xl,
       }}
       showsVerticalScrollIndicator={false}
     >
       {/* Intro */}
       <RevealOnMount delay={0}>
-        <AcademyEyebrow label="Help & support" accent />
-        <Text style={[typography.textPresets.title, { color: colors.text.primary, marginTop: gap.xs }]}>
+        <ScreenSectionHeader kicker="HELP & SUPPORT" />
+        <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, marginTop: gap.xs }]}>
           We’re here to help
         </Text>
-        <Text style={[typography.textPresets.body, { color: colors.text.secondary, marginTop: gap.xs }]}>
+        <Text
+          style={[
+            typography.textPresets.body,
+            styles.introBody,
+            { color: colors.text.secondary, marginTop: gap.xs },
+          ]}
+        >
           Browse common questions, reach the academy directly, or send us a message and we’ll reply by email.
         </Text>
       </RevealOnMount>
@@ -336,9 +351,13 @@ export function HelpScreenContent() {
 
       {/* Send a message */}
       <RevealOnMount delay={160} style={{ gap: gap.md }}>
-        <AcademyEyebrow label="Send a message" showFlag={false} />
+        <ScreenSectionHeader kicker="SEND A MESSAGE" />
 
-        <View style={[styles.chipWrap, { gap: gap.xs }]}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={[styles.chipRow, { gap: gap.xs }]}
+        >
           {SUPPORT_CATEGORIES.map((opt) => (
             <CategoryChip
               key={opt.id}
@@ -350,18 +369,19 @@ export function HelpScreenContent() {
               }}
             />
           ))}
-        </View>
+        </ScrollView>
 
         {isAnonymousGuest ? (
           <>
             <View style={{ gap: gap.xs }}>
-              <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Full name</Text>
+              <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+                Full name
+              </Text>
               <View
                 style={[
                   styles.inputField,
                   {
-                    borderColor: fullNameFocused ? colors.accent.default : colors.border.default,
-                    backgroundColor: fullNameFocused ? colors.surface.primary : colors.surface.secondary,
+                    backgroundColor: colors.surface.secondary,
                     borderRadius: radius.input,
                     paddingHorizontal: inset.md,
                   },
@@ -370,8 +390,6 @@ export function HelpScreenContent() {
                 <TextInput
                   value={fullName}
                   onChangeText={setFullName}
-                  onFocus={() => setFullNameFocused(true)}
-                  onBlur={() => setFullNameFocused(false)}
                   placeholder="Your full name"
                   placeholderTextColor={colors.text.tertiary}
                   maxLength={120}
@@ -383,13 +401,12 @@ export function HelpScreenContent() {
             </View>
 
             <View style={{ gap: gap.xs }}>
-              <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Email</Text>
+              <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>Email</Text>
               <View
                 style={[
                   styles.inputField,
                   {
-                    borderColor: emailFocused ? colors.accent.default : colors.border.default,
-                    backgroundColor: emailFocused ? colors.surface.primary : colors.surface.secondary,
+                    backgroundColor: colors.surface.secondary,
                     borderRadius: radius.input,
                     paddingHorizontal: inset.md,
                   },
@@ -398,8 +415,6 @@ export function HelpScreenContent() {
                 <TextInput
                   value={email}
                   onChangeText={setEmail}
-                  onFocus={() => setEmailFocused(true)}
-                  onBlur={() => setEmailFocused(false)}
                   placeholder="you@example.com"
                   placeholderTextColor={colors.text.tertiary}
                   maxLength={120}
@@ -414,65 +429,53 @@ export function HelpScreenContent() {
           </>
         ) : null}
 
-        {/* Subject */}
-        <View style={{ gap: gap.xs }}>
-          <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Subject</Text>
-          <View
+        <Card
+          padded={false}
+          style={[styles.messageCard, { borderRadius: radius.cardLarge }]}
+        >
+          <TextInput
+            value={subject}
+            onChangeText={setSubject}
+            placeholder="What's this about?"
+            placeholderTextColor={colors.text.tertiary}
+            maxLength={120}
+            returnKeyType="next"
             style={[
-              styles.inputField,
+              styles.subjectInput,
+              typography.textPresets.body,
               {
-                borderColor: subjectFocused ? colors.accent.default : colors.border.default,
-                backgroundColor: subjectFocused ? colors.surface.primary : colors.surface.secondary,
-                borderRadius: radius.input,
+                color: colors.text.primary,
+                borderBottomColor: colors.border.subtle,
                 paddingHorizontal: inset.md,
               },
             ]}
-          >
-            <TextInput
-              value={subject}
-              onChangeText={setSubject}
-              onFocus={() => setSubjectFocused(true)}
-              onBlur={() => setSubjectFocused(false)}
-              placeholder="What’s this about?"
-              placeholderTextColor={colors.text.tertiary}
-              maxLength={120}
-              returnKeyType="next"
-              style={[styles.inputText, { color: colors.text.primary }]}
-            />
-          </View>
-        </View>
-
-        {/* Message */}
-        <View style={{ gap: gap.xs }}>
-          <Text style={[styles.fieldLabel, { color: colors.text.secondary }]}>Message</Text>
-          <View
-            style={[
-              styles.textAreaField,
-              {
-                borderColor: messageFocused ? colors.accent.default : colors.border.default,
-                backgroundColor: messageFocused ? colors.surface.primary : colors.surface.secondary,
-                borderRadius: radius.input,
-                padding: inset.md,
-              },
-            ]}
-          >
+          />
+          <View style={[styles.messageArea, { padding: inset.md }]}>
             <TextInput
               value={message}
               onChangeText={setMessage}
-              onFocus={() => setMessageFocused(true)}
-              onBlur={() => setMessageFocused(false)}
               placeholder="Tell us how we can help…"
               placeholderTextColor={colors.text.tertiary}
               maxLength={MAX_MESSAGE}
               multiline
               textAlignVertical="top"
-              style={[styles.textAreaText, { color: colors.text.primary }]}
+              style={[
+                styles.messageInput,
+                typography.textPresets.body,
+                { color: colors.text.primary },
+              ]}
             />
+            <Text
+              style={[
+                typography.textPresets.caption,
+                styles.counterInCard,
+                { color: colors.text.tertiary },
+              ]}
+            >
+              {message.length}/{MAX_MESSAGE}
+            </Text>
           </View>
-          <Text style={[typography.textPresets.caption, styles.counter, { color: colors.text.tertiary }]}>
-            {message.length}/{MAX_MESSAGE}
-          </Text>
-        </View>
+        </Card>
 
         <Button
           label="Send message"
@@ -484,9 +487,9 @@ export function HelpScreenContent() {
       </RevealOnMount>
 
       {/* FAQ */}
-      <RevealOnMount delay={240} style={{ gap: gap.sm }}>
-        <AcademyEyebrow label="Frequently asked" showFlag={false} />
-        <View style={{ gap: gap.sm, marginTop: gap.xs }}>
+      <RevealOnMount delay={240} style={{ gap: gap.md }}>
+        <ScreenSectionHeader kicker="FREQUENTLY ASKED" />
+        <View style={{ gap: gap.sm }}>
           {FAQ_ITEMS.map((item) => (
             <FaqAccordionItem
               key={item.id}
@@ -518,7 +521,6 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   contactRow: {
     alignItems: 'center',
-    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: 'row',
   },
   contactIcon: {
@@ -529,7 +531,6 @@ const styles = StyleSheet.create({
   },
   contactText: { flex: 1, gap: 2 },
   faqCard: {
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
   },
   faqHeader: {
@@ -545,25 +546,19 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
   },
-  chipWrap: {
+  chipRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    paddingRight: 4,
   },
   chip: {
     alignItems: 'center',
     borderWidth: 1,
     justifyContent: 'center',
-    paddingHorizontal: 14,
+    paddingHorizontal: 16,
     paddingVertical: 8,
-  },
-  fieldLabel: {
-    fontSize: 12.5,
-    fontWeight: '700',
-    letterSpacing: 0.2,
   },
   inputField: {
     alignItems: 'center',
-    borderWidth: 1.5,
     flexDirection: 'row',
     height: 54,
   },
@@ -573,15 +568,27 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     paddingVertical: 0,
   },
-  textAreaField: {
-    borderWidth: 1.5,
-    minHeight: 130,
+  introBody: {
+    lineHeight: 22,
   },
-  textAreaText: {
+  messageCard: {
+    overflow: 'hidden',
+  },
+  subjectInput: {
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    height: 52,
+    paddingVertical: 0,
+  },
+  messageArea: {
+    minHeight: 140,
+  },
+  messageInput: {
     flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-    minHeight: 100,
+    minHeight: 96,
+    paddingVertical: 0,
   },
-  counter: { textAlign: 'right' },
+  counterInCard: {
+    marginTop: 4,
+    textAlign: 'right',
+  },
 });

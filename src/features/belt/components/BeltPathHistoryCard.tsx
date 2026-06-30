@@ -39,6 +39,16 @@ function formatPromotionLine(promotion: PromotionItem): string {
 export function BeltPathHistoryCard({ promotions }: Props) {
   const { colors, typography, gap } = useTheme();
 
+  if (promotions.length === 0) {
+    return (
+      <BeltPathSurfaceCard>
+        <Text style={[typography.textPresets.body, { color: colors.text.secondary, lineHeight: 20 }]}>
+          No promotions recorded yet. When your coach awards a stripe or rank, it will appear here.
+        </Text>
+      </BeltPathSurfaceCard>
+    );
+  }
+
   return (
     <BeltPathSurfaceCard>
       {promotions.map((promotion, index) => {

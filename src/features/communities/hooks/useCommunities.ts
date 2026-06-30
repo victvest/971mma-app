@@ -70,6 +70,16 @@ export function useCoachCommunityChannels(enabled = true) {
   };
 }
 
+export function useCoachCommunityUnreadTotal(enabled = true) {
+  const query = useCoachCommunityChannels(enabled);
+  const unreadTotal = (query.data ?? []).reduce((sum, channel) => sum + channel.unreadCount, 0);
+
+  return {
+    ...query,
+    unreadTotal,
+  };
+}
+
 export function useCommunityChannelHeader(channelId: string, enabled = true) {
   return useQuery({
     queryKey: communityHeaderKey(channelId),
@@ -100,7 +110,7 @@ export function useCommunityChannelFeedInfinite(channelId: string, enabled = tru
     initialPageParam: null as CommunityFeedCursor | null,
     getNextPageParam: (lastPage) => lastPage.nextCursor,
     enabled: enabled && Boolean(channelId),
-    staleTime: 30 * 1000,
+    staleTime: 5 * 1000,
   });
 }
 
@@ -111,7 +121,11 @@ export function useMarkCommunityChannelRead(channelId: string) {
   return useMutation({
     mutationFn: () => markCommunityChannelRead(channelId),
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: communityChannelsKey(userId) });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: communityChannelsKey(userId) }),
+        queryClient.invalidateQueries({ queryKey: ['coach-community-channels', userId] }),
+        queryClient.invalidateQueries({ queryKey: communityFeedInfiniteKey(channelId) }),
+      ]);
     },
   });
 }
@@ -146,7 +160,7 @@ export function useCommunityPostThread(postId: string, enabled = true) {
     queryKey: communityThreadKey(postId),
     queryFn: () => getCommunityPostThread(postId),
     enabled: enabled && Boolean(postId),
-    staleTime: 15 * 1000,
+    staleTime: 5 * 1000,
   });
 }
 

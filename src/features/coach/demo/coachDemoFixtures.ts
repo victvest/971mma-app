@@ -11,11 +11,13 @@ import type {
   ClassItem,
   ClassRosterResponse,
   ClassRosterVisitor,
+  CoachCurriculumSummary,
   CoachDashboardStats,
   CoachItem,
   CoachMemberSearchItem,
   CommunityChannelItem,
   PromotionCandidateItem,
+  UpsertCoachRankRequirementInput,
 } from '@/types/domain';
 
 export const DEMO_COMMUNITY_CHANNEL_PREFIX = 'demo-community-channel-';
@@ -435,6 +437,8 @@ export function getDemoCoachMemberBeltPath(userId: string): BeltPathSummary {
       { id: 'demo-rank-black', discipline: 'bjj', name: 'Black', order: 5, stripes: 4 },
     ],
     isPlaceholderCurriculum: false,
+    hasConfiguredRequirements: requirements.length > 0,
+    targetStripe: Math.min((candidate?.beltStripes ?? 3) + 1, 4),
   };
 }
 
@@ -453,4 +457,69 @@ export function searchDemoCoachMembers(query: string): CoachMemberSearchItem[] {
     beltRank: item.beltRank,
     beltStripes: item.beltStripes,
   }));
+}
+
+const DEMO_CURRICULUM_RANKS: CoachCurriculumSummary['ranks'] = [
+  { id: 'demo-rank-white', name: 'White', order: 1, stripes: 4 },
+  { id: 'demo-rank-blue', name: 'Blue', order: 2, stripes: 4 },
+  { id: 'demo-rank-purple', name: 'Purple', order: 3, stripes: 4 },
+  { id: 'demo-rank-brown', name: 'Brown', order: 4, stripes: 4 },
+  { id: 'demo-rank-black', name: 'Black', order: 5, stripes: 4 },
+];
+
+function buildDemoCurriculumRequirements(): CoachCurriculumSummary['requirements'] {
+  return DEMO_BELT_REQUIREMENTS.map((req) => ({
+    id: req.id,
+    rankLevelId: req.rankId,
+    rankName: 'Blue',
+    stripe: req.stripe,
+    title: req.title,
+    description: req.description,
+    requirementType: req.type,
+    attendanceTarget: req.attendanceTarget,
+    sortOrder: 0,
+  }));
+}
+
+let demoCurriculumRequirements = buildDemoCurriculumRequirements();
+
+export function getDemoCoachRankCurriculum(disciplineSlug: string): CoachCurriculumSummary {
+  void disciplineSlug;
+  return {
+    disciplineSlug: 'bjj',
+    ranks: DEMO_CURRICULUM_RANKS,
+    requirements: [...demoCurriculumRequirements],
+  };
+}
+
+export function upsertDemoCoachRankRequirement(
+  input: UpsertCoachRankRequirementInput,
+): CoachCurriculumSummary {
+  const rank = DEMO_CURRICULUM_RANKS.find((item) => item.id === input.rankLevelId);
+  const nextRequirement = {
+    id: input.requirementId ?? `demo-req-${Date.now()}`,
+    rankLevelId: input.rankLevelId,
+    rankName: rank?.name ?? 'Rank',
+    stripe: input.stripe,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    requirementType: input.requirementType ?? 'skill',
+    attendanceTarget: input.attendanceTarget ?? null,
+    sortOrder: input.sortOrder ?? 0,
+  };
+
+  if (input.requirementId) {
+    demoCurriculumRequirements = demoCurriculumRequirements.map((item) =>
+      item.id === input.requirementId ? nextRequirement : item,
+    );
+  } else {
+    demoCurriculumRequirements = [...demoCurriculumRequirements, nextRequirement];
+  }
+
+  return getDemoCoachRankCurriculum(input.disciplineSlug);
+}
+
+export function deleteDemoCoachRankRequirement(requirementId: string): CoachCurriculumSummary {
+  demoCurriculumRequirements = demoCurriculumRequirements.filter((item) => item.id !== requirementId);
+  return getDemoCoachRankCurriculum('bjj');
 }

@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   Platform,
   Pressable,
@@ -13,17 +13,14 @@ import { Image } from 'expo-image';
 import { BlurView } from 'expo-blur';
 import { LinearGradient } from 'expo-linear-gradient';
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import { useVideoPlayer, VideoView, type VideoPlayer } from 'expo-video';
+import { useFocusEffect, useRouter } from 'expo-router';
 import {
   openAuthLoginFromIntro,
   openAuthRegisterFromIntro,
 } from '@/features/auth/navigation/authNavigation';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { useTheme } from '@/shared/theme';
 import {
   useAuthEntranceAnimation,
@@ -47,6 +44,17 @@ const INTRO_TOP_LOGO_WIDTH = 88;
 
 /** Minimal white tint — lets the native clear glass refract video like water. */
 const INTRO_GLASS_TINT = 'rgba(255, 255, 255, 0.10)';
+
+function runIntroVideoPlayerAction(
+  player: VideoPlayer,
+  action: (activePlayer: VideoPlayer) => void,
+) {
+  try {
+    action(player);
+  } catch {
+    // Native shared object may already be released during unmount.
+  }
+}
 
 const INTRO_PALETTE = {
   canvas: '#0C0C0C',
@@ -151,31 +159,40 @@ function useIntroBackgroundVideo() {
     videoPlayer.play();
   });
 
-  const applyVolumeRamp = useCallback((currentTime: number) => {
-    if (currentTime < INTRO_VIDEO_START_SEC) {
-      player.volume = 0;
-      return;
-    }
+  const applyVolumeRamp = useCallback(
+    (currentTime: number) => {
+      runIntroVideoPlayerAction(player, (activePlayer) => {
+        if (currentTime < INTRO_VIDEO_START_SEC) {
+          activePlayer.volume = 0;
+          return;
+        }
 
-    const progress = Math.min(
-      1,
-      Math.max(0, (currentTime - INTRO_VIDEO_START_SEC) / INTRO_VIDEO_CLIP_DURATION),
-    );
-    player.volume = progress * INTRO_VIDEO_TARGET_VOLUME;
-  }, [player]);
+        const progress = Math.min(
+          1,
+          Math.max(0, (currentTime - INTRO_VIDEO_START_SEC) / INTRO_VIDEO_CLIP_DURATION),
+        );
+        activePlayer.volume = progress * INTRO_VIDEO_TARGET_VOLUME;
+      });
+    },
+    [player],
+  );
 
   useEventListener(player, 'statusChange', ({ status }) => {
     if (status === 'readyToPlay') {
-      player.currentTime = INTRO_VIDEO_START_SEC;
-      player.volume = 0;
-      player.play();
+      runIntroVideoPlayerAction(player, (activePlayer) => {
+        activePlayer.currentTime = INTRO_VIDEO_START_SEC;
+        activePlayer.volume = 0;
+        activePlayer.play();
+      });
     }
   });
 
   useEventListener(player, 'timeUpdate', ({ currentTime }) => {
     if (currentTime >= INTRO_VIDEO_END_SEC - 0.08) {
-      player.currentTime = INTRO_VIDEO_START_SEC;
-      player.volume = 0;
+      runIntroVideoPlayerAction(player, (activePlayer) => {
+        activePlayer.currentTime = INTRO_VIDEO_START_SEC;
+        activePlayer.volume = 0;
+      });
       return;
     }
 
@@ -183,9 +200,11 @@ function useIntroBackgroundVideo() {
   });
 
   useEventListener(player, 'playToEnd', () => {
-    player.currentTime = INTRO_VIDEO_START_SEC;
-    player.volume = 0;
-    player.play();
+    runIntroVideoPlayerAction(player, (activePlayer) => {
+      activePlayer.currentTime = INTRO_VIDEO_START_SEC;
+      activePlayer.volume = 0;
+      activePlayer.play();
+    });
   });
 
   return player;
@@ -251,6 +270,7 @@ export function AuthIntroScreen() {
   const safeInsets = useSafeAreaInsets();
   const { typography, inset, gap, animations, radius } = useTheme();
   const player = useIntroBackgroundVideo();
+  const router = useRouter();
   const loginAsGuest = useAuthStore((s) => s.loginAsGuest);
 
   const copyStyle = useAuthEntranceAnimation();
@@ -265,7 +285,33 @@ export function AuthIntroScreen() {
   const handleContinueAsGuest = useCallback(() => {
     triggerLightImpact();
     loginAsGuest();
-  }, [loginAsGuest]);
+    router.replace('/(tabs)');
+  }, [loginAsGuest, router]);
+
+  const shouldPauseOnBlurRef = useRef(true);
+
+  useFocusEffect(
+    useCallback(() => {
+      runIntroVideoPlayerAction(player, (activePlayer) => {
+        activePlayer.play();
+      });
+
+      return () => {
+        if (!shouldPauseOnBlurRef.current) return;
+
+        runIntroVideoPlayerAction(player, (activePlayer) => {
+          activePlayer.pause();
+          activePlayer.volume = 0;
+        });
+      };
+    }, [player]),
+  );
+
+  useEffect(() => {
+    return () => {
+      shouldPauseOnBlurRef.current = false;
+    };
+  }, []);
 
   return (
     <View style={[styles.root, { backgroundColor: INTRO_PALETTE.canvas }]}>
@@ -335,8 +381,7 @@ export function AuthIntroScreen() {
                 { color: INTRO_PALETTE.headline, lineHeight: 42 },
               ]}
             >
-              Earn your{' '}
-              <Text style={{ color: INTRO_PALETTE.accentGreen }}>level.</Text>
+              Earn your <Text style={{ color: INTRO_PALETTE.accentGreen }}>level.</Text>
             </Text>
 
             <Text

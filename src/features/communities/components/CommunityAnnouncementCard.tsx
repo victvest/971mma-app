@@ -24,7 +24,7 @@ export function CommunityAnnouncementCard({
     <View style={[styles.wrap, { paddingHorizontal: inset.md }]}>
       <CommunityChatBubble
         post={post}
-        variant={post.isPinned ? 'pinned' : 'thread'}
+        variant="thread"
         showAvatar
         onPress={onPress}
         onReact={onReact}

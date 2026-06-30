@@ -95,7 +95,7 @@ async function getHomeDashboardViaRpc(userId: string): Promise<HomeDashboardSumm
 async function getHomeDashboardFallback(userId: string): Promise<HomeDashboardSummary> {
   const [upcomingClasses, coaches, points, rankEligibility, disciplineScore, weekActivity] =
     await Promise.all([
-    fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT),
+    fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId),
     getCoaches(),
     getPointsAccount(userId),
     getRankEligibility(userId),
@@ -121,7 +121,7 @@ async function getHomeDashboardFallback(userId: string): Promise<HomeDashboardSu
 export async function getHomeDashboardSummary(userId: string): Promise<HomeDashboardSummary> {
   if (!userId) {
     const [upcomingClasses, coaches] = await Promise.all([
-      fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT),
+      fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId),
       getCoaches(),
     ]);
 
@@ -165,7 +165,7 @@ export async function getHomeDashboardSummary(userId: string): Promise<HomeDashb
   }
 
   if (summary.upcomingClasses.length === 0) {
-    const upcomingClasses = await fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT);
+    const upcomingClasses = await fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId);
     if (upcomingClasses.length > 0) {
       summary = { ...summary, upcomingClasses };
     }

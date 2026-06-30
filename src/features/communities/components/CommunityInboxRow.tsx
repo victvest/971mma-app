@@ -2,9 +2,8 @@ import React, { useMemo } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
-import {
-  formatCommunityInboxTime,
-} from '@/features/communities/components/community-chat-utils';
+import { formatCommunityInboxTime } from '@/features/communities/components/community-chat-utils';
+import { CommunityUnreadChip } from '@/features/communities/components/CommunityUnreadChip';
 import { useTheme } from '@/shared/theme';
 import type { CommunityChannelItem } from '@/types/domain';
 
@@ -50,7 +49,12 @@ export function CommunityInboxRow({ channel, onPress }: CommunityInboxRowProps) 
           textColor={colors.text.inverse}
         />
         {hasUnread ? (
-          <View style={[styles.unreadDot, { backgroundColor: colors.status.error, borderColor: colors.background.primary }]} />
+          <View
+            style={[
+              styles.unreadDot,
+              { backgroundColor: colors.status.error, borderColor: colors.background.primary },
+            ]}
+          />
         ) : null}
       </View>
 
@@ -66,7 +70,12 @@ export function CommunityInboxRow({ channel, onPress }: CommunityInboxRowProps) 
             {channel.title}
           </Text>
           {timeLabel ? (
-            <Text style={[styles.time, { color: hasUnread ? colors.accent.default : colors.text.tertiary }]}>
+            <Text
+              style={[
+                styles.time,
+                { color: hasUnread ? colors.accent.default : colors.text.tertiary },
+              ]}
+            >
               {timeLabel}
             </Text>
           ) : null}
@@ -89,13 +98,7 @@ export function CommunityInboxRow({ channel, onPress }: CommunityInboxRowProps) 
           <Text style={[styles.meta, { color: colors.text.tertiary }]} numberOfLines={1}>
             {channel.disciplineName}
           </Text>
-          {hasUnread ? (
-            <View style={[styles.unreadBadge, { backgroundColor: colors.accent.default }]}>
-              <Text style={[styles.unreadCount, { color: colors.accent.onAccent }]}>
-                {channel.unreadCount > 9 ? '9+' : channel.unreadCount}
-              </Text>
-            </View>
-          ) : null}
+          {hasUnread ? <CommunityUnreadChip count={channel.unreadCount} size="sm" /> : null}
         </View>
       </View>
 
@@ -143,17 +146,5 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '500',
-  },
-  unreadBadge: {
-    alignItems: 'center',
-    borderRadius: 999,
-    justifyContent: 'center',
-    minHeight: 18,
-    minWidth: 18,
-    paddingHorizontal: 5,
-  },
-  unreadCount: {
-    fontSize: 10,
-    fontWeight: '800',
   },
 });

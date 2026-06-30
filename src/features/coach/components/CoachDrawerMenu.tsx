@@ -36,6 +36,7 @@ type CoachDrawerMenuProps = {
 const COACH_NAV_ITEMS: NavItem[] = [
   { icon: 'chatbubbles-outline', label: 'My groups', route: '/(coach)/communities' },
   { icon: 'ribbon-outline', label: 'Belt review', route: '/(coach)/belt-review' },
+  { icon: 'library-outline', label: 'Curriculum', route: '/(coach)/curriculum' },
 ];
 
 const CLOSE_TIMING = { duration: 190 } as const;

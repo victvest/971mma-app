@@ -7,12 +7,12 @@ import { RevealOnMount } from '@/shared/animations';
 import { useTheme } from '@/shared/theme';
 
 export function AboutHero() {
-  const { colors, gap } = useTheme();
+  const { colors, gap, typography } = useTheme();
 
   return (
     <RevealOnMount style={{ gap: gap.md }}>
       <AboutSectionHeader kicker="ABOUT US" />
-      <Text style={[styles.title, { color: colors.text.primary }]}>
+      <Text style={[typography.textPresets.homeHero, { color: colors.text.primary }]}>
         Earn Your <Text style={{ color: colors.accent.default }}>Level.</Text>
       </Text>
       <AboutContentCard>
@@ -23,12 +23,6 @@ export function AboutHero() {
 }
 
 const styles = StyleSheet.create({
-  title: {
-    fontSize: 38,
-    fontWeight: '900',
-    letterSpacing: -1.2,
-    lineHeight: 42,
-  },
   subtitle: {
     fontSize: 15,
     fontWeight: '500',

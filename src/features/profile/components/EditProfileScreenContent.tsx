@@ -20,7 +20,7 @@ import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { useProfile } from '@/features/profile/hooks/useProfile';
+import { useAuthProfile } from '@/features/profile/hooks/useProfile';
 import { useUpdateProfile } from '@/features/profile/hooks/useUpdateProfile';
 import { uploadAvatar } from '@/features/profile/services/avatarUpload';
 import {
@@ -46,7 +46,7 @@ export function EditProfileScreenContent() {
   const userId = useAuthStore((s) => s.user?.id);
   const email = useAuthStore((s) => s.user?.email);
 
-  const profileQuery = useProfile();
+  const profileQuery = useAuthProfile();
   const profile = profileQuery.data;
   const updateMutation = useUpdateProfile(userId);
 

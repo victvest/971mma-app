@@ -34,6 +34,7 @@ export const TextField = forwardRef<TextInput, Props>(function TextField({
   const { colors, radius, inset } = useTheme();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(!!password);
+  const isMultiline = Boolean(rest.multiline);
 
   const borderColor = error
     ? colors.status.error
@@ -48,11 +49,13 @@ export const TextField = forwardRef<TextInput, Props>(function TextField({
       <View
         style={[
           styles.field,
+          isMultiline ? styles.fieldMultiline : styles.fieldSingleLine,
           {
             borderRadius: radius.input,
             borderColor,
             backgroundColor: focused ? colors.surface.primary : colors.surface.secondary,
             paddingHorizontal: inset.md,
+            paddingVertical: isMultiline ? inset.sm : 0,
           },
         ]}
       >
@@ -66,7 +69,12 @@ export const TextField = forwardRef<TextInput, Props>(function TextField({
         )}
         <TextInput
           ref={ref}
-          style={[styles.input, { color: colors.text.primary }, style]}
+          style={[
+            styles.input,
+            isMultiline && styles.inputMultiline,
+            { color: colors.text.primary },
+            style,
+          ]}
           placeholderTextColor={colors.text.tertiary}
           secureTextEntry={hidden}
           onFocus={() => setFocused(true)}
@@ -107,10 +115,16 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   field: {
+    borderWidth: 1.5,
     flexDirection: 'row',
+  },
+  fieldSingleLine: {
     alignItems: 'center',
     height: 54,
-    borderWidth: 1.5,
+  },
+  fieldMultiline: {
+    alignItems: 'flex-start',
+    minHeight: 120,
   },
   iconLeft: { marginRight: 10 },
   input: {
@@ -118,6 +132,10 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: '500',
     paddingVertical: 0,
+  },
+  inputMultiline: {
+    minHeight: 96,
+    textAlignVertical: 'top',
   },
   hint: {
     fontSize: 12,

@@ -1,4 +1,21 @@
 import type { BeltPathSummary, MemberProfile } from '@/types/domain';
+import { GYM_TIME_ZONE } from '@/core/time/gymTime';
+
+export function formatMembershipExpiry(iso: string | null | undefined): string | null {
+  if (!iso) return null;
+
+  try {
+    const date = new Date(iso);
+    return `Expires ${new Intl.DateTimeFormat('en-GB', {
+      timeZone: GYM_TIME_ZONE,
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+    }).format(date)}`;
+  } catch {
+    return null;
+  }
+}
 
 export function formatMemberSince(iso: string | null | undefined): string | null {
   if (!iso) return null;

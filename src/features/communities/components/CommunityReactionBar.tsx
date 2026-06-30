@@ -21,6 +21,11 @@ export function CommunityReactionBar({
   compact = false,
 }: CommunityReactionBarProps) {
   const { colors, radius, gap } = useTheme();
+  const hasVisibleReaction = COMMUNITY_REACTIONS.some(
+    (emoji) => (reactionCounts[emoji] ?? 0) > 0 || myReactions.includes(emoji),
+  );
+
+  if (!hasVisibleReaction) return null;
 
   return (
     <View style={[styles.row, { gap: gap.xs }]}>
@@ -29,6 +34,8 @@ export function CommunityReactionBar({
         const active = myReactions.includes(emoji);
 
         if (!readOnly && onReact) {
+          if (count <= 0 && !active) return null;
+
           return (
             <Pressable
               key={emoji}

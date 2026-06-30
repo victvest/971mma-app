@@ -63,7 +63,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
       heading: '6. Your rights and choices',
       paragraphs: [
         'You can review and update your name, phone number, and profile photo at any time from the Edit Profile screen.',
-        'You can request deletion of your account from the Profile screen. Deletion requests are reviewed by academy staff to handle membership and billing correctly.',
+        'You can request deletion of your account from the Profile screen. Staff review each request before permanently removing your app account. Your account stays active until that review is complete. Gym membership and billing are handled separately at the front desk.',
         'You may also contact us to ask what information we hold about you.',
       ],
     },

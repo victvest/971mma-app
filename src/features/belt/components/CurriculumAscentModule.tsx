@@ -2,15 +2,12 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AcademyEyebrow } from '@/shared/components/brand';
 import {
-  BELT_PATH_PREVIEW_CURRICULUM,
   normalizeBeltRankKey,
-  type BeltPathCurriculumPreviewItem,
+  type BeltCurriculumAscentStop,
 } from '@/features/belt/data/beltPathPreviewContent';
 import { useTheme } from '@/shared/theme';
 
 const RAIL_COLOR = '#E8E8E8';
-const SUMMARY_COLOR = '#8A8A86';
-const INK_COLOR = '#0F0F0E';
 const NODE_SIZE = 14;
 const RAIL_WIDTH = 2;
 const SWATCH_WIDTH = 52;
@@ -19,10 +16,10 @@ const SWATCH_HEIGHT = 8;
 type Props = {
   currentRankName?: string | null;
   currentRankId?: string | null;
-  stops?: BeltPathCurriculumPreviewItem[];
+  stops: BeltCurriculumAscentStop[];
 };
 
-function BeltSwatch({ stop }: { stop: BeltPathCurriculumPreviewItem }) {
+function BeltSwatch({ stop }: { stop: BeltCurriculumAscentStop }) {
   return (
     <View
       style={[
@@ -55,7 +52,7 @@ const CurriculumStop = React.memo(function CurriculumStop({
   isCurrent,
   isLast,
 }: {
-  stop: BeltPathCurriculumPreviewItem;
+  stop: BeltCurriculumAscentStop;
   isCurrent: boolean;
   isLast: boolean;
 }) {
@@ -96,13 +93,16 @@ const CurriculumStop = React.memo(function CurriculumStop({
 
         <BeltSwatch stop={stop} />
 
-        <Text style={[typography.textPresets.bodyStrong, styles.rankName, { color: INK_COLOR }]}>
+        <Text style={[typography.textPresets.bodyStrong, styles.rankName, { color: colors.text.primary }]}>
           {stop.rank}
         </Text>
-        <Text style={[typography.textPresets.footnote, styles.summary, { color: SUMMARY_COLOR }]} numberOfLines={1}>
+        <Text
+          style={[typography.textPresets.footnote, styles.summary, { color: colors.text.secondary }]}
+          numberOfLines={1}
+        >
           {stop.summary}
         </Text>
-        <Text style={[typography.textPresets.caption, styles.stripesCaption, { color: SUMMARY_COLOR }]}>
+        <Text style={[typography.textPresets.caption, styles.stripesCaption, { color: colors.text.tertiary }]}>
           {stop.stripes} stripes per rank
         </Text>
       </View>
@@ -113,21 +113,25 @@ const CurriculumStop = React.memo(function CurriculumStop({
 export function CurriculumAscentModule({
   currentRankName,
   currentRankId,
-  stops = BELT_PATH_PREVIEW_CURRICULUM,
+  stops,
 }: Props) {
-  const { typography, gap, inset } = useTheme();
+  const { colors, typography, gap, inset } = useTheme();
   const currentRankKey = normalizeBeltRankKey(currentRankName);
+
+  if (stops.length === 0) {
+    return null;
+  }
 
   return (
     <View style={[styles.module, { gap: gap.md, marginBottom: gap.lg }]}>
-      <View style={{ gap: gap.sm }}>
+      <View style={{ gap: gap.xs }}>
         <AcademyEyebrow label="Curriculum" accent showFlag={false} />
-        <View style={{ gap: gap.xs }}>
-          <Text style={[typography.textPresets.title, { color: INK_COLOR }]}>The ascent</Text>
-          <Text style={[typography.textPresets.body, { color: SUMMARY_COLOR }]}>
-            Academy curriculum from first class to black belt.
-          </Text>
-        </View>
+        <Text style={[typography.textPresets.title, styles.moduleTitle, { color: colors.text.primary }]}>
+          The ascent
+        </Text>
+        <Text style={[typography.textPresets.body, { color: colors.text.secondary, lineHeight: 22 }]}>
+          Academy curriculum from first class to black belt.
+        </Text>
       </View>
 
       <View style={[styles.journey, { paddingLeft: inset.xs }]}>
@@ -158,6 +162,11 @@ export function CurriculumAscentModule({
 
 const styles = StyleSheet.create({
   module: {},
+  moduleTitle: {
+    fontWeight: '800',
+    letterSpacing: -0.4,
+    marginTop: 2,
+  },
   journey: {
     position: 'relative',
   },

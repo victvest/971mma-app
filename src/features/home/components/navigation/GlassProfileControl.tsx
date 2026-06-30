@@ -1,11 +1,21 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
-import { runOnJS } from 'react-native-reanimated';
+import Animated, {
+  runOnJS,
+  useAnimatedStyle,
+  useSharedValue,
+  withSequence,
+  withSpring,
+  withTiming,
+} from 'react-native-reanimated';
+import { ChevronsUpDown } from 'lucide-react-native';
 import { useActiveProfileOptions } from '@/features/guardian/hooks/useGuardian';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
+import { triggerLightImpact } from '@/shared/haptics';
+import { animations } from '@/shared/theme/animations';
 import { NAV_CHROME, UAE } from './uaeChrome';
 
 type Props = {
@@ -22,6 +32,12 @@ function normalizeAvatarUrl(url?: string | null): string | null {
   return trimmed ? trimmed : null;
 }
 
+function resolveSwitchDirection(prevIndex: number, nextIndex: number, total: number): 1 | -1 {
+  if (prevIndex === total - 1 && nextIndex === 0) return 1;
+  if (prevIndex === 0 && nextIndex === total - 1) return -1;
+  return nextIndex > prevIndex ? 1 : -1;
+}
+
 export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) {
   const activeMemberId = useActiveMemberId();
   const setActiveUserId = useActiveProfileStore((s) => s.setActiveUserId);
@@ -33,6 +49,47 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
     options.findIndex((option) => option.userId === activeMemberId),
   );
   const canSwitchProfiles = hasChildren && options.length > 1;
+
+  const avatarOffsetY = useSharedValue(0);
+  const hintScale = useSharedValue(1);
+  const hintRotate = useSharedValue(0);
+  const prevIndexRef = useRef(currentIndex);
+  const didMountRef = useRef(false);
+
+  const playSwitchAnimation = useCallback(
+    (direction: 1 | -1) => {
+      triggerLightImpact();
+      avatarOffsetY.value = withSequence(
+        withTiming(direction * -6, { duration: 110, easing: animations.easingCurves.snappy }),
+        withSpring(0, animations.spring.snappy),
+      );
+      hintScale.value = withSequence(
+        withTiming(1.18, { duration: 90, easing: animations.easingCurves.snappy }),
+        withSpring(1, animations.spring.bouncy),
+      );
+      hintRotate.value = withSequence(
+        withTiming(direction * 14, { duration: 120, easing: animations.easingCurves.snappy }),
+        withSpring(0, animations.spring.gentle),
+      );
+    },
+    [avatarOffsetY, hintRotate, hintScale],
+  );
+
+  useEffect(() => {
+    if (!canSwitchProfiles) return;
+
+    if (!didMountRef.current) {
+      didMountRef.current = true;
+      prevIndexRef.current = currentIndex;
+      return;
+    }
+
+    const prevIndex = prevIndexRef.current;
+    if (prevIndex === currentIndex) return;
+
+    playSwitchAnimation(resolveSwitchDirection(prevIndex, currentIndex, options.length));
+    prevIndexRef.current = currentIndex;
+  }, [canSwitchProfiles, currentIndex, options.length, playSwitchAnimation]);
 
   const cycleProfile = useCallback(
     (direction: 1 | -1) => {
@@ -53,22 +110,43 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
     [cycleProfile],
   );
 
+  const avatarAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: avatarOffsetY.value }],
+  }));
+
+  const hintAnimatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: hintScale.value }, { rotate: `${hintRotate.value}deg` }],
+  }));
+
   const avatarBody = (
-    <View style={styles.avatarRing}>
-      <MemberAvatar
-        name={label}
-        avatarUrl={resolvedAvatarUrl}
-        size={AVATAR}
-        backgroundColor="transparent"
-        textColor={UAE.green}
-        initialsStyle={styles.initials}
-      />
+    <View style={styles.avatarWrap}>
+      <Animated.View style={[styles.avatarRing, avatarAnimatedStyle]}>
+        <MemberAvatar
+          name={label}
+          avatarUrl={resolvedAvatarUrl}
+          size={AVATAR}
+          backgroundColor="transparent"
+          textColor={UAE.green}
+          initialsStyle={styles.initials}
+        />
+        {canSwitchProfiles ? (
+          <View style={styles.switchRail} pointerEvents="none">
+            <View style={[styles.switchTick, styles.switchTickDim]} />
+            <View style={[styles.switchTick, styles.switchTickActive]} />
+            <View style={[styles.switchTick, styles.switchTickDim]} />
+          </View>
+        ) : null}
+      </Animated.View>
+
       {canSwitchProfiles ? (
-        <View style={styles.switchRail} pointerEvents="none">
-          <View style={[styles.switchTick, styles.switchTickDim]} />
-          <View style={[styles.switchTick, styles.switchTickActive]} />
-          <View style={[styles.switchTick, styles.switchTickDim]} />
-        </View>
+        <Animated.View
+          style={[styles.switchHint, hintAnimatedStyle]}
+          pointerEvents="none"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        >
+          <ChevronsUpDown size={10} color={UAE.white} strokeWidth={2.6} />
+        </Animated.View>
       ) : null}
     </View>
   );
@@ -120,6 +198,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     width: NAV_CHROME.clusterHeight,
   },
+  avatarWrap: {
+    alignItems: 'center',
+    height: AVATAR + 8,
+    justifyContent: 'center',
+    position: 'relative',
+    width: AVATAR + 8,
+  },
   avatarRing: {
     alignItems: 'center',
     backgroundColor: 'transparent',
@@ -158,5 +243,18 @@ const styles = StyleSheet.create({
   switchTickActive: {
     backgroundColor: UAE.green,
     height: 7,
+  },
+  switchHint: {
+    alignItems: 'center',
+    backgroundColor: UAE.green,
+    borderColor: UAE.white,
+    borderRadius: 9,
+    borderWidth: 1.5,
+    bottom: 0,
+    height: 18,
+    justifyContent: 'center',
+    position: 'absolute',
+    right: -1,
+    width: 18,
   },
 });

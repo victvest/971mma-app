@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '@/services/supabase/client';
+import { pickLatestMembershipEndDate } from '@/features/profile/utils/membershipExpiry';
 import type { MemberMembershipRow, ProfileRow } from '@/types/database';
 import type { MemberMembershipItem, MembershipSummary } from '@/types/domain';
 
@@ -57,25 +58,43 @@ export async function getMembershipSummary(userId: string): Promise<MembershipSu
 
   if (profileError) throw profileError;
 
-  const status =
-    memberships.length === 0
-      ? 'none'
-      : profile?.membership_status === 'active' ||
-          profile?.membership_status === 'paused' ||
-          profile?.membership_status === 'expired'
-        ? profile.membership_status
-        : 'active';
-
   const primary =
     memberships.find((item) => item.status === 'active') ??
     memberships.find((item) => item.status === 'paused') ??
     memberships[0] ??
     null;
 
+  const normalizedProfileStatus =
+    profile?.membership_status === 'active' ||
+    profile?.membership_status === 'paused' ||
+    profile?.membership_status === 'expired'
+      ? profile.membership_status
+      : null;
+
+  const normalizedPrimaryStatus =
+    primary?.status === 'active' ||
+    primary?.status === 'paused' ||
+    primary?.status === 'expired'
+      ? primary.status
+      : null;
+
+  const status =
+    memberships.length === 0
+      ? 'none'
+      : normalizedProfileStatus ?? normalizedPrimaryStatus ?? 'none';
+
+  const expiresAt = pickLatestMembershipEndDate([
+    profile?.membership_expires_at,
+    primary?.endDate,
+    ...memberships
+      .filter((item) => item.status === 'active' || item.status === 'paused')
+      .map((item) => item.endDate),
+  ]);
+
   return {
     planName: profile?.membership_name ?? primary?.name ?? null,
     status,
-    expiresAt: profile?.membership_expires_at ?? primary?.endDate ?? null,
+    expiresAt,
     autoRenew: primary?.autoRenew ?? false,
     source: profile?.membership_source === 'mindbody' ? 'mindbody' : null,
     lastSyncedAt: profile?.membership_last_synced_at ?? null,

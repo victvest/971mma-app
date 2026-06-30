@@ -30,6 +30,9 @@ export default function ClassSessionAttendanceScreen() {
 
   const listHeader = (
     <View style={[styles.headerBlock, { marginBottom: inset.md, gap: inset.sm }]}>
+      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+        Present, absent, or late — as marked by your coach during each class session.
+      </Text>
       {hasError && hasData ? (
         <StateBlock
           kind="error"
@@ -45,7 +48,7 @@ export default function ClassSessionAttendanceScreen() {
         style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
       >
         <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-          Facility visits
+          Gym visits
         </Text>
         <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.default }]}>
           View all
@@ -56,7 +59,7 @@ export default function ClassSessionAttendanceScreen() {
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
-      <AppBar title="Class attendance" />
+      <AppBar title="Class roll call" />
 
       {attendanceQuery.isLoading ? (
         <StateBlock kind="loading" title="Loading class attendance" />
@@ -71,8 +74,8 @@ export default function ClassSessionAttendanceScreen() {
       ) : !hasError && rows.length === 0 ? (
         <StateBlock
           kind="empty"
-          title="No class attendance yet"
-          message="When a coach marks you present or absent during roll call, it will appear here."
+          title="No roll call records yet"
+          message="When a coach marks you present, absent, or late during class, it appears here. For gym check-in visits, see Gym visits."
         />
       ) : (
         <FlashList

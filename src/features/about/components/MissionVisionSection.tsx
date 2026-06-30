@@ -21,7 +21,7 @@ function MissionCard({
 
   return (
     <AboutContentCard style={{ gap: gap.sm }}>
-      <Text style={[styles.index, { color: colors.accent.default }]}>
+      <Text style={[styles.index, { color: index === 1 ? colors.brand.red : colors.accent.default }]}>
         {String(index + 1).padStart(2, '0')}
       </Text>
       <Text style={[styles.cardTitle, { color: colors.text.primary }]}>{title}</Text>

@@ -9,6 +9,7 @@ import { getSupabaseClient } from '@/services/supabase/client';
 import type { ClassRow } from '@/types/database';
 import type { ClassItem, CoachItem } from '@/types/domain';
 import { getCoachById } from './coaches.repository';
+import { getMemberDisciplines } from './discipline.repository';
 import { mapClassRow } from './mappers';
 
 const CLASS_COLUMNS =
@@ -61,25 +62,44 @@ export async function fetchCoachDayClasses(
   return selectClassesByCoach(day, coach);
 }
 
-const UPCOMING_HERO_LOOKBACK_MS = 3 * 60 * 60 * 1000;
+/** Next non-cancelled Mindbody classes in the gym-local today/tomorrow window. */
+export async function fetchUpcomingHeroClasses(
+  limit: number,
+  userId?: string,
+): Promise<ClassItem[]> {
+  const { fromISO, toISO } = gymRangeIso();
+  const now = Date.now();
 
-/** Next non-cancelled Mindbody classes that have not ended yet (today or later). */
-export async function fetchUpcomingHeroClasses(limit: number): Promise<ClassItem[]> {
+  let enrolledDisciplineIds: string[] | null = null;
+  if (userId) {
+    const disciplines = await getMemberDisciplines(userId);
+    if (disciplines.length > 0) {
+      enrolledDisciplineIds = disciplines.map((item) => item.disciplineId);
+    }
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('classes')
     .select(CLASS_COLUMNS)
     .not('mindbody_class_id', 'is', null)
     .eq('is_cancelled', false)
-    .gte('starts_at', new Date(Date.now() - UPCOMING_HERO_LOOKBACK_MS).toISOString())
+    .gte('starts_at', fromISO)
+    .lte('starts_at', toISO)
     .order('starts_at', { ascending: true });
 
   if (error) throw error;
 
-  const now = Date.now();
-  return ((data ?? []) as ClassRow[])
+  let items = ((data ?? []) as ClassRow[])
     .map(mapClassRow)
-    .filter((item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now)
-    .slice(0, limit);
+    .filter((item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now);
+
+  if (enrolledDisciplineIds) {
+    items = items.filter(
+      (item) => item.disciplineId !== null && enrolledDisciplineIds!.includes(item.disciplineId),
+    );
+  }
+
+  return items.slice(0, limit);
 }
 
 export async function getUpcomingClasses(): Promise<ClassItem[]> {

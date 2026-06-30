@@ -3,6 +3,7 @@ import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { resolveTargetUserId } from '../_shared/guardian.ts';
 import { requireUser } from '../_shared/jwt.ts';
 import { cacheGet, cacheSet, mbFetch } from '../_shared/mindbody.ts';
+import { syncMemberDisciplinesFromMembershipMirror } from '../_shared/membershipDisciplines.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
 const MEMBERSHIP_CACHE_TTL_SEC = 10 * 60;
@@ -195,10 +196,22 @@ function pickSummary(rows: MirrorRow[], syncedAt: string): MembershipSummary {
       ? primary.status
       : 'none';
 
+  const activeEndDates = rows
+    .filter((row) => (row.status === 'active' || row.status === 'paused') && row.end_date)
+    .map((row) => row.end_date);
+
+  let expiresAt = primary.end_date;
+  for (const endDate of activeEndDates) {
+    if (!endDate) continue;
+    if (!expiresAt || new Date(endDate).getTime() > new Date(expiresAt).getTime()) {
+      expiresAt = endDate;
+    }
+  }
+
   return {
     planName: primary.name,
     status: profileStatus,
-    expiresAt: primary.end_date,
+    expiresAt,
     autoRenew: primary.auto_renew,
     source: 'mindbody',
     lastSyncedAt: syncedAt,
@@ -239,7 +252,7 @@ async function readSummaryFromMirror(
           profile.membership_status === 'paused' ||
           profile.membership_status === 'expired'
         ? profile.membership_status
-        : 'active';
+        : 'none';
 
   return {
     planName: profile.membership_name,
@@ -349,9 +362,16 @@ Deno.serve(async (req) => {
       throw new MbError('UPSTREAM_ERROR', 'Unable to update profile membership summary.');
     }
 
+    let disciplinesSynced = 0;
+    try {
+      disciplinesSynced = await syncMemberDisciplinesFromMembershipMirror(svc, userId, rows);
+    } catch {
+      // Membership mirror is authoritative; discipline derivation is best-effort.
+    }
+
     await cacheSet(svc, cacheKey, summary, MEMBERSHIP_CACHE_TTL_SEC);
 
-    return jsonResponse({ refreshed: true, summary });
+    return jsonResponse({ refreshed: true, summary, disciplinesSynced });
   } catch (error) {
     return toErrorResponse(error);
   }

@@ -3,8 +3,8 @@ import type { View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useUnreadNotificationCount } from '@/features/notifications/hooks/useNotifications';
 import { useActiveProfileAvatarUrl, useActiveProfileLabel } from '@/hooks/useActiveMemberId';
-import { useAuthStore } from '@/stores/useAuthStore';
-import { useDialog } from '@/shared/components/Dialog/useDialog';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { HomeHeader } from './HomeHeader';
 import { DrawerMenu } from './DrawerMenu';
 
@@ -21,9 +21,8 @@ export function AppTabHeader({ floating = true, blurTargetRef }: AppTabHeaderPro
   const unreadQuery = useUnreadNotificationCount();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const role = useAuthStore((s) => s.role);
-  const isGuest = role === 'guest';
-  const { showDialog } = useDialog();
+  const { hasLimitedAccess, isAnonymousGuest } = useIsGuest();
+  const { prompt, sheet } = useAccountActionSheet();
 
   const activeTab =
     (segments as string[]).filter((segment) => !segment.startsWith('(')).at(-1) || 'index';
@@ -31,47 +30,17 @@ export function AppTabHeader({ floating = true, blurTargetRef }: AppTabHeaderPro
 
   if (!isMainTab) return null;
 
-  const promptGuestAuth = (title: string, message: string) => {
-    showDialog({
-      title,
-      message,
-      dismissOnBackdropPress: true,
-      buttons: [
-        {
-          label: 'Sign Up',
-          variant: 'primary',
-          onPress: () => {
-            router.push('/(auth)/register');
-          },
-        },
-        {
-          label: 'Log In',
-          variant: 'secondary',
-          onPress: () => {
-            router.push('/(auth)/login');
-          },
-        },
-      ],
-    });
-  };
-
   const handleOpenProfile = () => {
-    if (isGuest) {
-      promptGuestAuth(
-        'Access Profile',
-        'Sign up or log in to view your profile, track training history, and unlock achievements.',
-      );
+    if (isAnonymousGuest) {
+      prompt('access-profile');
       return;
     }
     router.push('/(tabs)/profile');
   };
 
   const handleOpenNotifications = () => {
-    if (isGuest) {
-      promptGuestAuth(
-        'Access Notifications',
-        'Sign up or log in to view your notifications and stay updated on classes, rewards, and academy news.',
-      );
+    if (hasLimitedAccess) {
+      prompt('access-notifications');
       return;
     }
     router.push('/notifications');
@@ -88,7 +57,13 @@ export function AppTabHeader({ floating = true, blurTargetRef }: AppTabHeaderPro
         onOpenProfile={handleOpenProfile}
         onOpenDrawer={() => setDrawerOpen(true)}
       />
-      <DrawerMenu visible={drawerOpen} onClose={() => setDrawerOpen(false)} blurTargetRef={blurTargetRef} />
+      <DrawerMenu
+        visible={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        blurTargetRef={blurTargetRef}
+        onLockedRoute={prompt}
+      />
+      {sheet}
     </>
   );
 }

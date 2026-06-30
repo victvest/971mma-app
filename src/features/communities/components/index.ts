@@ -22,6 +22,7 @@ export { CommunityFeedSkeleton } from './CommunityFeedSkeleton';
 export { CommunityChannelCard } from './CommunityChannelCard';
 export { CommunityPostCard } from './CommunityPostCard';
 export { CommunityReplyRow } from './CommunityReplyRow';
+export { CommunityUnreadChip } from './CommunityUnreadChip';
 export { CommunityAnnouncementComposer } from './CommunityAnnouncementComposer';
-export type { CommunityAnnouncementComposerProps } from './CommunityAnnouncementComposer';
+export { CommunityAnnouncementSheet, CommunityGroupsFab } from './CommunityAnnouncementSheet';
 export { CommunityComposer } from './CommunityComposer';

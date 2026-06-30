@@ -1,7 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { TextInput } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Lock, Mail } from 'lucide-react-native';
+import { Lock, Mail, Ticket } from 'lucide-react-native';
+import { setPendingReferralCode } from '@/features/auth/services/referralCodeStorage';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authToast } from '@/shared/components/Toast';
@@ -13,9 +14,7 @@ import {
   AuthSubmitButton,
   AuthTextField,
 } from '@/features/auth/components/AuthExperience';
-import {
-  authRoutes,
-} from '@/features/auth/navigation/authNavigation';
+import { authRoutes } from '@/features/auth/navigation/authNavigation';
 import {
   formatAuthError,
   normalizeEmail,
@@ -32,6 +31,7 @@ export default function RegisterScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
 
@@ -57,14 +57,6 @@ export default function RegisterScreen() {
     confirmPasswordRef.current?.focus();
   }
 
-  function handleEmailChange(text: string) {
-    const wasValid = !validateEmail(email);
-    setEmail(text);
-    if (!wasValid && !validateEmail(text)) {
-      focusPasswordField();
-    }
-  }
-
   async function handleSignUp() {
     const emailError = validateEmail(email);
     if (emailError) {
@@ -86,6 +78,7 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
+      await setPendingReferralCode(referralCode);
       const result = await signUp(email, password);
 
       if (result.error) {
@@ -112,8 +105,10 @@ export default function RegisterScreen() {
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
     try {
+      await setPendingReferralCode(referralCode);
       const result = await signUpWithGoogle();
       if (result.cancelled) return;
+      if (result.recovery) return;
       if (result.error) {
         authToast.error('Google Sign Up Failed', result.error);
       }
@@ -127,7 +122,7 @@ export default function RegisterScreen() {
   return (
     <AuthScreen
       title="Create account"
-      subtitle="Enter your email and password. We'll send a code to confirm your email."
+      subtitle="Set up your account. We'll send a code to confirm your email."
       showBackButton
       onBackPress={handleBack}
       footer={
@@ -138,11 +133,19 @@ export default function RegisterScreen() {
         />
       }
     >
+      <AuthGoogleButton
+        onPress={handleGoogleSignUp}
+        loading={googleLoading}
+        disabled={Boolean(configError) || loading}
+      />
+
+      <AuthOrDivider />
+
       <AuthTextField
         ref={emailRef}
         label="Email"
         value={email}
-        onChangeText={handleEmailChange}
+        onChangeText={setEmail}
         autoCapitalize="none"
         autoComplete="email"
         keyboardType="email-address"
@@ -181,6 +184,19 @@ export default function RegisterScreen() {
         textContentType="newPassword"
         placeholder="Repeat your password"
         icon={Lock}
+        returnKeyType="next"
+        blurOnSubmit={false}
+        onSubmitEditing={() => {}}
+      />
+
+      <AuthTextField
+        label="Referral code (optional)"
+        value={referralCode}
+        onChangeText={setReferralCode}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        placeholder="Friend's code"
+        icon={Ticket}
         returnKeyType="done"
         onSubmitEditing={handleSignUp}
       />

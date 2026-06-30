@@ -38,6 +38,7 @@
     "react-dom": "19.2.3",
     "react-i18next": "^17.0.8",
     "react-native": "0.85.3",
+    "react-native-barcode-svg": "^0.0.15",
     "react-native-gesture-handler": "~2.31.1",
     "react-native-otp-entry": "^1.8.6",
     "react-native-qrcode-svg": "^6.3.21",
@@ -92,6 +93,7 @@
     "verify:phase8-summary-reads": "node scripts/verify-phase8-summary-reads.mjs",
     "verify:phase9-coach-dashboard": "node scripts/verify-phase9-coach-dashboard.mjs",
     "verify:phase9-hardening": "node scripts/verify-phase9-hardening.mjs",
+    "verify:auth-readiness": "node scripts/verify-auth-readiness.mjs",
     "verify:phase9-runtime": "node scripts/verify-phase9-runtime.mjs",
     "verify:phase10-rendering": "node scripts/verify-phase10-rendering.mjs",
     "verify:phase11-images": "node scripts/verify-phase11-images.mjs",
@@ -140,6 +142,7 @@
     "verify:gate-scan-ui": "node scripts/verify-gate-scan-ui.mjs",
     "verify:gate-all": "npm run verify:gate-entry",
     "configure:auth-smtp": "node scripts/configure-auth-smtp.mjs",
+    "push:auth-config": "node scripts/push-auth-config.mjs",
     "reset:supabase": "bash scripts/reset-supabase-safe.sh"
   },
   "private": true

@@ -1,47 +1,77 @@
 import React, { useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useAuth } from '@/features/auth/context/AuthContext';
-import { useAuthStore } from '@/stores/useAuthStore';
+import { useRouter } from 'expo-router';
+import { CircleCheck } from 'lucide-react-native';
 import { authToast } from '@/shared/components/Toast';
-import { AuthScreen, AuthSubmitButton } from '@/features/auth/components/AuthExperience';
-import { ensureMindbodyLink } from '@/features/auth/services/linkMindbody';
-import { applyProfileAuthInfo } from '@/features/auth/services/authProfileSync';
+import { AuthScreen, AuthSubmitButton, AuthTextField } from '@/features/auth/components/AuthExperience';
+import {
+  useActivationRequest,
+  useSubmitActivationRequest,
+} from '@/features/auth/hooks/useActivationRequest';
+import {
+  useApplyReferralCode,
+  useReferralStatus,
+} from '@/features/rewards/hooks/useReferrals';
 import { useTheme } from '@/shared/theme';
+import { Ticket } from 'lucide-react-native';
 
 export default function ActivationRequiredScreen() {
-  const { signOut, user } = useAuth();
-  const { colors, typography } = useTheme();
-  const [checking, setChecking] = useState(false);
+  const router = useRouter();
+  const { colors, typography, inset, radius, gap } = useTheme();
 
-  async function handleCheckActivation() {
-    if (!user?.id) return;
-    setChecking(true);
+  const activationRequestQuery = useActivationRequest();
+  const submitRequestMutation = useSubmitActivationRequest();
+  const referralStatusQuery = useReferralStatus();
+  const applyReferralMutation = useApplyReferralCode();
+  const [referralCode, setReferralCode] = useState('');
+
+  const hasSubmittedRequest = Boolean(activationRequestQuery.data);
+  const referralApplied = Boolean(referralStatusQuery.data?.applied);
+
+  async function handleSubmitRequest() {
+    if (hasSubmittedRequest || submitRequestMutation.isPending) return;
+
     try {
-      try {
-        await ensureMindbodyLink();
-      } catch {
-        // Fall through to profile status check.
-      }
+      await submitRequestMutation.mutateAsync();
+      authToast.success(
+        'Request sent',
+        'Our team will reach out soon or activate your account at your next visit.',
+      );
+    } catch {
+      authToast.error('Error', 'Could not send your request. Please try again.');
+    }
+  }
 
-      const refreshed = await applyProfileAuthInfo(user.id, user.email ?? '');
-      if (!refreshed) {
-        authToast.error('Error', 'Unable to check activation status. Please try again.');
+  async function handleApplyReferralCode() {
+    const code = referralCode.trim();
+    if (!code || applyReferralMutation.isPending || referralApplied) return;
+
+    try {
+      await applyReferralMutation.mutateAsync(code);
+      authToast.success(
+        'Code saved',
+        'You and your friend will earn bonus points once your account is activated.',
+      );
+      setReferralCode('');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Could not apply this code.';
+      if (message.includes('INVALID_CODE')) {
+        authToast.error('Invalid code', 'Check the code and try again.');
         return;
       }
-
-      const accountStatus = useAuthStore.getState().user?.accountStatus;
-      if (accountStatus === 'active') {
-        authToast.success('Activated!', 'Your account has been successfully activated.');
-      } else {
-        authToast.error(
-          'Not Active Yet',
-          'Your account is still pending activation. Please contact the front desk.',
-        );
+      if (message.includes('ALREADY_REFERRED')) {
+        authToast.error('Code already used', 'A referral is already linked to your account.');
+        return;
       }
-    } catch {
-      authToast.error('Error', 'Unable to check activation status. Please try again.');
-    } finally {
-      setChecking(false);
+      if (message.includes('ALREADY_ACTIVE')) {
+        authToast.error('Account active', 'Referral codes can only be used before activation.');
+        return;
+      }
+      if (message.includes('SELF_REFERRAL')) {
+        authToast.error('Invalid code', 'You cannot use your own referral code.');
+        return;
+      }
+      authToast.error('Referral failed', message);
     }
   }
 
@@ -49,27 +79,99 @@ export default function ActivationRequiredScreen() {
     <AuthScreen
       title="Activation Required"
       subtitle="Your account needs to be linked to your academy membership."
+      showBackButton
+      onBackPress={() => router.back()}
     >
       <View style={styles.content}>
         <Text style={[typography.textPresets.body, { color: colors.text.secondary, marginBottom: 16 }]}>
-          To protect your membership, 971 MMA requires verified activation. We couldn&apos;t automatically match your email or phone number to an active Mindbody client.
+          To protect your membership, 971 MMA requires verified activation. We couldn&apos;t automatically match your email or phone number to an active membership on file.
         </Text>
         <Text style={[typography.textPresets.body, { color: colors.text.secondary, marginBottom: 24 }]}>
-          Please visit the front desk at the academy to manually link your account. Once the staff has completed the link, tap the button below.
+          Visit the front desk to link your account, or send a request below and our team will help you get set up.
         </Text>
       </View>
 
-      <AuthSubmitButton
-        label={checking ? 'Checking Status…' : 'Check Activation Status'}
-        onPress={handleCheckActivation}
-        loading={checking}
-      />
+      {referralApplied ? (
+        <View
+          style={[
+            styles.successCard,
+            {
+              backgroundColor: colors.status.successSubtle,
+              borderColor: colors.status.successBorder,
+              borderRadius: radius.card,
+              padding: inset.md,
+              gap: gap.sm,
+              marginBottom: gap.md,
+            },
+          ]}
+        >
+          <View style={[styles.successHeader, { gap: gap.sm }]}>
+            <CircleCheck size={22} color={colors.status.success} strokeWidth={2.25} />
+            <Text style={[typography.textPresets.bodyStrong, { color: colors.status.success, flex: 1 }]}>
+              Referral code linked
+            </Text>
+          </View>
+          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+            {referralStatusQuery.data?.referrerName
+              ? `${referralStatusQuery.data.referrerName}'s code is saved. `
+              : ''}
+            Bonus points unlock for both of you when your account activates.
+          </Text>
+        </View>
+      ) : (
+        <View style={{ marginBottom: gap.md, gap: gap.sm }}>
+          <AuthTextField
+            label="Have a referral code?"
+            value={referralCode}
+            onChangeText={setReferralCode}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            placeholder="Enter friend's code"
+            icon={Ticket}
+            returnKeyType="done"
+            onSubmitEditing={handleApplyReferralCode}
+          />
+          <AuthSubmitButton
+            label={applyReferralMutation.isPending ? 'Saving code…' : 'Apply referral code'}
+            onPress={handleApplyReferralCode}
+            loading={applyReferralMutation.isPending}
+            disabled={!referralCode.trim()}
+            variant="outline"
+          />
+        </View>
+      )}
 
-      <AuthSubmitButton
-        label="Sign Out"
-        onPress={signOut}
-        variant="outline"
-      />
+      {hasSubmittedRequest ? (
+        <View
+          style={[
+            styles.successCard,
+            {
+              backgroundColor: colors.status.successSubtle,
+              borderColor: colors.status.successBorder,
+              borderRadius: radius.card,
+              padding: inset.md,
+              gap: gap.sm,
+              marginBottom: gap.md,
+            },
+          ]}
+        >
+          <View style={[styles.successHeader, { gap: gap.sm }]}>
+            <CircleCheck size={22} color={colors.status.success} strokeWidth={2.25} />
+            <Text style={[typography.textPresets.bodyStrong, { color: colors.status.success, flex: 1 }]}>
+              Request received
+            </Text>
+          </View>
+          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+            Thanks — our staff will contact you soon, or activate your account when you next visit the academy.
+          </Text>
+        </View>
+      ) : (
+        <AuthSubmitButton
+          label={submitRequestMutation.isPending ? 'Sending request…' : 'Request activation'}
+          onPress={handleSubmitRequest}
+          loading={submitRequestMutation.isPending}
+        />
+      )}
     </AuthScreen>
   );
 }
@@ -77,5 +179,12 @@ export default function ActivationRequiredScreen() {
 const styles = StyleSheet.create({
   content: {
     marginVertical: 12,
+  },
+  successCard: {
+    borderWidth: 1,
+  },
+  successHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
 });

@@ -25,6 +25,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Bell,
+  ChevronRight,
+  Link2,
+  LogOut,
+  ShieldCheck,
+  Trash2,
+  type LucideIcon,
+} from 'lucide-react-native';
 import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 
@@ -37,15 +46,27 @@ import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
 import { useMembership, useMembershipRefresh } from '@/features/profile/hooks/useMembership';
 import { MyGuardiansCard } from '@/features/guardian/components/MyGuardiansCard';
 import { useActiveProfileLabel, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
-import { formatBirthDate } from '@/features/checkin/utils/memberDisplay';
+import { dateOfBirthToAge } from '@/features/onboarding/services/onboardingValidation';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { ProfileSkeleton } from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import {
+  isOfflineWithoutCache,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { HomeBeltPathCard } from '@/features/home/components/HomeBeltPathCard';
-import { CollapsibleAppBar, CollapsibleAppBarAction } from '@/shared/components/ui';
+import {
+  BrandedLucideIconBadge,
+  CollapsibleAppBar,
+  CollapsibleAppBarAction,
+  type BrandedIconTone,
+} from '@/shared/components/ui';
 import { useDialog } from '@/shared/components/Dialog';
 import { useTheme } from '@/shared/theme';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
@@ -222,15 +243,18 @@ const ProfileActionTile = React.memo(function ProfileActionTile({
   title,
   subtitle,
   onPress,
-  iconColor,
+  iconTone = 'neutral',
+  showDivider = false,
 }: {
-  icon: keyof typeof Ionicons.glyphMap;
+  icon: LucideIcon;
   title: string;
   subtitle: string;
   onPress: () => void;
-  iconColor?: string;
+  iconTone?: BrandedIconTone;
+  showDivider?: boolean;
 }) {
-  const { colors, typography, inset, layout, radius, shadows } = useTheme();
+  const { colors, typography, inset, mode } = useTheme();
+  const mutedBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
 
   return (
     <Pressable
@@ -239,21 +263,18 @@ const ProfileActionTile = React.memo(function ProfileActionTile({
       accessibilityLabel={title}
       style={({ pressed }) => [
         styles.actionTile,
-        shadows.card,
+        showDivider && {
+          borderBottomColor: mutedBorder,
+          borderBottomWidth: StyleSheet.hairlineWidth,
+        },
         {
-          backgroundColor: colors.surface.primary,
-          borderColor: colors.border.subtle,
-          borderRadius: radius.card,
-          borderWidth: layout.borderWidth,
           paddingHorizontal: inset.md,
-          paddingVertical: inset.sm + 2,
-          opacity: pressed ? 0.88 : 1,
+          paddingVertical: inset.sm + 4,
+          backgroundColor: pressed ? colors.fill.secondary : colors.surface.primary,
         },
       ]}
     >
-      <View style={styles.actionIconWrap}>
-        <Ionicons name={icon} size={20} color={iconColor ?? colors.text.primary} />
-      </View>
+      <BrandedLucideIconBadge icon={icon} tone={iconTone} />
 
       <View style={styles.actionTextCol}>
         <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
@@ -264,7 +285,7 @@ const ProfileActionTile = React.memo(function ProfileActionTile({
         </Text>
       </View>
 
-      <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+      <ChevronRight size={16} color={colors.text.tertiary} strokeWidth={2.25} />
     </Pressable>
   );
 });
@@ -274,13 +295,14 @@ const ProfileActionTile = React.memo(function ProfileActionTile({
 
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const { colors, typography, inset, radius, gap, layout, shadows } = useTheme();
+  const { colors, typography, inset, radius, gap, layout, mode } = useTheme();
   usePerfRouteMount(PerfMark.routeProfileMount);
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
   const { signOut } = useAuth();
   const { showConfirm } = useDialog();
   const user = useAuthStore((s) => s.user);
+  const { needsActivation } = useIsGuest();
   const activeProfileLabel = useActiveProfileLabel();
   const viewingChild = useIsViewingChildProfile();
 
@@ -300,6 +322,7 @@ export default function ProfileScreen() {
   const beltPathQuery = useBeltPath();
   const membershipQuery = useMembership();
   const membershipRefresh = useMembershipRefresh(screenFocused);
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const [refreshing, setRefreshing] = useState(false);
   const [statusBarStyle, setStatusBarStyle] = useState<'light' | 'dark'>('light');
@@ -312,19 +335,10 @@ export default function ProfileScreen() {
   const beltPath = beltPathQuery.data;
   const displayName = profile?.fullName || activeProfileLabel || 'Member';
 
-  const memberSinceLabel = useMemo(() => {
-    if (!profile?.memberSince) return null;
-    try {
-      const d = new Date(profile.memberSince);
-      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-      return `Member since ${months[d.getMonth()]} ${d.getFullYear()}`;
-    } catch { return null; }
-  }, [profile?.memberSince]);
-
-  const birthDateLabel = useMemo(
-    () => formatBirthDate(profile?.dateOfBirth),
-    [profile?.dateOfBirth],
-  );
+  const memberAge = useMemo(() => {
+    if (!profile?.dateOfBirth) return null;
+    return dateOfBirthToAge(profile.dateOfBirth);
+  }, [profile?.dateOfBirth]);
 
   const heroKicker = useMemo(() => {
     const ms = membershipQuery.data;
@@ -346,8 +360,6 @@ export default function ProfileScreen() {
     const role = user?.role ?? 'member';
     return role.charAt(0).toUpperCase() + role.slice(1);
   }, [user?.role]);
-
-  const showMembershipCard = membershipQuery.data?.status !== 'none';
 
   const rankEligible = rankEligibilityQuery.data?.eligible === true;
   const hasBeltProgress = rankEligible && Boolean(beltPath?.progress);
@@ -384,19 +396,22 @@ export default function ProfileScreen() {
 
 
   // ── Loading / error ───────────────────────────────────────────────────────
-  const isLoading =
-    profileQuery.isLoading || disciplineQuery.isLoading ||
-    pointsQuery.isLoading || rankEligibilityQuery.isLoading ||
-    (rankEligible && beltPathQuery.isLoading) || membershipQuery.isLoading;
-  const hasError =
-    profileQuery.isError || disciplineQuery.isError ||
-    pointsQuery.isError || rankEligibilityQuery.isError ||
-    (rankEligible && beltPathQuery.isError) || membershipQuery.isError;
-  const hasData =
-    profileQuery.data !== undefined || disciplineQuery.data !== undefined ||
-    pointsQuery.data !== undefined || rankEligibilityQuery.data !== undefined ||
-    beltPathQuery.data !== undefined ||
-    membershipQuery.data !== undefined;
+  const isLoading = needsActivation
+    ? profileQuery.isLoading
+    : profileQuery.isLoading || disciplineQuery.isLoading ||
+      pointsQuery.isLoading || rankEligibilityQuery.isLoading ||
+      (rankEligible && beltPathQuery.isLoading) || membershipQuery.isLoading;
+  const hasError = needsActivation
+    ? profileQuery.isError
+    : profileQuery.isError || disciplineQuery.isError ||
+      pointsQuery.isError || rankEligibilityQuery.isError ||
+      (rankEligible && beltPathQuery.isError) || membershipQuery.isError;
+  const hasData = needsActivation
+    ? profileQuery.data !== undefined
+    : profileQuery.data !== undefined || disciplineQuery.data !== undefined ||
+      pointsQuery.data !== undefined || rankEligibilityQuery.data !== undefined ||
+      beltPathQuery.data !== undefined ||
+      membershipQuery.data !== undefined;
   const isInitialLoading = isLoading && !hasData;
   const dataReady = hasData && !isInitialLoading;
 
@@ -471,6 +486,10 @@ export default function ProfileScreen() {
     triggerLightImpact();
     setRefreshing(true);
     try {
+      if (needsActivation) {
+        await profileQuery.refetch();
+        return;
+      }
       await Promise.all([
         profileQuery.refetch(),
         disciplineQuery.refetch(),
@@ -484,6 +503,7 @@ export default function ProfileScreen() {
       setRefreshing(false);
     }
   }, [
+    needsActivation,
     profileQuery,
     disciplineQuery,
     pointsQuery,
@@ -508,29 +528,45 @@ export default function ProfileScreen() {
 
   const accountOptions = useMemo(() => {
     const list: Array<{
-      icon: keyof typeof Ionicons.glyphMap;
+      icon: LucideIcon;
       title: string;
       subtitle: string;
       onPress: () => void;
-      iconColor?: string;
-    }> = [
-      {
-        icon: 'shield-outline',
-        title: 'Change Password',
-        subtitle: 'Update security credentials',
-        onPress: () => router.push('/change-password'),
-      },
-      {
-        icon: 'notifications-outline',
+      iconTone?: BrandedIconTone;
+    }> = [];
+
+    if (needsActivation) {
+      list.push({
+        icon: Link2,
+        iconTone: 'neutral',
+        title: 'Complete Activation',
+        subtitle: 'Link your academy membership',
+        onPress: () => router.push('/activation-required'),
+      });
+    }
+
+    list.push({
+      icon: ShieldCheck,
+      iconTone: 'neutral',
+      title: 'Change Password',
+      subtitle: 'Update security credentials',
+      onPress: () => router.push('/change-password'),
+    });
+
+    if (!needsActivation) {
+      list.push({
+        icon: Bell,
+        iconTone: 'neutral',
         title: 'Notification Preferences',
         subtitle: 'Choose academy, class, and reward alerts',
         onPress: () => router.push('/notifications/preferences'),
-      },
-    ];
+      });
+    }
 
     if (!viewingChild) {
       list.push({
-        icon: 'trash-outline',
+        icon: Trash2,
+        iconTone: 'neutral',
         title: 'Delete Account',
         subtitle: 'Request account deletion',
         onPress: handleRequestDeletion,
@@ -538,15 +574,15 @@ export default function ProfileScreen() {
     }
 
     list.push({
-      icon: 'log-out-outline',
+      icon: LogOut,
+      iconTone: 'danger',
       title: 'Logout',
       subtitle: 'Exit your current session',
       onPress: handleSignOut,
-      iconColor: colors.status.error,
     });
 
     return list;
-  }, [viewingChild, colors, router, handleRequestDeletion, handleSignOut]);
+  }, [needsActivation, viewingChild, router, handleRequestDeletion, handleSignOut]);
 
 
   // ── Styles with dynamic values ─────────────────────────────────────────────
@@ -555,11 +591,20 @@ export default function ProfileScreen() {
     [inset.lg, inset.md, safeInsets.bottom],
   );
 
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
+
   // Derived render flags (mutually exclusive priority)
-  const showErrorOnly = hasError && !hasData;
-  const showSkeletonOnly = isInitialLoading && !hasError && !hasData;
-  const showContent = !showErrorOnly && !showSkeletonOnly;
+  const showOfflineOnly = isOfflineBlocked;
+  const showErrorOnly = hasError && !hasData && !showOfflineOnly;
+  const showSkeletonOnly = isInitialLoading && !hasError && !hasData && !showOfflineOnly;
+  const showContent = !showOfflineOnly && !showErrorOnly && !showSkeletonOnly;
   const appBarHeight = layout.headerHeight;
+  const actionGroupBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
 
   const profileAppBarRight = !viewingChild ? (
     <CollapsibleAppBarAction
@@ -634,6 +679,19 @@ export default function ProfileScreen() {
       </View>
 
       {/* ── Error state (no data available) ── */}
+      {showOfflineOnly ? (
+        <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={handleRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : null}
+
       {showErrorOnly ? (
         <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
           <StateBlock
@@ -642,6 +700,7 @@ export default function ProfileScreen() {
             message="Please check your connection and try again."
             actionLabel="Retry"
             onAction={handleRefresh}
+            offlineAwareRetry
           />
         </View>
       ) : null}
@@ -696,22 +755,44 @@ export default function ProfileScreen() {
               {displayName}
             </Text>
 
-            {/* Badges Row */}
-            <View style={[styles.badgesRow, { gap: gap.sm }]}>
-              {hasBeltProgress ? (
-                <View style={[styles.beltBadge, { backgroundColor: colors.background.inverse, borderRadius: radius.pill }]}>
-                  <Ionicons name="ribbon-outline" size={12} color={colors.text.inverse} style={{ marginRight: 4 }} />
-                  <Text style={[styles.beltBadgeText, { color: colors.text.inverse }]}>
-                    {formattedRankName}
+            {needsActivation && user?.email ? (
+              <Text
+                style={[
+                  typography.textPresets.body,
+                  { color: colors.text.secondary, textAlign: 'center', marginTop: 4 },
+                ]}
+              >
+                {user.email}
+              </Text>
+            ) : null}
+
+            {/* Member since */}
+            <View style={[needsActivation ? styles.badgesColumn : styles.badgesRow, { gap: gap.sm }]}>
+              {needsActivation ? (
+                <>
+                  {memberAge !== null ? (
+                    <View style={styles.memberSinceBadge}>
+                      <Ionicons name="person-outline" size={13} color={colors.text.secondary} style={{ marginRight: 4 }} />
+                      <Text style={[styles.memberSinceText, { color: colors.text.secondary }]}>
+                        {memberAge} years old
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View style={[styles.beltBadge, { backgroundColor: colors.status.warningSubtle, borderRadius: radius.pill }]}>
+                    <Ionicons name="time-outline" size={12} color={colors.status.warning} style={{ marginRight: 4 }} />
+                    <Text style={[styles.beltBadgeText, { color: colors.status.warning }]}>
+                      Pending activation
+                    </Text>
+                  </View>
+                </>
+              ) : (
+                <View style={styles.memberSinceBadge}>
+                  <Ionicons name="calendar-outline" size={13} color={colors.text.secondary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.memberSinceText, { color: colors.text.secondary }]}>
+                    {memberSinceYearLabel}
                   </Text>
                 </View>
-              ) : null}
-              <View style={styles.memberSinceBadge}>
-                <Ionicons name="calendar-outline" size={13} color={colors.text.secondary} style={{ marginRight: 4 }} />
-                <Text style={[styles.memberSinceText, { color: colors.text.secondary }]}>
-                  {memberSinceYearLabel}
-                </Text>
-              </View>
+              )}
             </View>
           </Animated.View>
 
@@ -729,6 +810,7 @@ export default function ProfileScreen() {
           ) : null}
 
           {/* ─ Performance Cards (2x2 Grid) ─ */}
+          {!needsActivation ? (
           <Animated.View style={[styles.sectionContainer, statsEntrance, { marginBottom: 8 }]}>
             <View style={[styles.perfCardsGrid, { gap: 12 }]}>
               {/* Row 1 */}
@@ -846,9 +928,10 @@ export default function ProfileScreen() {
               </View>
             </View>
           </Animated.View>
+          ) : null}
 
           {/* ─ Martial Arts Belt rank card ─ */}
-          {hasBeltProgress ? (
+          {!needsActivation && hasBeltProgress ? (
             <Animated.View style={[styles.sectionContainer, beltEntrance, { marginBottom: 8 }]}>
               <HomeBeltPathCard
                 hasBeltProgress={hasBeltProgress}
@@ -864,15 +947,26 @@ export default function ProfileScreen() {
 
           {/* ─ Account actions ─ */}
           <Animated.View style={[styles.sectionContainer, membershipEntrance, { marginBottom: 8 }]}>
-            <View style={{ gap: gap.sm }}>
-              {accountOptions.map((opt) => (
+            <View
+              style={[
+                styles.actionGroup,
+                {
+                  backgroundColor: colors.surface.primary,
+                  borderColor: actionGroupBorder,
+                  borderRadius: radius.card,
+                  borderWidth: StyleSheet.hairlineWidth,
+                },
+              ]}
+            >
+              {accountOptions.map((opt, index) => (
                 <ProfileActionTile
                   key={opt.title}
                   icon={opt.icon}
                   title={opt.title}
                   subtitle={opt.subtitle}
                   onPress={opt.onPress}
-                  iconColor={opt.iconColor}
+                  iconTone={opt.iconTone}
+                  showDivider={index < accountOptions.length - 1}
                 />
               ))}
             </View>
@@ -880,7 +974,7 @@ export default function ProfileScreen() {
 
           {/* ─ Guardians + footer ─ */}
           <Animated.View style={[bottomEntrance, { gap: inset.md }]}>
-            {!viewingChild ? <MyGuardiansCard /> : null}
+            {!viewingChild && !needsActivation ? <MyGuardiansCard /> : null}
             
             <Text style={[typography.textPresets.caption, { color: colors.text.tertiary, textAlign: 'center', marginTop: 32 }]}>
               {versionLabel}
@@ -1126,6 +1220,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  badgesColumn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   beltBadge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1211,15 +1309,15 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     zIndex: 1,
   },
-  actionTile: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  actionGroup: {
+    overflow: 'hidden',
     width: '100%',
   },
-  actionIconWrap: {
-    width: 24,
+  actionTile: {
     alignItems: 'center',
-    marginRight: 12,
+    flexDirection: 'row',
+    gap: 14,
+    width: '100%',
   },
   actionTextCol: {
     flex: 1,

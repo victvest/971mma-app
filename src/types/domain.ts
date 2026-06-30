@@ -208,6 +208,18 @@ export interface RedemptionItem {
   createdAt: string;
 }
 
+export type ReferralStatus = 'pending' | 'awarded' | 'rejected';
+
+export interface ReferralItem {
+  id: string;
+  referredDisplayName: string | null;
+  referredUserId: string | null;
+  status: ReferralStatus;
+  pointsAwardedAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface GuardianLinkItem {
   id: string;
   guardianUserId: string;
@@ -304,6 +316,10 @@ export interface BeltPathSummary {
   curriculumRanks: BeltRankItem[];
   /** True when the discipline has no rank levels configured yet. */
   isPlaceholderCurriculum: boolean;
+  /** True when stripe requirements exist in the curriculum for the member's current rank. */
+  hasConfiguredRequirements: boolean;
+  /** Stripe the member is actively working toward. */
+  targetStripe: number;
 }
 
 export interface CoachMemberSearchItem {
@@ -313,6 +329,43 @@ export interface CoachMemberSearchItem {
   beltRank: string | null;
   beltStripes: number;
 }
+
+export interface CoachCurriculumRank {
+  id: string;
+  name: string;
+  order: number;
+  stripes: number;
+}
+
+export interface CoachCurriculumRequirement {
+  id: string;
+  rankLevelId: string;
+  rankName: string;
+  stripe: number;
+  title: string;
+  description: string | null;
+  requirementType: 'attendance' | 'skill' | 'assessment';
+  attendanceTarget: number | null;
+  sortOrder: number;
+}
+
+export interface CoachCurriculumSummary {
+  disciplineSlug: string;
+  ranks: CoachCurriculumRank[];
+  requirements: CoachCurriculumRequirement[];
+}
+
+export type UpsertCoachRankRequirementInput = {
+  disciplineSlug: string;
+  rankLevelId: string;
+  stripe: number;
+  title: string;
+  description?: string | null;
+  requirementType?: 'attendance' | 'skill' | 'assessment';
+  attendanceTarget?: number | null;
+  sortOrder?: number;
+  requirementId?: string | null;
+};
 
 export interface ClassRosterVisitor {
   mindbodyClientId: string;
@@ -487,6 +540,7 @@ export interface CommunityPostItem {
   reactionCounts: Record<string, number>;
   replyCount: number;
   myReactions: string[];
+  isUnread?: boolean;
 }
 
 export interface CommunityReplyItem {

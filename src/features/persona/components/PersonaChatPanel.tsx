@@ -24,13 +24,14 @@ import Animated, {
 } from 'react-native-reanimated';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { FLOATING_CHROME_ELEVATION } from '@/features/home/components/navigation/floatingChromeElevation';
 import { triggerLightImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { PERSONA_ASSISTANT_NAME } from '../constants';
-import { PERSONA_SUGGESTIONS } from '../hooks/usePersonaChat';
-import type { PersonaMessage } from '../types';
+import type { PersonaAction, PersonaMessage } from '../types';
+import { navigatePersonaAction } from '../utils/personaActions';
 import { PersonaAvatar } from './PersonaAvatar';
 
 const OPEN_SPRING = {
@@ -46,19 +47,29 @@ type PersonaChatPanelProps = {
   visible: boolean;
   messages: PersonaMessage[];
   isTyping: boolean;
+  suggestions: readonly string[];
   onClose: () => void;
   onSend: (text: string) => void;
 };
 
 type MessageRowProps = {
   message: PersonaMessage;
+  onActionPress: (action: PersonaAction) => void;
 };
 
-const PersonaMessageBubble = memo(function PersonaMessageBubble({ message }: MessageRowProps) {
+const PersonaMessageBubble = memo(function PersonaMessageBubble({ message, onActionPress }: MessageRowProps) {
   const { colors, typography, radius, gap, mode } = useTheme();
   const isUser = message.role === 'user';
-  const assistantFill = mode === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(255, 255, 255, 0.72)';
-  const assistantBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.16)' : 'rgba(0, 0, 0, 0.06)';
+  const assistantFill = message.isError
+    ? colors.surface.secondary
+    : mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.12)'
+      : 'rgba(255, 255, 255, 0.72)';
+  const assistantBorder = message.isError
+    ? colors.border.default
+    : mode === 'dark'
+      ? 'rgba(255, 255, 255, 0.16)'
+      : 'rgba(0, 0, 0, 0.06)';
 
   return (
     <View
@@ -69,24 +80,51 @@ const PersonaMessageBubble = memo(function PersonaMessageBubble({ message }: Mes
       ]}
     >
       {!isUser ? <PersonaAvatar size={30} style={styles.messageAvatar} /> : null}
-      <View
-        style={[
-          styles.bubble,
-          {
-            borderRadius: radius.card,
-            backgroundColor: isUser ? colors.accent.default : assistantFill,
-            borderColor: isUser ? colors.accent.default : assistantBorder,
-          },
-        ]}
-      >
-        <Text
+      <View style={styles.messageColumn}>
+        <View
           style={[
-            typography.textPresets.body,
-            { color: isUser ? colors.text.onAccent : colors.text.primary },
+            styles.bubble,
+            {
+              borderRadius: radius.card,
+              backgroundColor: isUser ? colors.accent.default : assistantFill,
+              borderColor: isUser ? colors.accent.default : assistantBorder,
+            },
           ]}
         >
-          {message.text}
-        </Text>
+          <Text
+            style={[
+              typography.textPresets.body,
+              { color: isUser ? colors.text.onAccent : colors.text.primary },
+            ]}
+          >
+            {message.text}
+          </Text>
+        </View>
+        {!isUser && message.actions?.length ? (
+          <View style={[styles.actionRow, { gap: gap.xs, marginTop: gap.xs }]}>
+            {message.actions.map((action) => (
+              <Pressable
+                key={`${message.id}-${action.route}`}
+                onPressIn={triggerLightImpact}
+                onPress={() => onActionPress(action)}
+                accessibilityLabel={action.label}
+                style={({ pressed }) => [
+                  styles.actionChip,
+                  {
+                    borderRadius: radius.pill,
+                    backgroundColor: colors.surface.primary,
+                    borderColor: colors.border.subtle,
+                    opacity: pressed ? 0.82 : 1,
+                  },
+                ]}
+              >
+                <Text style={[typography.textPresets.captionMedium, { color: colors.accent.default }]}>
+                  {action.label}
+                </Text>
+              </Pressable>
+            ))}
+          </View>
+        ) : null}
       </View>
     </View>
   );
@@ -133,18 +171,19 @@ function PersonaTypingIndicator() {
 }
 
 type SuggestionChipsProps = {
+  suggestions: readonly string[];
   onSelect: (text: string) => void;
   visible: boolean;
 };
 
-function PersonaSuggestionChips({ onSelect, visible }: SuggestionChipsProps) {
+function PersonaSuggestionChips({ suggestions, onSelect, visible }: SuggestionChipsProps) {
   const { colors, typography, inset, gap, radius } = useTheme();
 
-  if (!visible) return null;
+  if (!visible || suggestions.length === 0) return null;
 
   return (
     <View style={[styles.suggestions, { gap: gap.sm, paddingBottom: inset.sm }]}>
-      {PERSONA_SUGGESTIONS.map((suggestion) => (
+      {suggestions.map((suggestion) => (
         <Pressable
           key={suggestion}
           onPressIn={triggerLightImpact}
@@ -181,9 +220,11 @@ export function PersonaChatPanel({
   visible,
   messages,
   isTyping,
+  suggestions,
   onClose,
   onSend,
 }: PersonaChatPanelProps) {
+  const router = useRouter();
   const { colors, typography, inset, gap, radius, layout, animations, mode } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -281,6 +322,17 @@ export function PersonaChatPanel({
     [onSend],
   );
 
+  const handleActionPress = useCallback(
+    (action: PersonaAction) => {
+      triggerSelectionHaptic();
+      onClose();
+      requestAnimationFrame(() => {
+        navigatePersonaAction(router, action);
+      });
+    },
+    [onClose, router],
+  );
+
   const panelStyle = useAnimatedStyle(() => ({
     opacity: interpolate(progress.value, [0, 0.3, 1], [0, 1, 1], Extrapolation.CLAMP),
     transform: [
@@ -341,7 +393,7 @@ export function PersonaChatPanel({
                       {PERSONA_ASSISTANT_NAME}
                     </Text>
                     <Text style={[typography.textPresets.caption, { color: colors.text.secondary }]}>
-                      Preview
+                      Academy assistant
                     </Text>
                   </View>
                 </View>
@@ -380,13 +432,21 @@ export function PersonaChatPanel({
                 showsVerticalScrollIndicator={false}
               >
                 {messages.map((message) => (
-                  <PersonaMessageBubble key={message.id} message={message} />
+                  <PersonaMessageBubble
+                    key={message.id}
+                    message={message}
+                    onActionPress={handleActionPress}
+                  />
                 ))}
                 {isTyping ? <PersonaTypingIndicator /> : null}
               </ScrollView>
 
               <View style={{ paddingHorizontal: inset.md }}>
-                <PersonaSuggestionChips onSelect={handleSuggestion} visible={showSuggestions} />
+                <PersonaSuggestionChips
+                  suggestions={suggestions}
+                  onSelect={handleSuggestion}
+                  visible={showSuggestions}
+                />
               </View>
 
               <View style={[styles.composerWrap, { paddingHorizontal: inset.md, paddingBottom: inset.md }]}>
@@ -527,15 +587,26 @@ const styles = StyleSheet.create({
   messageRowAssistant: {
     justifyContent: 'flex-start',
   },
+  messageColumn: {
+    flexShrink: 1,
+    maxWidth: '80%',
+  },
   messageAvatar: {
     marginRight: 8,
   },
   bubble: {
     borderWidth: StyleSheet.hairlineWidth,
-    flexShrink: 1,
-    maxWidth: '80%',
     paddingHorizontal: 14,
     paddingVertical: 10,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  actionChip: {
+    borderWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
   },
   typingBubble: {
     alignItems: 'center',

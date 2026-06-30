@@ -138,7 +138,6 @@ export function useScheduleDay(range = gymRangeIso()) {
  */
 export function useScheduleFocusSync(enabled = true) {
   const queryClient = useQueryClient();
-  const pendingRef = useRef(false);
   const lastSyncRef = useRef(0);
   const lastDayKeyRef = useRef(gymDayKey());
   const syncingRef = useRef(false);
@@ -168,22 +167,18 @@ export function useScheduleFocusSync(enabled = true) {
         lastDayKeyRef.current = currentDayKey;
         if (shouldInvalidateAfterMirrorSync(result, force)) {
           await invalidateScheduleQueries(queryClient);
+          await queryClient.invalidateQueries({ queryKey: ['home-dashboard'] });
         }
       } finally {
         syncingRef.current = false;
       }
     },
-    [enabled, queryClient],
+    [actualEnabled, queryClient],
   );
 
   useFocusEffect(
     useCallback(() => {
-      if (pendingRef.current) {
-        void sync(false);
-      }
-      return () => {
-        pendingRef.current = true;
-      };
+      void sync(false);
     }, [sync]),
   );
 

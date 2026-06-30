@@ -51,7 +51,7 @@ export function BeltPathRankSnapshot({ progress }: Props) {
         ]}
       >
         <Text style={[typography.textPresets.footnote, { color: colors.text.secondary, flex: 1, lineHeight: 18 }]}>
-          Stripe requirements for your rank are being configured. Keep training — your attendance is already being
+          Stripe requirements for this rank are not published in the app yet. Keep training — your attendance is already being
           tracked below.
         </Text>
       </View>

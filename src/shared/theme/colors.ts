@@ -84,6 +84,13 @@ export type AppColors = {
     subtle: string;
     onAccent: string;
   };
+  /** UAE flag red — use sparingly for chips, badges, and small identity accents. */
+  brand: {
+    red: string;
+    redSubtle: string;
+    redPressed: string;
+    onRed: string;
+  };
   border: {
     subtle: string;
     default: string;
@@ -147,6 +154,12 @@ export const lightColors: AppColors = {
     subtle: palette.green50,
     onAccent: palette.white,
   },
+  brand: {
+    red: palette.red500,
+    redSubtle: palette.red50,
+    redPressed: palette.red700,
+    onRed: palette.white,
+  },
   border: {
     subtle: '#EBEBEB',
     default: palette.warmGray200,
@@ -209,6 +222,12 @@ export const darkColors: AppColors = {
     pressed: palette.green600,
     subtle: palette.green900bg,
     onAccent: palette.white,
+  },
+  brand: {
+    red: palette.red500,
+    redSubtle: palette.red900bg,
+    redPressed: palette.red700,
+    onRed: palette.white,
   },
   border: {
     subtle: palette.dark800,

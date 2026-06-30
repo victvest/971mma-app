@@ -31,6 +31,10 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   ios: {
     ...config.ios,
     bundleIdentifier: config.ios?.bundleIdentifier ?? 'com.bahaa0541.ninemma',
+    associatedDomains: [
+      ...(config.ios?.associatedDomains ?? []),
+      'applinks:app.971mma.com',
+    ],
     infoPlist: {
       ...config.ios?.infoPlist,
       NSCameraUsageDescription: '971 MMA uses the camera to scan check-in QR codes at the gym.',
@@ -46,6 +50,21 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     ...config.android,
     package: config.android?.package ?? 'com.bahaa0541.ninemma',
     softwareKeyboardLayoutMode: 'resize',
+    intentFilters: [
+      ...(config.android?.intentFilters ?? []),
+      {
+        action: 'VIEW',
+        autoVerify: true,
+        data: [
+          {
+            scheme: 'https',
+            host: 'app.971mma.com',
+            pathPrefix: '/auth/callback',
+          },
+        ],
+        category: ['BROWSABLE', 'DEFAULT'],
+      },
+    ],
 
     permissions: [
       ...new Set([
@@ -70,5 +89,6 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     COACH_DEMO_MODE: process.env.EXPO_PUBLIC_COACH_DEMO_MODE,
     DEV_GATE_LAT: process.env.EXPO_PUBLIC_DEV_GATE_LAT,
     DEV_GATE_LNG: process.env.EXPO_PUBLIC_DEV_GATE_LNG,
+    AUTH_CALLBACK_HOST: process.env.EXPO_PUBLIC_AUTH_CALLBACK_HOST,
   },
 });

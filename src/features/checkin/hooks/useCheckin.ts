@@ -103,6 +103,7 @@ async function fetchAttendancePage(userId: string, offset: number): Promise<Chec
       signed_in,
       missed,
       late_cancelled,
+      raw_payload,
       classes:class_id (
         id,
         title,

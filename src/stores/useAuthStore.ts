@@ -1,6 +1,10 @@
 import { create } from 'zustand';
 import type { UserRole } from '@/features/auth/types';
 import { invalidateAuthProfileSync } from '@/features/auth/services/authProfileSync';
+import {
+  clearGuestMode,
+  persistGuestMode,
+} from '@/features/auth/services/guestModeStorage';
 
 export type AppUser = {
   id: string;
@@ -21,6 +25,7 @@ type AuthActions = {
   login: (user: AppUser) => void;
   logout: () => void;
   loginAsGuest: () => void;
+  restoreGuestSession: () => void;
   setRole: (role: UserRole) => void;
   setNeedsOnboarding: (needsOnboarding: boolean) => void;
   markOnboardingComplete: (patch: { fullName: string; avatarUrl: string | null }) => void;
@@ -33,13 +38,22 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
   isAuthenticated: false,
   needsOnboarding: false,
 
-  login: (user) =>
-    set({ user, role: user.role, isAuthenticated: true }),
+  login: (user) => {
+    void clearGuestMode();
+    set({ user, role: user.role, isAuthenticated: true });
+  },
 
-  logout: () =>
-    set({ user: null, role: null, isAuthenticated: false, needsOnboarding: false }),
+  logout: () => {
+    void clearGuestMode();
+    set({ user: null, role: null, isAuthenticated: false, needsOnboarding: false });
+  },
 
-  loginAsGuest: () =>
+  loginAsGuest: () => {
+    void persistGuestMode(true);
+    set({ user: null, role: 'guest', isAuthenticated: true, needsOnboarding: false });
+  },
+
+  restoreGuestSession: () =>
     set({ user: null, role: 'guest', isAuthenticated: true, needsOnboarding: false }),
 
   setRole: (role) =>

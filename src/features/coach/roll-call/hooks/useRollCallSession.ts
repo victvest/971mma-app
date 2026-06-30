@@ -11,6 +11,7 @@ import {
   isRollCallSessionInProgress,
   rollCallExitHasProgress,
 } from '@/features/coach/roll-call/utils/rollCallSession';
+import { getNetworkOnline } from '@/stores/useAppConnectivityStore';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 
 function formatSessionError(error: unknown): string {
@@ -42,10 +43,19 @@ export function useRollCallSession(classId: string | null) {
     if (!classId || rollCallQuery.isLoading || rollCallQuery.isError) return;
     if (isCompleted || isInProgress) return;
     if (isStarting) return;
+    if (!getNetworkOnline()) return;
 
     startRollCall(undefined, {
       onError: (error) => {
-        showAlert('Could not start roll call', formatSessionError(error));
+        const message = formatSessionError(error);
+        if (!getNetworkOnline()) {
+          showAlert(
+            'Connect to start roll call',
+            'Roll call needs an internet connection to load the roster and begin.',
+          );
+          return;
+        }
+        showAlert('Could not start roll call', message);
       },
     });
   }, [

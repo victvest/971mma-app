@@ -340,6 +340,12 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
 
   if (!link?.user_id) return;
 
+  const { data: existingProfile } = await serviceClient()
+    .from('profiles')
+    .select('avatar_url')
+    .eq('id', link.user_id)
+    .maybeSingle<{ avatar_url: string | null }>();
+
   const firstName = readString(client, ['FirstName', 'firstName']);
   const lastName = readString(client, ['LastName', 'lastName']);
   const fullName =
@@ -351,7 +357,9 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
   const phone = readString(client, ['MobilePhone', 'mobilePhone', 'HomePhone', 'homePhone']);
   if (phone) patch.phone = phone;
   const avatarUrl = readString(client, ['PhotoUrl', 'photoUrl', 'ImageUrl', 'imageUrl']);
-  if (avatarUrl) patch.avatar_url = avatarUrl;
+  const currentAvatar = existingProfile?.avatar_url?.trim() ?? '';
+  const hasUserUploadedAvatar = currentAvatar.includes('/storage/v1/object/public/avatars/');
+  if (avatarUrl && !hasUserUploadedAvatar) patch.avatar_url = avatarUrl;
 
   await serviceClient().from('profiles').update(patch).eq('id', link.user_id);
 }

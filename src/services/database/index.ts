@@ -33,6 +33,7 @@ export { getMemberMemberships, getMembershipSummary } from './membership.reposit
 export { recordCheckIn } from './checkIns.repository';
 export { getPointsAccount, getLedgerPage } from './points.repository';
 export { getCatalog, getMyRedemptions, redeem } from './rewards.repository';
+export { getMyReferrals, getMyReferralCode, applyReferralCode, getMyReferralStatus } from './referrals.repository';
 export { getMyMilestones } from './milestones.repository';
 export {
   mapClassRow,

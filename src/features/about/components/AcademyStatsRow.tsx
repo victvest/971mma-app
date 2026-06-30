@@ -10,10 +10,12 @@ export function AcademyStatsRow() {
 
   return (
     <RevealOnMount delay={40} style={[styles.row, { gap: gap.sm }]}>
-      {ACADEMY_STATS.map((stat) => (
+      {ACADEMY_STATS.map((stat, index) => (
         <AboutContentCard key={stat.label} style={styles.cell}>
           <View style={styles.cellInner}>
-            <Text style={[styles.value, { color: colors.accent.default }]}>{stat.value}</Text>
+            <Text style={[styles.value, { color: index === 1 ? colors.brand.red : colors.accent.default }]}>
+              {stat.value}
+            </Text>
             <Text style={[styles.label, { color: colors.text.tertiary }]} numberOfLines={2}>
               {stat.label}
             </Text>

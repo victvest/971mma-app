@@ -91,13 +91,13 @@ export const textPresets = {
 
   hero: preset(fontSize['5xl'], fontWeight.black, 1.1, letterSpacing.tighter),
 
-  /** Home dashboard headline — matches legacy 38px/42lh layout */
+  /** Screen hero headline — About, Help, Legal, etc. */
   homeHero: {
     fontFamily: resolveFontFamily('display', fontWeight.black),
     fontSize: 38,
     fontWeight: '400',
     lineHeight: 42,
-    letterSpacing: letterSpacing.tighter,
+    letterSpacing: -1.2,
   } satisfies TextPreset,
 
   heading: preset(fontSize['4xl'], fontWeight.extrabold, 1.15, letterSpacing.tight),

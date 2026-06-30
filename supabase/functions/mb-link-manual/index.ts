@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
   try {
     const admin = await requireUser(req);
-    requireRole(admin, ['admin']);
+    requireRole(admin, ['admin', 'coach']);
 
     const body = (await req.json().catch(() => ({}))) as ManualLinkRequest;
     const userId = cleanId(body.userId);

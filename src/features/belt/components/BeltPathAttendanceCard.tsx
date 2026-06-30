@@ -5,7 +5,9 @@ import { BeltPathSurfaceCard } from '@/features/belt/components/BeltPathSurfaceC
 import { useTheme } from '@/shared/theme';
 
 const ATTENDANCE_WINDOW_DAYS = 30;
-const BAR_TRACK_HEIGHT = 40;
+const BAR_TRACK_HEIGHT = 48;
+/** Consistent scale so bar height is comparable week to week (not relative to the max in view). */
+const WEEKLY_SESSION_TARGET = 6;
 
 type Props = {
   trainingDays30d: number;
@@ -19,44 +21,78 @@ function WeekActivityBars({
   currentColor,
   pastColor,
   trackColor,
+  trackBorderColor,
 }: {
   counts: number[];
   currentColor: string;
   pastColor: string;
   trackColor: string;
+  trackBorderColor: string;
 }) {
-  const { colors, typography } = useTheme();
-  const maxCount = Math.max(...counts, 1);
+  const { colors, typography, radius } = useTheme();
   const totalSessions = useMemo(() => counts.reduce((sum, count) => sum + count, 0), [counts]);
+  const barRadius = radius.sm;
 
   return (
     <View style={styles.barChartRoot}>
-      <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
-        {totalSessions} {totalSessions === 1 ? 'session' : 'sessions'} in 8 weeks
-      </Text>
+      <View style={styles.barChartHeader}>
+        <Text style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}>
+          {totalSessions} {totalSessions === 1 ? 'session' : 'sessions'} in 8 weeks
+        </Text>
+        <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
+          Goal: {WEEKLY_SESSION_TARGET}/wk
+        </Text>
+      </View>
+
       <View style={styles.barChartContainer}>
         {counts.map((count, idx) => {
-          const height = count > 0 ? Math.round((count / maxCount) * 100) : 0;
+          const percent = Math.min(100, (count / WEEKLY_SESSION_TARGET) * 100);
           const isCurrentWeek = idx === counts.length - 1;
+          const weeksAgo = counts.length - 1 - idx;
 
           return (
-            <View key={`week-${idx}`} style={styles.barColumn}>
+            <View
+              key={`week-${idx}`}
+              style={[
+                styles.barColumn,
+                isCurrentWeek && {
+                  backgroundColor: colors.accent.subtle,
+                  borderRadius: radius.md,
+                  paddingHorizontal: 2,
+                  paddingTop: 4,
+                  paddingBottom: 2,
+                },
+              ]}
+              accessibilityLabel={
+                isCurrentWeek
+                  ? `This week, ${count} sessions`
+                  : `${weeksAgo} weeks ago, ${count} sessions`
+              }
+            >
               {isCurrentWeek ? (
-                <Text style={[styles.nowLabel, { color: currentColor }]}>Now</Text>
+                <View style={[styles.nowBadge, { backgroundColor: colors.accent.default }]}>
+                  <Text style={[styles.nowLabel, { color: colors.accent.onAccent }]}>Now</Text>
+                </View>
               ) : (
                 <View style={styles.nowSpacer} />
               )}
+
               <AnimatedBarFill
-                percent={height}
+                percent={percent}
                 backgroundColor={pastColor}
                 highlightColor={currentColor}
                 isHighlighted={isCurrentWeek}
                 trackColor={trackColor}
+                trackBorderColor={trackBorderColor}
                 trackHeight={BAR_TRACK_HEIGHT}
+                borderRadius={barRadius}
+                minFillHeight={count > 0 ? 6 : 0}
               />
+
               <Text
                 style={[
                   styles.countLabel,
+                  typography.textPresets.captionMedium,
                   {
                     color:
                       count > 0
@@ -138,7 +174,8 @@ export function BeltPathAttendanceCard({
           counts={weekCounts}
           currentColor={colors.accent.default}
           pastColor={colors.accent.pressed}
-          trackColor={colors.accent.subtle}
+          trackColor={colors.fill.secondary}
+          trackBorderColor={colors.border.subtle}
         />
       </View>
     </BeltPathSurfaceCard>
@@ -178,28 +215,41 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   barChartRoot: {
-    gap: 8,
+    gap: 10,
+  },
+  barChartHeader: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   barChartContainer: {
     alignItems: 'flex-end',
     flexDirection: 'row',
+    gap: 4,
     justifyContent: 'space-between',
   },
   barColumn: {
     alignItems: 'center',
     flex: 1,
-    gap: 4,
+    gap: 6,
+    minWidth: 0,
+  },
+  nowBadge: {
+    borderRadius: 999,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
   },
   nowLabel: {
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
+    textTransform: 'uppercase',
   },
   nowSpacer: {
-    height: 13,
+    height: 16,
   },
   countLabel: {
-    fontSize: 10,
+    fontSize: 11,
     letterSpacing: -0.1,
   },
 });
