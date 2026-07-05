@@ -1,6 +1,6 @@
 import React, { useCallback, useRef, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
@@ -176,7 +176,7 @@ export default function CoachRollCallScannerScreen() {
 
   if (!resolvedClassId) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -190,13 +190,13 @@ export default function CoachRollCallScannerScreen() {
             onAction={() => router.back()}
           />
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   if (!permission) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -204,13 +204,13 @@ export default function CoachRollCallScannerScreen() {
         <View style={styles.centered}>
           <ActivityIndicator color={colors.accent.default} />
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   if (!permission.granted) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -245,14 +245,14 @@ export default function CoachRollCallScannerScreen() {
           </Text>
           <NativeButton label="Grant camera access" onPress={requestPermission} full />
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   const errorMessage = cameraMountError ?? invalidQrMessage ?? scanError;
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top']}
     >
@@ -374,7 +374,7 @@ export default function CoachRollCallScannerScreen() {
           </View>
         ) : null}
       </View>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

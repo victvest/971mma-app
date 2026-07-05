@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { getCoaches, getCoachById, getClassesByCoachId } from '@/services/database';
 import { getCoachAssignedDisciplines } from '@/services/database/coachMemberNotes.repository';
 import { getDirectoryProvider } from '@/services/integrations';
+import { useCanInvokeProtectedEdge } from '@/features/auth/utils/canInvokeProtectedEdge';
 import {
   STATIC_DIRECTORY_GC_MS,
   STATIC_DIRECTORY_STALE_MS,
@@ -21,10 +22,12 @@ export function useCoaches() {
 
 export function useCoachesRefresh() {
   const provider = getDirectoryProvider();
+  const canSync = useCanInvokeProtectedEdge();
 
   return useQuery({
     queryKey: coachesRefreshKey,
     queryFn: () => provider.refreshCoaches(),
+    enabled: canSync,
     staleTime: STATIC_DIRECTORY_STALE_MS,
     gcTime: STATIC_DIRECTORY_GC_MS,
   });

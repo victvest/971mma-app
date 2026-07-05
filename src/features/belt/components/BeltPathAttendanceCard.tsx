@@ -31,7 +31,7 @@ function WeekActivityBars({
 }) {
   const { colors, typography, radius } = useTheme();
   const totalSessions = useMemo(() => counts.reduce((sum, count) => sum + count, 0), [counts]);
-  const barRadius = radius.sm;
+  const barRadius = radius.tag;
 
   return (
     <View style={styles.barChartRoot}>
@@ -57,7 +57,7 @@ function WeekActivityBars({
                 styles.barColumn,
                 isCurrentWeek && {
                   backgroundColor: colors.accent.subtle,
-                  borderRadius: radius.md,
+                  borderRadius: radius.thumbnail,
                   paddingHorizontal: 2,
                   paddingTop: 4,
                   paddingBottom: 2,

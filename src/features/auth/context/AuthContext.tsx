@@ -37,6 +37,8 @@ type AuthContextValue = {
   signUp: (email: string, password: string) => Promise<AuthResult>;
   signInWithGoogle: () => Promise<AuthResult>;
   signUpWithGoogle: () => Promise<AuthResult>;
+  signInWithApple: () => Promise<AuthResult>;
+  signUpWithApple: () => Promise<AuthResult>;
   verifySignupOtp: (email: string, token: string) => Promise<AuthResult>;
   resendSignupOtp: (email: string) => Promise<AuthResult>;
   sendRecoveryOtp: (email: string) => Promise<AuthResult>;
@@ -45,6 +47,7 @@ type AuthContextValue = {
   resetPassword: (email: string) => Promise<AuthResult>;
   updatePassword: (password: string) => Promise<AuthResult>;
   signOut: () => Promise<void>;
+  signOutOtherDevices: () => Promise<AuthResult>;
   passwordRecoveryActive: boolean;
   needsOnboarding: boolean;
   completePasswordRecovery: () => void;
@@ -191,6 +194,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return supabaseAuthService.signUpWithGoogle();
   }, [configError]);
 
+  const signInWithApple = useCallback(() => {
+    if (configError) return Promise.resolve({ error: configError });
+    return supabaseAuthService.signInWithApple();
+  }, [configError]);
+
+  const signUpWithApple = useCallback(() => {
+    if (configError) return Promise.resolve({ error: configError });
+    return supabaseAuthService.signUpWithApple();
+  }, [configError]);
+
   const verifySignupOtp = useCallback(
     async (email: string, token: string) => {
       if (configError) return { error: configError };
@@ -271,6 +284,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     useActiveProfileStore.getState().reset();
   }, [configError]);
 
+  const signOutOtherDevices = useCallback(() => {
+    if (configError) return Promise.resolve({ error: configError });
+    return supabaseAuthService.signOutOtherDevices();
+  }, [configError]);
+
   const completePasswordRecovery = useCallback(() => {
     setPasswordRecoveryActive(false);
   }, []);
@@ -299,6 +317,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithGoogle,
       signUpWithGoogle,
+      signInWithApple,
+      signUpWithApple,
       verifySignupOtp,
       resendSignupOtp,
       sendRecoveryOtp,
@@ -307,6 +327,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       updatePassword,
       signOut,
+      signOutOtherDevices,
       passwordRecoveryActive,
       needsOnboarding,
       completePasswordRecovery,
@@ -322,6 +343,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signUp,
       signInWithGoogle,
       signUpWithGoogle,
+      signInWithApple,
+      signUpWithApple,
       verifySignupOtp,
       resendSignupOtp,
       sendRecoveryOtp,
@@ -330,6 +353,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       resetPassword,
       updatePassword,
       signOut,
+      signOutOtherDevices,
       passwordRecoveryActive,
       needsOnboarding,
       completePasswordRecovery,

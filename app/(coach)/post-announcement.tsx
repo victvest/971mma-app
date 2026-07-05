@@ -1,27 +1,21 @@
 import React from 'react';
 import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useLocalSearchParams } from 'expo-router';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { CommunityAnnouncementComposer } from '@/features/communities/components/CommunityAnnouncementComposer';
 import { AppBar } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
 
 export default function CoachPostAnnouncementScreen() {
   const { colors } = useTheme();
-  const { channelId } = useLocalSearchParams<{ channelId?: string }>();
-  const initialChannelId = typeof channelId === 'string' ? channelId : undefined;
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top', 'bottom']}
     >
-      <AppBar title="Post announcement" showBackButton />
-      <CommunityAnnouncementComposer
-        initialChannelId={initialChannelId}
-        lockChannel={Boolean(initialChannelId)}
-      />
-    </SafeAreaView>
+      <AppBar title="Post announcement" showBackButton fallbackHref="/(coach)/communities" />
+      <CommunityAnnouncementComposer />
+    </AppSafeAreaView>
   );
 }
 

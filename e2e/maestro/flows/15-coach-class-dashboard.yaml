@@ -1,0 +1,32 @@
+appId: host.exp.Exponent
+---
+# Coach login routes to (coach)/(main) — the "Class" tab is the hero/today's-class
+# dashboard surfacing roll-call state directly (no extra navigation needed).
+- runFlow:
+    file: ../subflows/launch-app.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+- tapOn:
+    id: "auth-intro-sign-in"
+- extendedWaitUntil:
+    visible: "Welcome back"
+    timeout: 15000
+- tapOn:
+    id: "auth-login-email"
+- inputText: ${COACH_EMAIL}
+- tapOn:
+    id: "auth-login-password"
+- inputText: ${COACH_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "auth-login-submit"
+- extendedWaitUntil:
+    visible: "Class"
+    timeout: 30000
+- takeScreenshot: coach-class-dashboard
+- tapOn: "Classes"
+- extendedWaitUntil:
+    visible: "Classes"
+    timeout: 15000
+- takeScreenshot: coach-classes-list

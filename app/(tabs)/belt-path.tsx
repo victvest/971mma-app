@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -200,7 +200,7 @@ export default function BeltPathScreen() {
   }, [shouldShowCurriculumPending, summary]);
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right']}
     >
@@ -407,7 +407,7 @@ export default function BeltPathScreen() {
           <ActivityIndicator style={styles.refreshLoader} color={colors.accent.default} />
         ) : null}
       </Animated.ScrollView>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

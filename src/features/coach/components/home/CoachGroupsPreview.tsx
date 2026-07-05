@@ -53,7 +53,7 @@ export function CoachGroupsPreview() {
           ]}
         >
           <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-            Groups appear here once your coach profile is linked to a discipline.
+            Create a public or private group from My groups.
           </Text>
         </View>
       ) : (

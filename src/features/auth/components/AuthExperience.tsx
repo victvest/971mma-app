@@ -623,6 +623,7 @@ type AuthSubmitButtonProps = {
   disabled?: boolean;
   icon?: AuthIcon;
   variant?: 'primary' | 'outline' | 'danger';
+  testID?: string;
 };
 
 export function AuthSubmitButton({
@@ -632,6 +633,7 @@ export function AuthSubmitButton({
   disabled,
   icon: Icon = ArrowRight,
   variant = 'primary',
+  testID,
 }: AuthSubmitButtonProps) {
   const { colors, typography, inset, gap, layout, radius, animations } = useTheme();
   const scale = useSharedValue<number>(animations.scale.resting);
@@ -676,6 +678,7 @@ export function AuthSubmitButton({
       accessibilityLabel={label}
       accessibilityState={{ disabled: inactive }}
       disabled={inactive}
+      testID={testID}
       onPress={onPress}
       onPressIn={() => {
         if (!inactive) scale.value = withSpring(animations.scale.pressed, animations.spring.snappy);
@@ -944,3 +947,5 @@ const styles = StyleSheet.create({
     height: 1,
   },
 });
+
+export { AuthAppleButton } from '@/features/auth/components/AuthAppleButton';

@@ -1,6 +1,5 @@
 import { parseMemberQrToken } from '@/services/qr/token';
 import type {
-  CheckInResult,
   MemberProfile,
   MemberRef,
   Membership,
@@ -37,15 +36,6 @@ export class MindbodyProvider implements IntegrationProvider {
   async listMemberships(_externalId?: string): Promise<Membership[]> {
     await this.ensureAuth();
     return [];
-  }
-
-  async recordCheckIn(_input: {
-    memberId?: string;
-    classId?: string | null;
-    method?: string;
-  }): Promise<CheckInResult> {
-    await this.ensureAuth();
-    throw new Error(NOT_CONFIGURED);
   }
 
   async refreshPrograms() {

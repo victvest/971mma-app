@@ -1,3 +1,4 @@
+export { AppSafeAreaView } from '../AppSafeAreaView';
 export { Button } from './Button';
 export type { ButtonVariant, ButtonSize } from './Button';
 export { NativeButton, BrandedButton } from './NativeButton';
@@ -32,6 +33,8 @@ export { AppScrollView, FlashListScrollComponent } from './AppScrollView';
 export type { AppScrollViewProps } from './AppScrollView';
 
 export { ScreenSectionHeader } from './ScreenSectionHeader';
+export { PillSegmentedTabs } from './PillSegmentedTabs';
+export type { PillSegmentOption } from './PillSegmentedTabs';
 
 export { BrandedLucideIconBadge } from './BrandedLucideIconBadge';
 export type { BrandedIconTone } from './BrandedLucideIconBadge';

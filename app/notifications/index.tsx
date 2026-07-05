@@ -7,7 +7,9 @@ import {
   View,
   ScrollView,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useRouter } from 'expo-router';
 import Animated, {
   useSharedValue,
@@ -37,7 +39,14 @@ import { NotificationsSkeleton } from '@/shared/animations';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { AppBar, AppBarIconButton } from '@/shared/components/ui';
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useTheme, type AppColors } from '@/shared/theme';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import type { NotificationItem } from '@/types/domain';
 import {
   triggerLightImpact,
@@ -291,9 +300,11 @@ export default function NotificationsScreen() {
   const { colors, inset, layout } = useTheme();
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
-  const scrollTopInset = layout.headerHeight + safeInsets.top + inset.sm;
+  const appTopInset = useAppTopInset();
+  const scrollTopInset = layout.headerHeight + appTopInset + inset.sm;
 
   const notificationsQuery = useNotifications();
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
   const markReadMutation = useMarkNotificationRead();
   const markAllMutation = useMarkAllNotificationsRead();
 
@@ -380,7 +391,7 @@ export default function NotificationsScreen() {
   };
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right']}
     >
@@ -504,12 +515,33 @@ export default function NotificationsScreen() {
 
         {(() => {
           const hasError = !!notificationsQuery.error;
-          const isQueryLoading = notificationsQuery.isLoading;
           const hasData = filteredData.length > 0;
+          const isQueryLoading =
+            isQueryActivelyLoading(notificationsQuery.isLoading, notificationsQuery.isFetching) &&
+            !hasData;
+          const isOfflineBlocked = isOfflineWithoutCache({
+            networkStatusKnown,
+            isOnline,
+            hasData,
+            hasError,
+          });
           const listErrorMessage =
             notificationsQuery.error instanceof Error
               ? notificationsQuery.error.message
               : 'Please check your connection.';
+
+          if (isOfflineBlocked) {
+            return (
+              <StateBlock
+                kind="error"
+                title={OFFLINE_TITLE}
+                message={OFFLINE_MESSAGE}
+                actionLabel="Retry"
+                onAction={() => notificationsQuery.refetch()}
+                offlineAwareRetry
+              />
+            );
+          }
 
           if (isQueryLoading) {
             return (
@@ -527,6 +559,7 @@ export default function NotificationsScreen() {
                 message={listErrorMessage}
                 actionLabel="Retry"
                 onAction={() => notificationsQuery.refetch()}
+                offlineAwareRetry
               />
             );
           }
@@ -555,7 +588,7 @@ export default function NotificationsScreen() {
           );
         })()}
       </Animated.ScrollView>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

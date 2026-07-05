@@ -1,0 +1,16 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: 02-auth-login-success.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+      MEMBER_EMAIL: ${MEMBER_EMAIL}
+      MEMBER_PASSWORD: ${MEMBER_PASSWORD}
+- tapOn: "Open navigation menu"
+- tapOn: "Belt path"
+- extendedWaitUntil:
+    visible:
+      text: "Belt"
+    timeout: 20000
+- takeScreenshot: member-belt-path

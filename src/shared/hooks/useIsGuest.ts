@@ -2,7 +2,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 
 /**
  * Guest access states:
- * - isAnonymousGuest: "Continue as guest" — no Supabase session, preview/mock data only.
+ * - isAnonymousGuest: "Explore the app" — no Supabase session, preview/mock data only.
  * - needsActivation: authenticated member pending Mindbody link — real account, blocked features.
  * - hasLimitedAccess: either state above; use for action gating and bottom sheets.
  */

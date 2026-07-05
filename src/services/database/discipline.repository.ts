@@ -117,6 +117,15 @@ export async function getDisciplineScore(userId: string): Promise<DisciplineScor
   return mapDisciplineRow(data);
 }
 
+export async function getMemberPercentileRank(userId: string): Promise<number | null> {
+  const { data, error } = await getSupabaseClient().rpc('get_member_percentile_rank', {
+    p_user_id: userId,
+  });
+
+  if (error) throw error;
+  return typeof data === 'number' && Number.isFinite(data) ? data : null;
+}
+
 function gymDateKey(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(date);
 }

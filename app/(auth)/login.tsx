@@ -6,6 +6,7 @@ import { useRouter } from 'expo-router';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { authToast } from '@/shared/components/Toast';
 import {
+  AuthAppleButton,
   AuthGoogleButton,
   AuthFooterPrompt,
   AuthLink,
@@ -19,13 +20,15 @@ import { authRoutes } from '@/features/auth/navigation/authNavigation';
 
 export default function LoginScreen() {
   const router = useRouter();
-  const { signIn, signInWithGoogle, configError } = useAuth();
+  const { signIn, signInWithGoogle, signInWithApple, configError } = useAuth();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const socialLoading = googleLoading || appleLoading;
 
   useEffect(() => {
     if (configError) {
@@ -78,6 +81,22 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleAppleSignIn() {
+    setAppleLoading(true);
+    try {
+      const result = await signInWithApple();
+      if (result.cancelled) return;
+      if (result.recovery) return;
+      if (result.error) {
+        authToast.error('Apple Sign In Failed', result.error);
+      }
+    } catch (authError) {
+      authToast.error('Apple Sign In Failed', formatAuthError(authError));
+    } finally {
+      setAppleLoading(false);
+    }
+  }
+
   async function handleGoogleSignIn() {
     setGoogleLoading(true);
     try {
@@ -108,16 +127,23 @@ export default function LoginScreen() {
         />
       }
     >
+      <AuthAppleButton
+        onPress={handleAppleSignIn}
+        loading={appleLoading}
+        disabled={Boolean(configError) || loading || googleLoading}
+      />
+
       <AuthGoogleButton
         onPress={handleGoogleSignIn}
         loading={googleLoading}
-        disabled={Boolean(configError) || loading}
+        disabled={Boolean(configError) || loading || appleLoading}
       />
 
       <AuthOrDivider />
 
       <AuthTextField
         ref={emailRef}
+        testID="auth-login-email"
         label="Email"
         value={email}
         onChangeText={setEmail}
@@ -135,6 +161,7 @@ export default function LoginScreen() {
 
       <AuthTextField
         ref={passwordRef}
+        testID="auth-login-password"
         label="Password"
         value={password}
         onChangeText={setPassword}
@@ -148,10 +175,11 @@ export default function LoginScreen() {
       />
 
       <AuthSubmitButton
+        testID="auth-login-submit"
         label="Sign in"
         onPress={handleSignIn}
         loading={loading}
-        disabled={Boolean(configError) || googleLoading}
+        disabled={Boolean(configError) || socialLoading}
       />
 
       <View style={{ alignItems: 'center' }}>

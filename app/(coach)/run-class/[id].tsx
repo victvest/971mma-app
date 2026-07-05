@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useQueryClient } from '@tanstack/react-query';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import {
   RunClassAttendanceHistoryButton,
   RunClassPrimaryButton,
@@ -75,7 +75,7 @@ export default function CoachRunClassScreen() {
 
   if (classQuery.isLoading) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -85,13 +85,13 @@ export default function CoachRunClassScreen() {
             <StateBlock kind="loading" title="Loading class" />
           </View>
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   if (classQuery.error) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -111,14 +111,14 @@ export default function CoachRunClassScreen() {
             />
           </View>
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   const item = classQuery.data;
   if (!item) {
     return (
-      <SafeAreaView
+      <AppSafeAreaView
         style={[styles.safe, { backgroundColor: colors.background.primary }]}
         edges={['top']}
       >
@@ -140,12 +140,12 @@ export default function CoachRunClassScreen() {
             />
           </View>
         </View>
-      </SafeAreaView>
+      </AppSafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top']}
     >
@@ -191,7 +191,7 @@ export default function CoachRunClassScreen() {
           ) : null}
         </AppScrollView>
       </View>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

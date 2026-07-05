@@ -40,9 +40,16 @@ import { useCoachDirectoryImagePrefetch } from '@/features/coaches/hooks/useCoac
 import { HomeElevatedCard } from '@/features/home/components/HomeElevatedCard';
 import { HomeSectionTitle } from '@/features/home/components/HomeSectionTitle';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import { animations } from '@/shared/theme/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { TabHeroTitle, AcademyEyebrow } from '@/shared/components/brand';
@@ -343,6 +350,7 @@ export default function CoachesScreen() {
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
   const coachesQuery = useCoaches();
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
   const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
 
   const handleRefresh = useCallback(async () => {
@@ -362,9 +370,16 @@ export default function CoachesScreen() {
   const errorMessage =
     coachesQuery.error instanceof Error ? coachesQuery.error.message : null;
 
-  const loading = coachesQuery.isLoading && !coachesQuery.data;
+  const loading =
+    isQueryActivelyLoading(coachesQuery.isLoading, coachesQuery.isFetching) && !coachesQuery.data;
   const hasError = !!errorMessage;
   const hasData = coaches.length > 0;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
 
   usePerfOnceReady(PerfMark.routeCoachesFirstContent, !loading && (hasData || hasError));
 
@@ -412,11 +427,12 @@ export default function CoachesScreen() {
               kind="error"
               title="Coaches unavailable"
               message={errorMessage}
-              actionLabel="Retry"
-              onAction={handleRefresh}
-            />
-          </View>
-        ) : null}
+            actionLabel="Retry"
+            onAction={handleRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : null}
 
         <CoachesAnimatedSection index={0} replayKey={entranceReplayKey} motion="title">
           <View style={{ gap: gap.xs, marginBottom: inset.md }}>
@@ -478,7 +494,27 @@ export default function CoachesScreen() {
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
-      {hasError && !hasData ? (
+      {isOfflineBlocked ? (
+        <View
+          style={[
+            styles.loadingWrap,
+            {
+              paddingHorizontal: inset.lg,
+              paddingTop: screenPaddingTop,
+              justifyContent: 'center',
+            },
+          ]}
+        >
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={handleRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : hasError && !hasData ? (
         <View
           style={[
             styles.loadingWrap,
@@ -495,6 +531,7 @@ export default function CoachesScreen() {
             message={errorMessage ?? 'Please check your connection.'}
             actionLabel="Retry"
             onAction={handleRefresh}
+            offlineAwareRetry
           />
         </View>
       ) : (

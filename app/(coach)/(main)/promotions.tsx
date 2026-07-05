@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useMemo, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { FlashList } from '@shopify/flash-list';
@@ -12,27 +12,33 @@ import Animated, {
 } from 'react-native-reanimated';
 import type { SharedValue } from 'react-native-reanimated';
 import {
+  BeltReviewHubTabToggle,
+  type BeltReviewHubTab,
+} from '@/features/coach/components/belt/BeltReviewHubTabToggle';
+import { openCoachBeltReviewMember } from '@/features/coach/components/belt/beltReviewNavigation';
+import {
   PROMOTION_CANDIDATE_ITEM_HEIGHT,
   PromotionCandidateCard,
 } from '@/features/coach/components/promotions/PromotionCandidateCard';
-import { usePromotionCandidates } from '@/features/coach/hooks/useCoachMode';
 import { useCoachAssignedDisciplines } from '@/features/coach/hooks/useCoachAssignedDisciplines';
+import { useBeltReviewHub } from '@/features/coach/hooks/useBeltReviewHub';
+import type { BeltReviewHubMember } from '@/features/coach/hooks/useBeltReviewHub';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { FlashListScrollComponent } from '@/shared/components/ui';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { ScrollRevealCard } from '@/shared/animations';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { animations } from '@/shared/theme/animations';
-import type { PromotionCandidateItem } from '@/types/domain';
 
-type PromotionsHeaderMotionProps = {
+type HubHeaderMotionProps = {
   children: React.ReactNode;
   replayKey: number;
 };
 
-function PromotionsHeaderMotion({ children, replayKey }: PromotionsHeaderMotionProps) {
+function HubHeaderMotion({ children, replayKey }: HubHeaderMotionProps) {
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(38);
 
@@ -51,19 +57,19 @@ function PromotionsHeaderMotion({ children, replayKey }: PromotionsHeaderMotionP
   return <Animated.View style={animatedStyle}>{children}</Animated.View>;
 }
 
-type CandidateRowProps = {
-  item: PromotionCandidateItem;
+type MemberRowProps = {
+  item: BeltReviewHubMember;
   index: number;
   entranceSignal: SharedValue<number>;
-  onPress: (item: PromotionCandidateItem) => void;
+  onPress: (item: BeltReviewHubMember) => void;
 };
 
-const CandidateRow = React.memo(function CandidateRow({
+const MemberRow = React.memo(function MemberRow({
   item,
   index,
   entranceSignal,
   onPress,
-}: CandidateRowProps) {
+}: MemberRowProps) {
   const handlePress = useCallback(() => onPress(item), [item, onPress]);
 
   return (
@@ -73,169 +79,174 @@ const CandidateRow = React.memo(function CandidateRow({
       entranceSignal={entranceSignal}
       itemStride={PROMOTION_CANDIDATE_ITEM_HEIGHT}
     >
-      <PromotionCandidateCard item={item} onPress={handlePress} />
+      <PromotionCandidateCard
+        item={item}
+        signedInToday={item.signedInToday}
+        onPress={handlePress}
+      />
     </ScrollRevealCard>
   );
 });
 
-export default function CoachPromotionsScreen() {
-  const { colors, inset, gap, layout, typography } = useTheme();
+export default function CoachBeltReviewHubScreen() {
+  const { colors, inset, gap, layout } = useTheme();
   const topInset = useAppTopInset();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
+  const [hubTab, setHubTab] = useState<BeltReviewHubTab>('on-mat');
 
   const assignedDisciplinesQuery = useCoachAssignedDisciplines();
   const assignedRankDiscipline = assignedDisciplinesQuery.primaryRankDiscipline;
   const assignedRankDisciplineSlug = assignedDisciplinesQuery.primaryRankDisciplineSlug;
   const hasAssignedRankDiscipline = assignedRankDisciplineSlug !== null;
 
-  const candidatesQuery = usePromotionCandidates(assignedRankDisciplineSlug, {
-    enabled: hasAssignedRankDiscipline && !assignedDisciplinesQuery.isLoading,
-  });
-
+  const hubQuery = useBeltReviewHub(assignedRankDisciplineSlug);
   const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
 
   const headerBottom = topInset + layout.appHeaderHeight + layout.appHeaderTopInset;
   const screenPaddingTop = headerBottom + 12;
 
-  const candidates = useMemo(
-    () => (candidatesQuery.data ?? []).filter((item) => item.candidateReason !== 'tracking'),
-    [candidatesQuery.data],
+  const listData = useMemo(
+    () => (hubTab === 'on-mat' ? hubQuery.signedInToday : hubQuery.readyToPromote),
+    [hubQuery.readyToPromote, hubQuery.signedInToday, hubTab],
   );
 
-  const hasError = !!candidatesQuery.error;
-  const hasData = candidates.length > 0;
-  const errorMessage =
-    candidatesQuery.error instanceof Error
-      ? candidatesQuery.error.message
-      : 'Please check your connection.';
-
-  const handleCandidatePress = useCallback(
-    (item: PromotionCandidateItem) => {
+  const handleMemberPress = useCallback(
+    (item: BeltReviewHubMember) => {
       if (!assignedRankDisciplineSlug) return;
-
-      router.push({
-        pathname: '/(coach)/belt-review',
-        params: {
-          memberId: item.userId,
-          memberName: item.fullName,
-          memberEmail: item.email,
-          memberRank: item.beltRank ?? 'Unranked',
-          memberStripes: String(item.beltStripes),
-          discipline: assignedRankDisciplineSlug,
-        },
-      });
+      triggerLightImpact();
+      openCoachBeltReviewMember(router, item, assignedRankDisciplineSlug);
     },
     [assignedRankDisciplineSlug, router],
   );
 
   const handleRetry = useCallback(() => {
-    void candidatesQuery.refetch();
-  }, [candidatesQuery]);
+    void hubQuery.refetch();
+  }, [hubQuery]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: PromotionCandidateItem; index: number }) => (
-      <CandidateRow
+    ({ item, index }: { item: BeltReviewHubMember; index: number }) => (
+      <MemberRow
         item={item}
         index={index}
         entranceSignal={entranceSignal}
-        onPress={handleCandidatePress}
+        onPress={handleMemberPress}
       />
     ),
-    [entranceSignal, handleCandidatePress],
+    [entranceSignal, handleMemberPress],
   );
 
   const listHeader = useMemo(
     () => (
-      <PromotionsHeaderMotion replayKey={entranceReplayKey}>
+      <HubHeaderMotion replayKey={entranceReplayKey}>
         <View style={[styles.heroTextSection, { gap: gap.sm, marginBottom: gap.lg }]}>
           <AcademyEyebrow
             label={
               assignedRankDiscipline
-                ? `${assignedRankDiscipline.displayName} promotion queue`
-                : 'Promotion queue'
+                ? `${assignedRankDiscipline.displayName} belt review`
+                : 'Belt review'
             }
             accent
           />
-          <TabHeroTitle lines={[[{ text: 'Ready to ' }, { text: 'promote.', accent: true }]]} />
-          {assignedRankDiscipline ? (
-            <Text
-              style={[
-                typography.textPresets.body,
-                { color: colors.text.secondary, marginTop: gap.xs },
-              ]}
-            >
-              Showing members enrolled in {assignedRankDiscipline.displayName}.
-            </Text>
-          ) : null}
+          <TabHeroTitle lines={[[{ text: 'Review & ' }, { text: 'promote.', accent: true }]]} />
         </View>
-      </PromotionsHeaderMotion>
+
+        {hasAssignedRankDiscipline ? (
+          <View style={{ marginBottom: gap.lg }}>
+            <BeltReviewHubTabToggle
+              tab={hubTab}
+              onTabChange={setHubTab}
+              signedInCount={hubQuery.signedInToday.length}
+              readyCount={hubQuery.readyToPromote.length}
+            />
+          </View>
+        ) : null}
+      </HubHeaderMotion>
     ),
     [
       assignedRankDiscipline,
-      colors.text.secondary,
       entranceReplayKey,
-      gap.lg,
-      gap.sm,
-      gap.xs,
-      typography.textPresets.body,
+      gap,
+      hasAssignedRankDiscipline,
+      hubQuery.readyToPromote.length,
+      hubQuery.signedInToday.length,
+      hubTab,
     ],
   );
 
   const listFooter = useMemo(() => {
-    if (hasError && hasData) {
-      return (
-        <View style={{ marginTop: gap.sm }}>
-          <StateBlock
-            kind="error"
-            title="Sync issue"
-            message="Could not refresh promotion candidates."
-            actionLabel="Retry"
-            onAction={handleRetry}
-          />
-        </View>
-      );
-    }
-    return null;
-  }, [gap.sm, handleRetry, hasData, hasError]);
+    if (!hubQuery.hasError || listData.length === 0) return null;
+
+    return (
+      <View style={{ marginTop: gap.md }}>
+        <StateBlock
+          kind="error"
+          title="Sync issue"
+          message="Could not refresh belt review data."
+          actionLabel="Retry"
+          onAction={handleRetry}
+        />
+      </View>
+    );
+  }, [gap.md, handleRetry, hubQuery.hasError, listData.length]);
 
   const listEmpty = useMemo(() => {
-    if (assignedDisciplinesQuery.isLoading) return null;
-    if (candidatesQuery.isLoading || hasError) return null;
+    if (assignedDisciplinesQuery.isLoading || hubQuery.isLoading) return null;
     if (!hasAssignedRankDiscipline) {
       return (
         <StateBlock
           kind="empty"
           title="No rank discipline assigned"
-          message="Promotion reviews appear when your coach profile is assigned to BJJ or Wrestling."
+          message="Belt reviews are available when your coach profile is linked to BJJ or Wrestling."
         />
       );
     }
+    if (hubQuery.hasError) return null;
+
+    if (hubTab === 'on-mat') {
+      return (
+        <StateBlock
+          kind="empty"
+          title="No one checked in yet"
+          message={
+            hubQuery.heroClass
+              ? `When members check in for ${hubQuery.heroClass.title}, they will show up here.`
+              : 'Members on the mat today will appear in this tab.'
+          }
+        />
+      );
+    }
+
     return (
       <StateBlock
         kind="empty"
-        title="No candidates yet"
-        message="Members appear here when they reach 80%+ on current stripe requirements."
+        title="No members in queue"
+        message="Members appear here when they reach promotion readiness."
       />
     );
   }, [
     assignedDisciplinesQuery.isLoading,
-    candidatesQuery.isLoading,
     hasAssignedRankDiscipline,
-    hasError,
+    hubQuery.hasError,
+    hubQuery.heroClass,
+    hubQuery.isLoading,
+    hubTab,
   ]);
 
   const isLoading =
     assignedDisciplinesQuery.isLoading ||
-    (hasAssignedRankDiscipline && candidatesQuery.isLoading);
+    (hasAssignedRankDiscipline && hubQuery.isLoading);
+
+  const hasHubData =
+    hubQuery.signedInToday.length > 0 || hubQuery.readyToPromote.length > 0;
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
       {isLoading ? (
         <View style={{ flex: 1, marginTop: screenPaddingTop }}>
-          <StateBlock kind="loading" title="Loading candidates" />
+          <StateBlock kind="loading" title="Loading belt review" />
         </View>
-      ) : hasError && !hasData ? (
+      ) : hubQuery.hasError && !hasHubData ? (
         <View
           style={{
             flex: 1,
@@ -246,8 +257,8 @@ export default function CoachPromotionsScreen() {
         >
           <StateBlock
             kind="error"
-            title="Could not load candidates"
-            message={errorMessage}
+            title="Could not load belt review"
+            message={hubQuery.errorMessage}
             actionLabel="Retry"
             onAction={handleRetry}
           />
@@ -255,7 +266,8 @@ export default function CoachPromotionsScreen() {
       ) : (
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
-          data={hasAssignedRankDiscipline ? candidates : []}
+          data={hasAssignedRankDiscipline ? listData : []}
+          extraData={hubTab}
           keyExtractor={(item) => item.userId}
           ListHeaderComponent={listHeader}
           ListFooterComponent={listFooter}

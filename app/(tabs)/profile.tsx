@@ -29,6 +29,7 @@ import {
   Bell,
   ChevronRight,
   Link2,
+  MonitorSmartphone,
   LogOut,
   ShieldCheck,
   Trash2,
@@ -39,7 +40,7 @@ import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome
 
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { useDisciplineScore } from '@/features/home/hooks/useHomeDashboard';
+import { useDisciplineScore, useMemberPercentileRank } from '@/features/home/hooks/useHomeDashboard';
 import { usePoints } from '@/features/rewards/hooks/useRewards';
 import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
@@ -299,8 +300,8 @@ export default function ProfileScreen() {
   usePerfRouteMount(PerfMark.routeProfileMount);
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
-  const { signOut } = useAuth();
-  const { showConfirm } = useDialog();
+  const { signOut, signOutOtherDevices } = useAuth();
+  const { showConfirm, showAlert } = useDialog();
   const user = useAuthStore((s) => s.user);
   const { needsActivation } = useIsGuest();
   const activeProfileLabel = useActiveProfileLabel();
@@ -317,6 +318,7 @@ export default function ProfileScreen() {
 
   const profileQuery = useProfile();
   const disciplineQuery = useDisciplineScore();
+  const percentileQuery = useMemberPercentileRank();
   const pointsQuery = usePoints();
   const rankEligibilityQuery = useRankEligibility();
   const beltPathQuery = useBeltPath();
@@ -384,14 +386,10 @@ export default function ProfileScreen() {
   }, [profile?.memberSince]);
 
   const consistencyRank = useMemo(() => {
-    const days = score?.trainingDays ?? 0;
-    if (days >= 150) return 'Top 5%';
-    if (days >= 100) return 'Top 10%';
-    if (days >= 50) return 'Top 15%';
-    if (days >= 25) return 'Top 25%';
-    if (days >= 10) return 'Top 40%';
-    return 'Top 50%';
-  }, [score?.trainingDays]);
+    const topPercent = percentileQuery.data;
+    if (topPercent == null) return '—';
+    return `Top ${topPercent}%`;
+  }, [percentileQuery.data]);
 
 
 
@@ -493,6 +491,7 @@ export default function ProfileScreen() {
       await Promise.all([
         profileQuery.refetch(),
         disciplineQuery.refetch(),
+        percentileQuery.refetch(),
         pointsQuery.refetch(),
         rankEligibilityQuery.refetch(),
         beltPathQuery.refetch(),
@@ -506,6 +505,7 @@ export default function ProfileScreen() {
     needsActivation,
     profileQuery,
     disciplineQuery,
+    percentileQuery,
     pointsQuery,
     rankEligibilityQuery,
     beltPathQuery,
@@ -521,6 +521,22 @@ export default function ProfileScreen() {
       { confirmLabel: 'Sign out' },
     );
   }, [showConfirm, signOut]);
+
+  const handleSignOutAllDevices = useCallback(() => {
+    showConfirm(
+      'Sign out all other devices?',
+      'You will stay signed in on this device. All other active sessions will be ended.',
+      async () => {
+        const result = await signOutOtherDevices();
+        if (result.error) {
+          showAlert('Could not sign out devices', result.error);
+          return;
+        }
+        showAlert('Signed out', 'Other devices have been signed out.');
+      },
+      { confirmLabel: 'Sign out others' },
+    );
+  }, [showAlert, showConfirm, signOutOtherDevices]);
 
   const handleRequestDeletion = useCallback(() => {
     router.push('/delete-account');
@@ -573,6 +589,16 @@ export default function ProfileScreen() {
       });
     }
 
+    if (user) {
+      list.push({
+        icon: MonitorSmartphone,
+        iconTone: 'neutral',
+        title: 'Sign Out All Devices',
+        subtitle: 'End sessions on your other phones and tablets',
+        onPress: handleSignOutAllDevices,
+      });
+    }
+
     list.push({
       icon: LogOut,
       iconTone: 'danger',
@@ -582,7 +608,7 @@ export default function ProfileScreen() {
     });
 
     return list;
-  }, [needsActivation, viewingChild, router, handleRequestDeletion, handleSignOut]);
+  }, [needsActivation, viewingChild, user, router, handleRequestDeletion, handleSignOutAllDevices, handleSignOut]);
 
 
   // ── Styles with dynamic values ─────────────────────────────────────────────

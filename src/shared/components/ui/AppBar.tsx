@@ -1,9 +1,11 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useRouter, type Href } from 'expo-router';
 import { LiquidGlassSurface } from '@/shared/components/ui/LiquidGlassSurface';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { getDefaultHomeRoute } from '@/shared/navigation/defaultHomeRoute';
 import { useTheme } from '@/shared/theme';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { AppBarBackButton, appBarButtonStyles } from './AppBarBackButton';
 import { APP_BAR_SIDE_SLOT_WIDTH, getAppBarTitleStyle } from './appBarShared';
 
@@ -11,6 +13,7 @@ interface AppBarProps {
   title: string;
   showBackButton?: boolean;
   onBackPress?: () => void;
+  fallbackHref?: Href;
   rightElement?: React.ReactNode;
   floating?: boolean;
   /** Extra space below the bar content (adds height from the bottom edge). */
@@ -21,6 +24,7 @@ export function AppBar({
   title,
   showBackButton = true,
   onBackPress,
+  fallbackHref,
   rightElement,
   floating = false,
   bottomInset = 0,
@@ -28,19 +32,22 @@ export function AppBar({
   const theme = useTheme();
   const { inset } = theme;
   const router = useRouter();
-  const safeInsets = useSafeAreaInsets();
+  const role = useAuthStore((state) => state.role);
+  const topInset = useAppTopInset();
 
   const handleBack = () => {
     if (onBackPress) {
       onBackPress();
-    } else {
+    } else if (router.canGoBack()) {
       router.back();
+    } else {
+      router.replace(fallbackHref ?? getDefaultHomeRoute(role));
     }
   };
 
   const barHeight = theme.layout.headerHeight;
-  const resolvedHeight = floating ? barHeight + safeInsets.top + bottomInset : barHeight + bottomInset;
-  const resolvedPaddingTop = floating ? safeInsets.top : 0;
+  const resolvedHeight = floating ? barHeight + topInset + bottomInset : barHeight + bottomInset;
+  const resolvedPaddingTop = floating ? topInset : 0;
   const resolvedPaddingBottom = bottomInset;
 
   const content = (

@@ -7,7 +7,7 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -599,7 +599,7 @@ export default function RewardsScreen() {
   }
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right']}
     >
@@ -820,7 +820,7 @@ export default function RewardsScreen() {
         )}
       </Animated.ScrollView>
       {sheet}
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
@@ -50,7 +50,7 @@ export default function ReferralsScreen() {
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['left', 'right']}>
+    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['left', 'right']}>
       <View
         pointerEvents="box-none"
         style={[styles.floatingNav, { paddingTop: floatingNavTop, paddingHorizontal: inset.lg }]}
@@ -130,7 +130,7 @@ export default function ReferralsScreen() {
           />
         )}
       </AppScrollView>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

@@ -37,8 +37,6 @@ type Props = {
   contentStyle?: StyleProp<ViewStyle>;
   onBackPress: () => void;
   reviewMode?: boolean;
-  onWalkInPress?: () => void;
-  onRosterPress?: () => void;
   onDeckComplete?: () => void;
   onRecordMark: (member: RollCallDeckMember, status: RollCallDeckMarkStatus) => Promise<void>;
   onRevertMark?: (
@@ -62,8 +60,6 @@ export const RollCallDeck = memo(function RollCallDeck({
   contentStyle,
   onBackPress,
   reviewMode = false,
-  onWalkInPress,
-  onRosterPress,
   onDeckComplete,
   onRecordMark,
   onRevertMark,
@@ -186,8 +182,6 @@ export const RollCallDeck = memo(function RollCallDeck({
       classTitle={classTitle}
       startsAt={startsAt}
       onBackPress={onBackPress}
-      onWalkInPress={onWalkInPress}
-      onRosterPress={onRosterPress}
     />
   );
 

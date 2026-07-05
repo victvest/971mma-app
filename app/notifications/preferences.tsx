@@ -1,7 +1,9 @@
 import React, { useCallback } from 'react';
 import { RefreshControl, StyleSheet, Switch, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import {
   useNotificationPreferences,
   useUpdateNotificationPreferences,
@@ -113,6 +115,7 @@ function preferencePatch(key: PreferenceKey, value: boolean): Partial<Notificati
 export default function NotificationPreferencesScreen() {
   const { colors, inset, gap, typography } = useTheme();
   const safeInsets = useSafeAreaInsets();
+  const appTopInset = useAppTopInset();
   const preferencesQuery = useNotificationPreferences();
   const updatePreferences = useUpdateNotificationPreferences();
 
@@ -130,7 +133,7 @@ export default function NotificationPreferencesScreen() {
   );
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['left', 'right']}
     >
@@ -140,7 +143,7 @@ export default function NotificationPreferencesScreen() {
         contentContainerStyle={[
           styles.content,
           {
-            paddingTop: safeInsets.top + floatingAppBarOffset,
+            paddingTop: appTopInset + floatingAppBarOffset,
             paddingHorizontal: inset.lg,
             paddingBottom: safeInsets.bottom + inset['3xl'],
             gap: gap.lg,
@@ -192,7 +195,7 @@ export default function NotificationPreferencesScreen() {
           </Card>
         )}
       </AppScrollView>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

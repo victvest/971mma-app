@@ -25,15 +25,19 @@ export function parseMemberQrToken(raw: string): ParsedQrToken | null {
     return { memberId, source };
   }
 
+  // v2 signed pass — client extracts memberId only; signature verified server-side in mb-checkin.
+  // Format: 971mma:v2:supabase:<userId>:<expEpoch>:<jti>:<HMAC>
   if (version === 'v2') {
-
     if (parts.length !== 7) return null;
     const [, , source, memberId, expStr] = parts;
     if (source !== 'supabase' && source !== 'mindbody') return null;
     if (!memberId || !expStr) return null;
     const exp = parseInt(expStr, 10);
-    if (!Number.isFinite(exp)) return null;
-    return { memberId, source, exp };
+    return {
+      memberId,
+      source,
+      exp: Number.isFinite(exp) ? exp : undefined,
+    };
   }
 
   return null;

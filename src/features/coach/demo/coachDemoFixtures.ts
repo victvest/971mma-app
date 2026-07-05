@@ -1,6 +1,7 @@
 import { gymDayKey } from '@/core/time/gymTime';
 import { buildRollCallMockDeck } from '@/features/coach/roll-call/fixtures/rollCallDeckMocks';
 import type { RollCallDeckMember } from '@/features/coach/roll-call/types';
+import { ROLL_CALL_STITCH_AVATARS } from '@/features/coach/roll-call/fixtures/rollCallStitchAvatars';
 import {
   COACH_DEMO_CLASS_PREFIX,
   COACH_DEMO_MEMBER_PREFIX,
@@ -55,8 +56,12 @@ export const DEMO_COMMUNITY_CHANNELS: CommunityChannelItem[] = [
     id: 'demo-community-channel-bjj',
     title: 'Bahaa · Brazilian Jiu-Jitsu',
     description: null,
+    visibility: 'public',
+    channelKind: 'community',
+    disciplineId: 'demo-discipline-bjj',
     disciplineName: 'Brazilian Jiu-Jitsu',
     disciplineSlug: 'bjj',
+    coachId: DEMO_COACH.id,
     coachName: DEMO_COACH.name,
     coachAvatarUrl: null,
     latestPostAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
@@ -65,13 +70,19 @@ export const DEMO_COMMUNITY_CHANNELS: CommunityChannelItem[] = [
     unreadCount: 0,
     memberCount: 48,
     isCoachOwner: true,
+    joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString(),
+    canJoin: false,
   },
   {
     id: 'demo-community-channel-nogi',
     title: 'Bahaa · No-Gi',
     description: null,
+    visibility: 'private',
+    channelKind: 'group',
+    disciplineId: 'demo-discipline-bjj',
     disciplineName: 'No-Gi',
     disciplineSlug: 'nogi',
+    coachId: DEMO_COACH.id,
     coachName: DEMO_COACH.name,
     coachAvatarUrl: null,
     latestPostAt: null,
@@ -80,6 +91,8 @@ export const DEMO_COMMUNITY_CHANNELS: CommunityChannelItem[] = [
     unreadCount: 0,
     memberCount: 31,
     isCoachOwner: true,
+    joinedAt: new Date(Date.now() - 20 * 24 * 60 * 60_000).toISOString(),
+    canJoin: false,
   },
 ];
 
@@ -181,11 +194,20 @@ export function getDemoCoachClassById(classId: string): ClassItem | null {
   return getDemoCoachClasses().find((item) => item.id === classId) ?? null;
 }
 
+const DEMO_CANDIDATE_AVATARS = [
+  ROLL_CALL_STITCH_AVATARS.omarHassan,
+  ROLL_CALL_STITCH_AVATARS.laylaAhmed,
+  ROLL_CALL_STITCH_AVATARS.ahmedAlMansoori,
+  ROLL_CALL_STITCH_AVATARS.saraKhalid,
+  ROLL_CALL_STITCH_AVATARS.marcusSilva,
+] as const;
+
 export const DEMO_PROMOTION_CANDIDATES: PromotionCandidateItem[] = [
   {
     userId: `${COACH_DEMO_MEMBER_PREFIX}01`,
     fullName: 'Omar Al-Hassan',
     email: 'omar.alhassan@gmail.com',
+    avatarUrl: DEMO_CANDIDATE_AVATARS[0],
     beltRank: 'Blue Belt',
     beltStripes: 3,
     percent: 100,
@@ -197,6 +219,7 @@ export const DEMO_PROMOTION_CANDIDATES: PromotionCandidateItem[] = [
     userId: `${COACH_DEMO_MEMBER_PREFIX}02`,
     fullName: 'Fatima Al-Mazrouei',
     email: 'fatima.mazrouei@gmail.com',
+    avatarUrl: DEMO_CANDIDATE_AVATARS[1],
     beltRank: 'Purple Belt',
     beltStripes: 1,
     percent: 88,
@@ -208,6 +231,7 @@ export const DEMO_PROMOTION_CANDIDATES: PromotionCandidateItem[] = [
     userId: `${COACH_DEMO_MEMBER_PREFIX}03`,
     fullName: 'Khalid Ibrahim',
     email: 'khalid.ibrahim@gmail.com',
+    avatarUrl: DEMO_CANDIDATE_AVATARS[2],
     beltRank: 'White Belt',
     beltStripes: 4,
     percent: 95,
@@ -219,6 +243,7 @@ export const DEMO_PROMOTION_CANDIDATES: PromotionCandidateItem[] = [
     userId: `${COACH_DEMO_MEMBER_PREFIX}04`,
     fullName: 'James Mitchell',
     email: 'james.mitchell@icloud.com',
+    avatarUrl: DEMO_CANDIDATE_AVATARS[3],
     beltRank: 'Purple Belt',
     beltStripes: 1,
     percent: 88,
@@ -230,6 +255,7 @@ export const DEMO_PROMOTION_CANDIDATES: PromotionCandidateItem[] = [
     userId: `${COACH_DEMO_MEMBER_PREFIX}05`,
     fullName: 'Lucas Ferreira',
     email: 'lucas.ferreira@yahoo.com',
+    avatarUrl: DEMO_CANDIDATE_AVATARS[4],
     beltRank: 'White Belt',
     beltStripes: 2,
     percent: 45,

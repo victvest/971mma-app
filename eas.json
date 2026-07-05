@@ -18,8 +18,12 @@
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "env": {
+        "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
+        "EXPO_PUBLIC_COACH_DEMO_MODE": "false"
+      },
       "android": {
-        "buildType": "apk"
+        "buildType": "app-bundle"
       }
     }
   },

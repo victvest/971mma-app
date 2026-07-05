@@ -6,7 +6,15 @@ import { BrandedButton, FlashListScrollComponent } from '@/shared/components/ui'
 import { AcademyEyebrow } from '@/shared/components/brand';
 import { CommunityInboxRow, CommunityInboxSkeleton, CommunityUnreadChip } from '@/features/communities/components';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useTheme } from '@/shared/theme';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import type { CommunityChannelItem } from '@/types/domain';
 
 type CommunityInboxScreenProps = {
@@ -23,6 +31,10 @@ type CommunityInboxScreenProps = {
   emptyActionLabel?: string;
   onEmptyAction?: () => void;
   unreadTotal?: number;
+  onPressChannel?: (channel: CommunityChannelItem) => void;
+  rowActionLabel?: string;
+  rowActionLoadingId?: string | null;
+  onRowAction?: (channel: CommunityChannelItem) => void;
 };
 
 export function CommunityInboxScreen({
@@ -39,10 +51,23 @@ export function CommunityInboxScreen({
   emptyActionLabel,
   onEmptyAction,
   unreadTotal = 0,
+  onPressChannel,
+  rowActionLabel,
+  rowActionLoadingId,
+  onRowAction,
 }: CommunityInboxScreenProps) {
   const { colors, typography, inset, gap } = useTheme();
   const router = useRouter();
   const [refreshing, setRefreshing] = useState(false);
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
+  const hasData = channels.length > 0;
+  const isInitialLoading = isQueryActivelyLoading(isLoading, refreshing) && !hasData;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError: isError,
+  });
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
@@ -68,9 +93,21 @@ export function CommunityInboxScreen({
 
   const renderItem = useCallback(
     ({ item }: { item: CommunityChannelItem }) => (
-      <CommunityInboxRow channel={item} onPress={() => router.push(`/communities/${item.id}`)} />
+      <CommunityInboxRow
+        channel={item}
+        onPress={() => {
+          if (onPressChannel) {
+            onPressChannel(item);
+            return;
+          }
+          router.push(`/communities/${item.id}`);
+        }}
+        actionLabel={rowActionLabel}
+        actionLoading={rowActionLoadingId === item.id}
+        onAction={onRowAction ? () => onRowAction(item) : undefined}
+      />
     ),
-    [router],
+    [onPressChannel, onRowAction, router, rowActionLabel, rowActionLoadingId],
   );
 
   const listHeader = useMemo(
@@ -104,7 +141,22 @@ export function CommunityInboxScreen({
   );
 
   const listEmpty = useMemo(() => {
-    if (isLoading) {
+    if (isOfflineBlocked) {
+      return (
+        <View style={{ paddingHorizontal: inset.lg }}>
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={onRetry}
+            offlineAwareRetry
+          />
+        </View>
+      );
+    }
+
+    if (isInitialLoading) {
       return <CommunityInboxSkeleton />;
     }
 
@@ -117,6 +169,7 @@ export function CommunityInboxScreen({
             message="Please check your connection and try again."
             actionLabel="Retry"
             onAction={onRetry}
+            offlineAwareRetry
           />
         </View>
       );
@@ -137,7 +190,8 @@ export function CommunityInboxScreen({
     gap.md,
     inset.lg,
     isError,
-    isLoading,
+    isInitialLoading,
+    isOfflineBlocked,
     onEmptyAction,
     onRetry,
   ]);
@@ -145,7 +199,8 @@ export function CommunityInboxScreen({
   return (
     <FlashList
       renderScrollComponent={FlashListScrollComponent}
-      data={isLoading || isError ? [] : sortedChannels}
+      data={isInitialLoading || isOfflineBlocked || isError ? [] : sortedChannels}
+      overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.communityInboxRow)}
       keyExtractor={(item) => item.id}
       renderItem={renderItem}
       ListHeaderComponent={listHeader}

@@ -12,6 +12,7 @@ export type PasswordRules = {
 };
 
 export type AuthErrorCode =
+  | 'INVALID_CREDENTIALS'
   | 'EMAIL_NOT_FOUND'
   | 'WRONG_PASSWORD'
   | 'EMAIL_NOT_CONFIRMED'
@@ -25,6 +26,7 @@ export type AuthErrorCode =
   | 'UNKNOWN';
 
 const AUTH_ERROR_CODES = new Set<AuthErrorCode>([
+  'INVALID_CREDENTIALS',
   'EMAIL_NOT_FOUND',
   'WRONG_PASSWORD',
   'EMAIL_NOT_CONFIRMED',
@@ -112,10 +114,11 @@ function getAuthErrorCode(error: unknown): string | null {
 
 export function mapAuthErrorCode(code: AuthErrorCode, fallback?: string): string {
   switch (code) {
+    case 'INVALID_CREDENTIALS':
     case 'EMAIL_NOT_FOUND':
-      return 'No account found for this email address.';
+      return 'Email or password is incorrect.';
     case 'WRONG_PASSWORD':
-      return 'Incorrect password. Try again or reset it.';
+      return 'Email or password is incorrect.';
     case 'EMAIL_NOT_CONFIRMED':
       return 'Confirm your email before signing in. Check your inbox for the verification code.';
     case 'ACCOUNT_DISABLED':

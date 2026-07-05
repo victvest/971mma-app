@@ -1,0 +1,14 @@
+appId: host.exp.Exponent
+---
+- launchApp:
+    clearState: false
+- openLink: ${E2E_EXPO_URL}
+- extendedWaitUntil:
+    visible:
+      text: "Get Started"
+    timeout: 60000
+- extendedWaitUntil:
+    visible:
+      text: "971 MMA"
+    timeout: 30000
+    optional: true

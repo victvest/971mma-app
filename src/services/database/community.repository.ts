@@ -1,10 +1,17 @@
 import {
+  addDemoCommunityGroupMembers,
+  archiveDemoCommunityGroup,
+  createDemoCommunityGroup,
   getDemoCommunityChannelHeader,
   getDemoChannelFeed,
-  getDemoPostThread,
+  getDemoCommunityGroupMembers,
+  getDemoCommunityGroupMemberCandidates,
+  getDemoCoachGroupDisciplines,
+  joinDemoCommunityGroup,
+  leaveDemoCommunityGroup,
   publishDemoCommunityPost,
+  removeDemoCommunityGroupMember,
   toggleDemoCommunityReaction,
-  createDemoCommunityReply,
 } from '@/features/coach/demo/communityDemoStore';
 import {
   getDemoCommunityChannels,
@@ -18,12 +25,15 @@ import type {
   CommunityAuthorRole,
   CommunityChannelFeed,
   CommunityChannelHeader,
+  CommunityChannelKind,
   CommunityChannelItem,
   CommunityFeedCursor,
+  CommunityGroupDiscipline,
+  CommunityGroupMember,
+  CommunityGroupMemberCandidate,
+  CommunityGroupVisibility,
   CommunityPostItem,
   CommunityPostKind,
-  CommunityPostThread,
-  CommunityReplyItem,
 } from '@/types/domain';
 
 function useDemoCommunityMutation(channelId: string): boolean {
@@ -50,6 +60,14 @@ function readAuthorRole(value: unknown): CommunityAuthorRole {
   return value === 'member' ? 'member' : 'coach';
 }
 
+function readVisibility(value: unknown): CommunityGroupVisibility {
+  return value === 'private' ? 'private' : 'public';
+}
+
+function readChannelKind(value: unknown): CommunityChannelKind {
+  return value === 'community' ? 'community' : 'group';
+}
+
 function mapPost(row: Record<string, unknown>): CommunityPostItem {
   const reactionCounts =
     row.reactionCounts && typeof row.reactionCounts === 'object' && !Array.isArray(row.reactionCounts)
@@ -71,23 +89,10 @@ function mapPost(row: Record<string, unknown>): CommunityPostItem {
     pinnedAt: readString(row.pinnedAt) ?? readString(row.pinned_at),
     publishedAt: String(row.publishedAt ?? row.published_at ?? ''),
     reactionCounts,
-    replyCount: readNumber(row.replyCount ?? row.reply_count),
     myReactions: Array.isArray(row.myReactions)
       ? row.myReactions.filter((item): item is string => typeof item === 'string')
       : [],
     isUnread: readBoolean(row.isUnread ?? row.is_unread, false),
-  };
-}
-
-function mapReply(row: Record<string, unknown>): CommunityReplyItem {
-  return {
-    id: String(row.id ?? ''),
-    postId: String(row.postId ?? row.post_id ?? ''),
-    userId: String(row.userId ?? row.user_id ?? ''),
-    authorName: readString(row.authorName) ?? readString(row.author_name) ?? 'Member',
-    authorAvatarUrl: readString(row.authorAvatarUrl) ?? readString(row.author_avatar_url),
-    body: readString(row.body) ?? '',
-    createdAt: String(row.createdAt ?? row.created_at ?? ''),
   };
 }
 
@@ -99,8 +104,12 @@ function mapChannel(row: Record<string, unknown>): CommunityChannelItem {
     id: String(row.id ?? ''),
     title: readString(row.title) ?? 'Community',
     description: readString(row.description),
+    visibility: readVisibility(row.visibility),
+    channelKind: readChannelKind(row.channelKind ?? row.channel_kind),
+    disciplineId: String(row.disciplineId ?? row.discipline_id ?? ''),
     disciplineName: readString(row.disciplineName) ?? readString(row.discipline_name) ?? '',
     disciplineSlug: readString(row.disciplineSlug) ?? readString(row.discipline_slug) ?? '',
+    coachId: String(row.coachId ?? row.coach_id ?? ''),
     coachName: readString(row.coachName) ?? readString(row.coach_name) ?? 'Coach',
     coachAvatarUrl: readString(row.coachAvatarUrl) ?? readString(row.coach_avatar_url),
     latestPostAt: readString(row.latestPostAt) ?? readString(row.latest_post_at),
@@ -108,7 +117,9 @@ function mapChannel(row: Record<string, unknown>): CommunityChannelItem {
     lastMessagePreview: readString(row.lastMessagePreview) ?? readString(row.last_message_preview),
     unreadCount: readNumber(row.unreadCount ?? row.unread_count),
     memberCount: readNumber(row.memberCount ?? row.member_count),
-    isCoachOwner: Boolean(row.isCoachOwner ?? row.is_coach_owner),
+    isCoachOwner: readBoolean(row.isCoachOwner ?? row.is_coach_owner),
+    joinedAt: readString(row.joinedAt) ?? readString(row.joined_at),
+    canJoin: readBoolean(row.canJoin ?? row.can_join),
   };
 }
 
@@ -128,17 +139,56 @@ function mapChannelHeader(row: Record<string, unknown>): CommunityChannelHeader 
     id: String(row.id ?? ''),
     title: readString(row.title) ?? 'Community',
     description: readString(row.description),
+    visibility: readVisibility(row.visibility),
+    channelKind: readChannelKind(row.channelKind ?? row.channel_kind),
+    disciplineId: String(row.disciplineId ?? row.discipline_id ?? ''),
     disciplineName: readString(row.disciplineName) ?? readString(row.discipline_name) ?? '',
     disciplineSlug: readString(row.disciplineSlug) ?? readString(row.discipline_slug) ?? '',
     coachId: String(row.coachId ?? row.coach_id ?? ''),
     coachName: readString(row.coachName) ?? readString(row.coach_name) ?? 'Coach',
     coachAvatarUrl: readString(row.coachAvatarUrl) ?? readString(row.coach_avatar_url),
     memberCount: readNumber(row.memberCount ?? row.member_count),
-    isCoachOwner: Boolean(row.isCoachOwner ?? row.is_coach_owner),
+    isCoachOwner: readBoolean(row.isCoachOwner ?? row.is_coach_owner),
+    joinedAt: readString(row.joinedAt) ?? readString(row.joined_at),
+    canJoin: readBoolean(row.canJoin ?? row.can_join),
     pinnedPost:
       pinnedRaw && typeof pinnedRaw === 'object' && !Array.isArray(pinnedRaw)
         ? mapPost(pinnedRaw as Record<string, unknown>)
         : null,
+  };
+}
+
+function mapDiscipline(row: Record<string, unknown>): CommunityGroupDiscipline {
+  return {
+    id: String(row.id ?? ''),
+    name: readString(row.name) ?? readString(row.displayName) ?? readString(row.display_name) ?? 'Discipline',
+    slug: readString(row.slug) ?? '',
+  };
+}
+
+function mapGroupMember(row: Record<string, unknown>): CommunityGroupMember {
+  return {
+    id: String(row.id ?? ''),
+    fullName: readString(row.fullName) ?? readString(row.full_name) ?? 'Member',
+    email: readString(row.email),
+    avatarUrl: readString(row.avatarUrl) ?? readString(row.avatar_url),
+    membershipStatus: readString(row.membershipStatus) ?? readString(row.membership_status),
+    membershipExpiresAt:
+      readString(row.membershipExpiresAt) ?? readString(row.membership_expires_at),
+    joinedAt: readString(row.joinedAt) ?? readString(row.joined_at),
+    isCoach: readBoolean(row.isCoach ?? row.is_coach),
+  };
+}
+
+function mapGroupMemberCandidate(row: Record<string, unknown>): CommunityGroupMemberCandidate {
+  const member = mapGroupMember(row);
+  return {
+    id: member.id,
+    fullName: member.fullName,
+    email: member.email,
+    avatarUrl: member.avatarUrl,
+    membershipStatus: member.membershipStatus,
+    membershipExpiresAt: member.membershipExpiresAt,
   };
 }
 
@@ -156,9 +206,23 @@ export async function listCommunityChannels(): Promise<CommunityChannelItem[]> {
     : [];
 }
 
+export async function listDiscoverableCommunityChannels(): Promise<CommunityChannelItem[]> {
+  if (isCoachDemoMode()) {
+    return [];
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('list_discoverable_community_channels');
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.channels)
+    ? payload.channels.map((row) => mapChannel(row as Record<string, unknown>))
+    : [];
+}
+
 export async function listCoachCommunityChannels(coachId: string): Promise<CommunityChannelItem[]> {
   if (isCoachDemoMode()) {
-    return getDemoCoachCommunityChannels();
+    return getDemoCoachCommunityChannels().filter((channel) => channel.channelKind === 'group');
   }
 
   const { data, error } = await getSupabaseClient().rpc('list_coach_community_channels', {
@@ -169,6 +233,235 @@ export async function listCoachCommunityChannels(coachId: string): Promise<Commu
   const payload = (data ?? {}) as Record<string, unknown>;
   return Array.isArray(payload.channels)
     ? payload.channels.map((row) => mapChannel(row as Record<string, unknown>))
+    : [];
+}
+
+export async function listCoachCommunityAnnouncementChannels(
+  coachId: string,
+): Promise<CommunityChannelItem[]> {
+  if (isCoachDemoMode()) {
+    return getDemoCoachCommunityChannels().filter((channel) => channel.channelKind === 'community');
+  }
+
+  const { data, error } = await getSupabaseClient().rpc(
+    'list_coach_community_announcement_channels',
+    {
+      p_coach_id: coachId,
+    },
+  );
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.channels)
+    ? payload.channels.map((row) => mapChannel(row as Record<string, unknown>))
+    : [];
+}
+
+export async function joinPublicCommunityChannel(channelId: string): Promise<CommunityChannelItem> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(channelId)) {
+    return joinDemoCommunityGroup(channelId);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('join_public_community_channel', {
+    p_channel_id: channelId,
+  });
+  if (error) throw error;
+
+  return mapChannel((data ?? {}) as Record<string, unknown>);
+}
+
+export async function leaveCommunityChannel(channelId: string): Promise<void> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(channelId)) {
+    leaveDemoCommunityGroup(channelId);
+    return;
+  }
+
+  const { error } = await getSupabaseClient().rpc('leave_community_channel', {
+    p_channel_id: channelId,
+  });
+  if (error) throw error;
+}
+
+export async function listCoachGroupDisciplines(coachId: string): Promise<CommunityGroupDiscipline[]> {
+  if (isCoachDemoMode()) {
+    return getDemoCoachGroupDisciplines();
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('list_coach_group_disciplines', {
+    p_coach_id: coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.disciplines)
+    ? payload.disciplines.map((row) => mapDiscipline(row as Record<string, unknown>))
+    : [];
+}
+
+export async function createCommunityGroup(input: {
+  coachId: string;
+  disciplineId: string;
+  title: string;
+  description?: string | null;
+  memberIds?: string[];
+}): Promise<CommunityChannelItem> {
+  if (isCoachDemoMode()) {
+    return createDemoCommunityGroup(input);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('create_community_group', {
+    p_coach_id: input.coachId,
+    p_discipline_id: input.disciplineId,
+    p_title: input.title,
+    p_description: input.description ?? null,
+    p_visibility: 'private',
+    p_member_ids: input.memberIds ?? [],
+  });
+  if (error) throw error;
+
+  return mapChannel((data ?? {}) as Record<string, unknown>);
+}
+
+export async function updateCommunityGroup(input: {
+  channelId: string;
+  coachId: string;
+  title?: string | null;
+  description?: string | null;
+  visibility?: CommunityGroupVisibility | null;
+}): Promise<CommunityChannelItem> {
+  const { data, error } = await getSupabaseClient().rpc('update_community_group', {
+    p_channel_id: input.channelId,
+    p_coach_id: input.coachId,
+    p_title: input.title ?? null,
+    p_description: input.description ?? null,
+    p_visibility: input.visibility ?? null,
+  });
+  if (error) throw error;
+
+  return mapChannel((data ?? {}) as Record<string, unknown>);
+}
+
+export async function archiveCommunityGroup(input: {
+  channelId: string;
+  coachId: string;
+}): Promise<void> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(input.channelId)) {
+    archiveDemoCommunityGroup(input.channelId);
+    return;
+  }
+
+  const { error } = await getSupabaseClient().rpc('archive_community_group', {
+    p_channel_id: input.channelId,
+    p_coach_id: input.coachId,
+  });
+  if (error) throw error;
+}
+
+export async function listCommunityGroupMembers(
+  channelId: string,
+  coachId: string,
+): Promise<CommunityGroupMember[]> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(channelId)) {
+    return getDemoCommunityGroupMembers(channelId);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('list_community_group_members', {
+    p_channel_id: channelId,
+    p_coach_id: coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.members)
+    ? payload.members.map((row) => mapGroupMember(row as Record<string, unknown>))
+    : [];
+}
+
+export async function searchCommunityGroupMemberCandidates(input: {
+  channelId: string;
+  coachId: string;
+  query: string;
+}): Promise<CommunityGroupMemberCandidate[]> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(input.channelId)) {
+    return getDemoCommunityGroupMemberCandidates(input.query);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('search_community_group_member_candidates', {
+    p_channel_id: input.channelId,
+    p_query: input.query,
+    p_limit: 20,
+    p_coach_id: input.coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.members)
+    ? payload.members.map((row) => mapGroupMemberCandidate(row as Record<string, unknown>))
+    : [];
+}
+
+export async function searchCommunityMemberCandidates(input: {
+  coachId: string;
+  query: string;
+}): Promise<CommunityGroupMemberCandidate[]> {
+  if (isCoachDemoMode()) {
+    return getDemoCommunityGroupMemberCandidates(input.query);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('search_community_member_candidates', {
+    p_query: input.query,
+    p_limit: 20,
+    p_coach_id: input.coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.members)
+    ? payload.members.map((row) => mapGroupMemberCandidate(row as Record<string, unknown>))
+    : [];
+}
+
+export async function addCommunityGroupMembers(input: {
+  channelId: string;
+  coachId: string;
+  memberIds: string[];
+}): Promise<CommunityGroupMember[]> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(input.channelId)) {
+    return addDemoCommunityGroupMembers(input.channelId, input.memberIds);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('add_community_group_members', {
+    p_channel_id: input.channelId,
+    p_member_ids: input.memberIds,
+    p_coach_id: input.coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.members)
+    ? payload.members.map((row) => mapGroupMember(row as Record<string, unknown>))
+    : [];
+}
+
+export async function removeCommunityGroupMember(input: {
+  channelId: string;
+  coachId: string;
+  memberId: string;
+}): Promise<CommunityGroupMember[]> {
+  if (isCoachDemoMode() && isDemoCommunityChannelId(input.channelId)) {
+    return removeDemoCommunityGroupMember(input.channelId, input.memberId);
+  }
+
+  const { data, error } = await getSupabaseClient().rpc('remove_community_group_member', {
+    p_channel_id: input.channelId,
+    p_member_id: input.memberId,
+    p_coach_id: input.coachId,
+  });
+  if (error) throw error;
+
+  const payload = (data ?? {}) as Record<string, unknown>;
+  return Array.isArray(payload.members)
+    ? payload.members.map((row) => mapGroupMember(row as Record<string, unknown>))
     : [];
 }
 
@@ -243,24 +536,17 @@ export async function listCommunityChannelPosts(
     : [];
 }
 
-export async function getCommunityPostThread(postId: string): Promise<CommunityPostThread> {
-  if (isCoachDemoMode()) {
-    const demoThread = getDemoPostThread(postId);
-    if (demoThread) return demoThread;
-  }
+export async function resolveCommunityPostChannelId(postId: string): Promise<string | null> {
+  if (isCoachDemoMode()) return null;
 
-  const { data, error } = await getSupabaseClient().rpc('get_community_post_thread', {
-    p_post_id: postId,
-  });
+  const { data, error } = await getSupabaseClient()
+    .from('community_posts')
+    .select('channel_id')
+    .eq('id', postId)
+    .maybeSingle();
   if (error) throw error;
 
-  const payload = (data ?? {}) as Record<string, unknown>;
-  const post = mapPost((payload.post ?? {}) as Record<string, unknown>);
-  const replies = Array.isArray(payload.replies)
-    ? payload.replies.map((row) => mapReply(row as Record<string, unknown>))
-    : [];
-
-  return { post, replies };
+  return readString((data as Record<string, unknown> | null)?.channel_id);
 }
 
 export async function markCommunityChannelRead(channelId: string): Promise<void> {
@@ -270,10 +556,7 @@ export async function markCommunityChannelRead(channelId: string): Promise<void>
   if (error) throw error;
 }
 
-export async function fanoutCommunityPush(input: {
-  postId?: string;
-  replyId?: string;
-}): Promise<void> {
+export async function fanoutCommunityPush(input: { postId?: string }): Promise<void> {
   if (isCoachDemoMode()) return;
 
   try {
@@ -299,10 +582,10 @@ export async function unpinCommunityPost(postId: string, coachId?: string): Prom
   if (error) throw error;
 }
 
-export async function toggleCommunityReaction(postId: string, emoji: string): Promise<CommunityPostThread> {
+export async function toggleCommunityReaction(postId: string, emoji: string): Promise<CommunityPostItem> {
   if (isCoachDemoMode()) {
-    const demoThread = toggleDemoCommunityReaction(postId, emoji);
-    if (demoThread) return demoThread;
+    const demoPost = toggleDemoCommunityReaction(postId, emoji);
+    if (demoPost) return demoPost;
   }
 
   const { data, error } = await getSupabaseClient().rpc('toggle_community_reaction', {
@@ -312,45 +595,12 @@ export async function toggleCommunityReaction(postId: string, emoji: string): Pr
   if (error) throw error;
 
   const payload = (data ?? {}) as Record<string, unknown>;
-  return {
-    post: mapPost((payload.post ?? {}) as Record<string, unknown>),
-    replies: Array.isArray(payload.replies)
-      ? payload.replies.map((row) => mapReply(row as Record<string, unknown>))
-      : [],
-  };
-}
-
-export async function createCommunityReply(postId: string, body: string): Promise<CommunityPostThread> {
-  if (isCoachDemoMode()) {
-    const demoThread = createDemoCommunityReply(postId, body);
-    if (demoThread) return demoThread;
-  }
-
-  const { data, error } = await getSupabaseClient().rpc('create_community_reply', {
-    p_post_id: postId,
-    p_body: body,
-  });
-  if (error) throw error;
-
-  const payload = (data ?? {}) as Record<string, unknown>;
-  const thread = {
-    post: mapPost((payload.post ?? {}) as Record<string, unknown>),
-    replies: Array.isArray(payload.replies)
-      ? payload.replies.map((row) => mapReply(row as Record<string, unknown>))
-      : [],
-  };
-
-  const latestReply = thread.replies.at(-1);
-  if (latestReply?.id) {
-    void fanoutCommunityPush({ replyId: latestReply.id });
-  }
-
-  return thread;
+  return mapPost((payload.post ?? {}) as Record<string, unknown>);
 }
 
 export async function publishCommunityPost(input: {
   channelId: string;
-  coachId: string;
+  coachId?: string;
   title?: string | null;
   body: string;
   postKind?: CommunityPostKind;
@@ -371,7 +621,7 @@ export async function publishCommunityPost(input: {
     p_channel_id: input.channelId,
     p_title: input.title ?? null,
     p_body: input.body,
-    p_coach_id: input.coachId,
+    p_coach_id: input.coachId ?? null,
     p_post_kind: input.postKind ?? 'announcement',
     p_pin_on_publish: input.pinOnPublish ?? false,
   });

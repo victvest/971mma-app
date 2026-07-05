@@ -3,24 +3,18 @@ import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireRole, requireUser } from '../_shared/jwt.ts';
 import { mbFetch } from '../_shared/mindbody.ts';
-import { resolveTargetUserId } from '../_shared/guardian.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
 type CheckInRequest = {
   token?: string;
   classId?: string;
   userId?: string;
-  targetUserId?: string;
   confirmMinorPresent?: boolean;
 };
 
 type ArrivalResponse = {
   Visit?: { Id?: unknown };
 };
-
-function allowSelfCheckIn(): boolean {
-  return Deno.env.get('MB_ALLOW_SELF_CHECKIN')?.toLowerCase() !== 'false';
-}
 
 function shouldWriteArrivals(): boolean {
   return Deno.env.get('MB_WRITE_ARRIVALS') === 'true';
@@ -203,7 +197,7 @@ Deno.serve(async (req) => {
     let pendingJti: string | null = null;
     let presentedBy: string | null = null;
 
-    let checkInMethod: 'qr_scan' | 'qr_self' | 'coach_roster';
+    let checkInMethod: 'qr_scan' | 'coach_roster';
 
     if (body.token) {
       requireRole(caller, ['coach', 'admin']);
@@ -238,17 +232,12 @@ Deno.serve(async (req) => {
       if (!targetUserId) throw new MbError('BAD_REQUEST', 'userId is required.');
       checkInMethod = 'coach_roster';
     } else {
-      if (!allowSelfCheckIn()) {
-        throw new MbError(
-          'FORBIDDEN',
-          'Self check-in is disabled. Please show your QR code to a coach or front desk.',
-        );
-      }
-      targetUserId = await resolveTargetUserId(svc, caller.userId, body.targetUserId);
-      checkInMethod = 'qr_self';
-      if (targetUserId !== caller.userId) {
-        presentedBy = caller.userId;
-      }
+      // Check-in is coach/front-desk mediated: either scan the member's QR (token)
+      // or mark them from the class roster (userId). Members cannot check themselves in.
+      throw new MbError(
+        'BAD_REQUEST',
+        'A QR token or member id is required. Show your QR code to a coach or front desk.',
+      );
     }
 
     if (await alreadyCheckedInToday(svc, targetUserId)) {

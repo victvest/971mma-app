@@ -1,0 +1,10 @@
+appId: host.exp.Exponent
+name: 971 MMA E2E
+tags:
+  - 971mma
+  - e2e
+env:
+  MEMBER_EMAIL: ${MEMBER_EMAIL}
+  MEMBER_PASSWORD: ${MEMBER_PASSWORD}
+  INVALID_EMAIL: e2e-invalid@971mma.test
+  INVALID_PASSWORD: WrongPassword!E2E999

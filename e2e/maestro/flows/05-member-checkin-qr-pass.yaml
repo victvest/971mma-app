@@ -1,0 +1,21 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: 02-auth-login-success.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+      MEMBER_EMAIL: ${MEMBER_EMAIL}
+      MEMBER_PASSWORD: ${MEMBER_PASSWORD}
+- tapOn: "Check-in"
+- extendedWaitUntil:
+    visible:
+      text: "Check-in"
+    timeout: 20000
+- takeScreenshot: checkin-tab
+- assertVisible:
+    text: "Pass"
+    optional: true
+- assertVisible:
+    text: "Scan"
+    optional: true

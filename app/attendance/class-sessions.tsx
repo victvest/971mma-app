@@ -1,12 +1,13 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { ClassSessionAttendanceRow } from '@/features/attendance/components/ClassSessionAttendanceRow';
 import { useClassSessionAttendance } from '@/features/attendance/hooks/useClassSessionAttendance';
 import { AppBar, FlashListScrollComponent } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { useTheme } from '@/shared/theme';
 import type { ClassSessionAttendanceRow as ClassSessionRow } from '@/services/database/classAttendance.repository';
 
@@ -58,7 +59,7 @@ export default function ClassSessionAttendanceScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
+    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
       <AppBar title="Class roll call" />
 
       {attendanceQuery.isLoading ? (
@@ -81,6 +82,7 @@ export default function ClassSessionAttendanceScreen() {
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
           data={rows}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.classSessionRow)}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={listHeader}
@@ -99,7 +101,7 @@ export default function ClassSessionAttendanceScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

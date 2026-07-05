@@ -43,6 +43,7 @@ import {
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import {
   isOfflineWithoutCache,
@@ -332,6 +333,7 @@ export default function ScheduleScreen() {
       renderScrollComponent={FlashListScrollComponent}
       style={styles.list}
       data={classes}
+      overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.scheduleClassCard)}
       extraData={listExtraData}
       drawDistance={200}
       keyExtractor={(item) => item.id}

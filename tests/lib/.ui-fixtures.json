@@ -1,0 +1,17 @@
+{
+  "member": {
+    "userId": "9f36e6e9-a3a0-439a-849d-366b39a2052d",
+    "email": "mlbegueroumi+10@gmail.com",
+    "password": "Bahaa0541@"
+  },
+  "coach": {
+    "userId": "47e4be40-90d7-46fe-9e11-95418d44a715",
+    "email": "mlbegueroumi+11@gmail.com",
+    "password": "Bahaa0541@"
+  },
+  "gate": {
+    "userId": "5acad34b-344d-4569-b1bb-4e3185ffbb3f",
+    "email": "mlbegueroumi+12@gmail.com",
+    "password": "Bahaa0541@"
+  }
+}

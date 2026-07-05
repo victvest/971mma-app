@@ -390,6 +390,7 @@ export interface PromotionCandidateItem {
   userId: string;
   fullName: string;
   email: string;
+  avatarUrl: string | null;
   beltRank: string | null;
   beltStripes: number;
   percent: number;
@@ -481,13 +482,19 @@ export interface GuardianChildrenSummary {
 
 export type CommunityPostKind = 'announcement' | 'system';
 export type CommunityAuthorRole = 'coach' | 'member';
+export type CommunityGroupVisibility = 'public' | 'private';
+export type CommunityChannelKind = 'community' | 'group';
 
 export interface CommunityChannelItem {
   id: string;
   title: string;
   description: string | null;
+  visibility: CommunityGroupVisibility;
+  channelKind: CommunityChannelKind;
+  disciplineId: string;
   disciplineName: string;
   disciplineSlug: string;
+  coachId: string;
   coachName: string;
   coachAvatarUrl: string | null;
   latestPostAt: string | null;
@@ -496,12 +503,17 @@ export interface CommunityChannelItem {
   unreadCount: number;
   memberCount: number;
   isCoachOwner: boolean;
+  joinedAt: string | null;
+  canJoin: boolean;
 }
 
 export interface CommunityChannelHeader {
   id: string;
   title: string;
   description: string | null;
+  visibility: CommunityGroupVisibility;
+  channelKind: CommunityChannelKind;
+  disciplineId: string;
   disciplineName: string;
   disciplineSlug: string;
   coachId: string;
@@ -509,8 +521,29 @@ export interface CommunityChannelHeader {
   coachAvatarUrl: string | null;
   memberCount: number;
   isCoachOwner: boolean;
+  joinedAt: string | null;
+  canJoin: boolean;
   pinnedPost: CommunityPostItem | null;
 }
+
+export interface CommunityGroupDiscipline {
+  id: string;
+  name: string;
+  slug: string;
+}
+
+export interface CommunityGroupMember {
+  id: string;
+  fullName: string;
+  email: string | null;
+  avatarUrl: string | null;
+  membershipStatus: MembershipStatus | string | null;
+  membershipExpiresAt: string | null;
+  joinedAt: string | null;
+  isCoach: boolean;
+}
+
+export type CommunityGroupMemberCandidate = Omit<CommunityGroupMember, 'joinedAt' | 'isCoach'>;
 
 export interface CommunityFeedCursor {
   publishedAt: string;
@@ -538,24 +571,8 @@ export interface CommunityPostItem {
   pinnedAt: string | null;
   publishedAt: string;
   reactionCounts: Record<string, number>;
-  replyCount: number;
   myReactions: string[];
   isUnread?: boolean;
-}
-
-export interface CommunityReplyItem {
-  id: string;
-  postId: string;
-  userId: string;
-  authorName: string;
-  authorAvatarUrl: string | null;
-  body: string;
-  createdAt: string;
-}
-
-export interface CommunityPostThread {
-  post: CommunityPostItem;
-  replies: CommunityReplyItem[];
 }
 
 export interface DisciplineScoreSummary {

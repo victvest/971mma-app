@@ -30,13 +30,13 @@ function notificationHref(data: Record<string, unknown>): string | null {
     return guardianNotificationHref(data);
   }
   if (type === 'community' || type.includes('community')) {
-    const postId = data.postId ?? data.post_id;
     const channelId = data.channelId ?? data.channel_id;
-    if (typeof postId === 'string' && postId.trim()) {
-      return `/communities/post/${postId.trim()}`;
-    }
+    const postId = data.postId ?? data.post_id;
     if (typeof channelId === 'string' && channelId.trim()) {
       return `/communities/${channelId.trim()}`;
+    }
+    if (typeof postId === 'string' && postId.trim()) {
+      return `/communities/post/${postId.trim()}`;
     }
     return '/communities';
   }

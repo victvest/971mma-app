@@ -1,0 +1,46 @@
+{
+  "$schema": "./personas.schema.json",
+  "member": {
+    "role": "member",
+    "description": "Active linked member — primary happy-path persona",
+    "email": "${TEST_USER_EMAIL}",
+    "password": "${TEST_USER_PASSWORD}",
+    "expectAccountStatus": "active",
+    "requiresMindbodyLink": true
+  },
+  "member_pending": {
+    "role": "member",
+    "description": "Member awaiting activation — tests activation-required gate",
+    "email": "${E2E_PENDING_MEMBER_EMAIL}",
+    "password": "${E2E_PENDING_MEMBER_PASSWORD}",
+    "expectAccountStatus": "activation_required"
+  },
+  "coach": {
+    "role": "coach",
+    "description": "Coach persona — roll call, belt review, scanner",
+    "email": "${E2E_COACH_EMAIL}",
+    "password": "${E2E_COACH_PASSWORD}",
+    "expectAccountStatus": "active"
+  },
+  "gate": {
+    "role": "gate",
+    "description": "Gate tablet — entrance QR display",
+    "email": "${E2E_GATE_EMAIL}",
+    "password": "${E2E_GATE_PASSWORD}",
+    "expectAccountStatus": "active"
+  },
+  "guardian": {
+    "role": "member",
+    "description": "Guardian with linked child trainee",
+    "email": "${E2E_GUARDIAN_EMAIL}",
+    "password": "${E2E_GUARDIAN_PASSWORD}",
+    "expectAccountStatus": "active",
+    "childProfileId": "${E2E_CHILD_PROFILE_ID}"
+  },
+  "invalid": {
+    "role": "none",
+    "description": "Synthetic credentials for negative auth tests",
+    "email": "e2e-invalid@971mma.test",
+    "password": "WrongPassword!E2E999"
+  }
+}

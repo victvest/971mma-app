@@ -1,9 +1,23 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+} from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
-import { BrandedButton, Chip, TextField } from '@/shared/components/ui';
-import { triggerSelectionHaptic } from '@/shared/haptics';
+import { TabHeroTitle } from '@/shared/components/brand';
+import {
+  AppBottomSheet,
+  AppBottomSheetButton,
+} from '@/shared/components/AppBottomSheet';
+import { Chip, PillSegmentedTabs, TextField } from '@/shared/components/ui';
+import { triggerLightImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import type { CoachCurriculumRank, CoachCurriculumRequirement } from '@/types/domain';
 
@@ -29,10 +43,10 @@ type Props = {
   onSave: (draft: CoachCurriculumRequirementDraft) => void;
 };
 
-const REQUIREMENT_TYPES: Array<{ value: RequirementType; label: string }> = [
-  { value: 'skill', label: 'Skill' },
-  { value: 'assessment', label: 'Assessment' },
-  { value: 'attendance', label: 'Attendance' },
+const REQUIREMENT_TYPES = [
+  { value: 'skill' as const, label: 'Skill' },
+  { value: 'assessment' as const, label: 'Assessment' },
+  { value: 'attendance' as const, label: 'Attendance' },
 ];
 
 function buildDraft(
@@ -54,40 +68,70 @@ function buildDraft(
   };
 }
 
-type SelectorSectionProps<T extends string | number> = {
+type FieldGroupProps = {
   label: string;
-  options: Array<{ value: T; label: string }>;
-  value: T;
-  onChange: (value: T) => void;
+  children: React.ReactNode;
 };
 
-function SelectorSection<T extends string | number>({
-  label,
-  options,
-  value,
-  onChange,
-}: SelectorSectionProps<T>) {
+function FieldGroup({ label, children }: FieldGroupProps) {
   const { colors, typography, gap } = useTheme();
 
   return (
     <View style={{ gap: gap.sm }}>
-      <Text style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}>
+      <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
         {label}
       </Text>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={[styles.selectorRow, { gap: gap.sm }]}
-      >
-        {options.map((option) => (
-          <Chip
-            key={String(option.value)}
-            label={option.label}
-            active={option.value === value}
-            onPress={() => onChange(option.value)}
-          />
-        ))}
-      </ScrollView>
+      {children}
+    </View>
+  );
+}
+
+type StripePickerProps = {
+  value: number;
+  options: Array<{ value: number; label: string }>;
+  onChange: (value: number) => void;
+};
+
+function StripePicker({ value, options, onChange }: StripePickerProps) {
+  const { colors, typography, gap } = useTheme();
+
+  return (
+    <View style={[styles.stripeRow, { gap: gap.sm }]}>
+      {options.map((option) => {
+        const selected = option.value === value;
+        return (
+          <Pressable
+            key={option.value}
+            accessibilityRole="button"
+            accessibilityLabel={`Stripe ${option.label}`}
+            accessibilityState={{ selected }}
+            onPress={() => {
+              triggerSelectionHaptic();
+              onChange(option.value);
+            }}
+            style={({ pressed }) => [
+              styles.stripeDot,
+              {
+                backgroundColor: selected ? colors.accent.default : colors.fill.secondary,
+                borderColor: selected ? colors.accent.default : colors.border.subtle,
+                opacity: pressed ? 0.85 : 1,
+              },
+            ]}
+          >
+            <Text
+              style={[
+                typography.textPresets.bodyMedium,
+                {
+                  color: selected ? colors.accent.onAccent : colors.text.secondary,
+                  fontWeight: selected ? '700' : '600',
+                },
+              ]}
+            >
+              {option.label}
+            </Text>
+          </Pressable>
+        );
+      })}
     </View>
   );
 }
@@ -100,11 +144,14 @@ export function CoachCurriculumRequirementEditor({
   onDismiss,
   onSave,
 }: Props) {
-  const { colors, typography, inset, gap, radius, layout } = useTheme();
+  const { colors, typography, inset, gap, radius } = useTheme();
   const safeInsets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
   const [draft, setDraft] = useState<CoachCurriculumRequirementDraft>(() =>
     buildDraft(ranks, initialValue),
   );
+
+  const isEditing = Boolean(initialValue);
 
   useEffect(() => {
     if (!visible) return;
@@ -130,105 +177,93 @@ export function CoachCurriculumRequirementEditor({
   }, [selectedRank?.stripes]);
 
   const canSave = draft.rankLevelId.length > 0 && draft.title.trim().length > 0;
+  const sheetMaxHeight = Math.round(windowHeight * 0.9);
 
   const handleSave = useCallback(() => {
-    if (!canSave) return;
+    if (!canSave || saving) return;
+    triggerLightImpact();
     onSave(draft);
-  }, [canSave, draft, onSave]);
+  }, [canSave, draft, onSave, saving]);
 
-  const fieldContainerStyle = { marginBottom: 0 };
+  const handleDismiss = useCallback(() => {
+    if (saving) return;
+    onDismiss();
+  }, [onDismiss, saving]);
+
+  if (!visible && !ranks.length) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onDismiss}>
-      <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
-        <View
-          style={[
-            styles.header,
-            {
-              borderBottomColor: colors.border.subtle,
-              paddingHorizontal: inset.lg,
-              paddingTop: safeInsets.top > 0 ? inset.sm : inset.lg,
-              paddingBottom: inset.md,
-            },
-          ]}
-        >
-          <View style={styles.headerCopy}>
-            <Text style={[typography.textPresets.title, { color: colors.text.primary, fontSize: 22 }]}>
-              {initialValue ? 'Edit requirement' : 'Add requirement'}
-            </Text>
-            <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-              Members see these on their belt path for your discipline.
-            </Text>
-          </View>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Close requirement editor"
-            onPress={() => {
-              triggerSelectionHaptic();
-              onDismiss();
-            }}
-            style={({ pressed }) => [
-              styles.closeButton,
-              {
-                backgroundColor: colors.fill.secondary,
-                borderRadius: radius.pill,
-                opacity: pressed ? 0.85 : 1,
-              },
+    <AppBottomSheet
+      visible={visible}
+      onDismiss={handleDismiss}
+      dismissOnBackdropPress={!saving}
+      contentStyle={{
+        maxHeight: sheetMaxHeight,
+        paddingBottom: 0,
+        gap: gap.md,
+      }}
+    >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        style={styles.flex}
+      >
+        <View style={{ gap: gap.xs }}>
+          <TabHeroTitle
+            lines={[
+              isEditing
+                ? [{ text: 'Edit ' }, { text: 'requirement.', accent: true }]
+                : [{ text: 'Add ' }, { text: 'requirement.', accent: true }],
             ]}
-          >
-            <Ionicons name="close" size={18} color={colors.text.primary} />
-          </Pressable>
+          />
+          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+            Members see this on their belt path.
+          </Text>
         </View>
 
         <ScrollView
           keyboardShouldPersistTaps="handled"
-          contentContainerStyle={{
-            gap: gap.lg,
-            padding: inset.lg,
-            paddingBottom: inset.md,
-          }}
+          showsVerticalScrollIndicator={false}
+          style={styles.scroll}
+          contentContainerStyle={{ gap: gap.lg, paddingBottom: gap.sm }}
         >
-          <View
-            style={[
-              styles.sectionCard,
-              {
-                backgroundColor: colors.surface.secondary,
-                borderColor: colors.border.subtle,
-                borderRadius: radius.card,
-                borderWidth: layout.borderWidth,
-                gap: gap.lg,
-                padding: inset.md,
-              },
-            ]}
-          >
-            <Text style={[typography.textPresets.captionMedium, { color: colors.text.tertiary }]}>
-              PLACEMENT
-            </Text>
+          <FieldGroup label="RANK">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={[styles.chipRow, { gap: gap.sm }]}
+            >
+              {rankOptions.map((option) => (
+                <Chip
+                  key={option.value}
+                  label={option.label}
+                  active={option.value === draft.rankLevelId}
+                  onPress={() => setDraft((current) => ({ ...current, rankLevelId: option.value }))}
+                />
+              ))}
+            </ScrollView>
+          </FieldGroup>
 
-            <SelectorSection
-              label="Rank"
-              options={rankOptions}
-              value={draft.rankLevelId}
-              onChange={(rankLevelId) => setDraft((current) => ({ ...current, rankLevelId }))}
-            />
-
-            <SelectorSection
-              label="Stripe"
-              options={stripeOptions}
+          <FieldGroup label="STRIPE">
+            <StripePicker
               value={draft.stripe}
+              options={stripeOptions}
               onChange={(stripe) => setDraft((current) => ({ ...current, stripe }))}
             />
+          </FieldGroup>
 
-            <SelectorSection
-              label="Type"
-              options={REQUIREMENT_TYPES}
+          <FieldGroup label="TYPE">
+            <PillSegmentedTabs
               value={draft.requirementType}
-              onChange={(requirementType) => setDraft((current) => ({ ...current, requirementType }))}
+              options={REQUIREMENT_TYPES}
+              onValueChange={(requirementType) =>
+                setDraft((current) => ({ ...current, requirementType }))
+              }
+              selectedVariant="accent"
             />
-          </View>
+          </FieldGroup>
 
           <View style={{ gap: gap.md }}>
-            <Text style={[typography.textPresets.captionMedium, { color: colors.text.tertiary }]}>
+            <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
               DETAILS
             </Text>
 
@@ -237,15 +272,15 @@ export function CoachCurriculumRequirementEditor({
               value={draft.title}
               onChangeText={(title) => setDraft((current) => ({ ...current, title }))}
               placeholder="e.g. Chain 3 submissions from guard"
-              containerStyle={fieldContainerStyle}
+              containerStyle={styles.field}
             />
             <TextField
-              label="Description (optional)"
+              label="Description"
               value={draft.description}
               onChangeText={(description) => setDraft((current) => ({ ...current, description }))}
               multiline
               placeholder="What the member needs to demonstrate"
-              containerStyle={fieldContainerStyle}
+              containerStyle={styles.field}
             />
 
             {draft.requirementType === 'attendance' ? (
@@ -257,7 +292,7 @@ export function CoachCurriculumRequirementEditor({
                 }
                 keyboardType="number-pad"
                 placeholder="40"
-                containerStyle={fieldContainerStyle}
+                containerStyle={styles.field}
               />
             ) : null}
 
@@ -267,7 +302,7 @@ export function CoachCurriculumRequirementEditor({
               onChangeText={(sortOrder) => setDraft((current) => ({ ...current, sortOrder }))}
               keyboardType="number-pad"
               hint="Lower numbers appear first within the same stripe."
-              containerStyle={fieldContainerStyle}
+              containerStyle={styles.field}
             />
           </View>
         </ScrollView>
@@ -277,51 +312,82 @@ export function CoachCurriculumRequirementEditor({
             styles.footer,
             {
               borderTopColor: colors.border.subtle,
-              paddingHorizontal: inset.lg,
               paddingTop: inset.md,
-              paddingBottom: safeInsets.bottom + inset.md,
-              backgroundColor: colors.background.primary,
+              paddingBottom: safeInsets.bottom + inset.lg,
+              gap: gap.xs,
             },
           ]}
         >
-          <BrandedButton
-            label={initialValue ? 'Save changes' : 'Add requirement'}
-            onPress={handleSave}
-            loading={saving}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={isEditing ? 'Save changes' : 'Add requirement'}
+            accessibilityState={{ disabled: !canSave || saving }}
             disabled={!canSave || saving}
-            full
+            onPress={handleSave}
+            style={({ pressed }) => [
+              styles.primaryButton,
+              {
+                backgroundColor: colors.accent.default,
+                borderRadius: radius.pill,
+                opacity: !canSave || saving ? 0.45 : pressed ? 0.88 : 1,
+              },
+            ]}
+          >
+            {saving ? (
+              <ActivityIndicator color={colors.accent.onAccent} />
+            ) : (
+              <Text style={[typography.textPresets.button, { color: colors.accent.onAccent }]}>
+                {isEditing ? 'Save changes' : 'Add requirement'}
+              </Text>
+            )}
+          </Pressable>
+
+          <AppBottomSheetButton
+            label="Not now"
+            variant="secondary"
+            onPress={handleDismiss}
           />
         </View>
-      </View>
-    </Modal>
+      </KeyboardAvoidingView>
+    </AppBottomSheet>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1 },
-  header: {
-    alignItems: 'flex-start',
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
-    gap: 12,
+  flex: {
+    flexShrink: 1,
+    minHeight: 0,
   },
-  headerCopy: {
-    flex: 1,
-    gap: 4,
-    minWidth: 0,
+  scroll: {
+    flexGrow: 0,
+    flexShrink: 1,
   },
-  closeButton: {
-    alignItems: 'center',
-    height: 36,
-    justifyContent: 'center',
-    width: 36,
-  },
-  sectionCard: {},
-  selectorRow: {
+  chipRow: {
     flexDirection: 'row',
     paddingRight: 4,
   },
+  stripeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  stripeDot: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1,
+    height: 40,
+    justifyContent: 'center',
+    width: 40,
+  },
+  field: {
+    marginBottom: 0,
+  },
   footer: {
     borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  primaryButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 52,
+    paddingHorizontal: 20,
   },
 });

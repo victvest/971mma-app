@@ -19,6 +19,7 @@ import { IOSGlassSurface } from '@/shared/components/ui/IOSGlassSurface';
 import { DrawerMenuHeader } from '@/shared/components/navigation/DrawerMenuHeader';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
+import { useCoachCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
 import { triggerLightImpact } from '@/shared/haptics';
 
 type NavItem = {
@@ -35,7 +36,7 @@ type CoachDrawerMenuProps = {
 
 const COACH_NAV_ITEMS: NavItem[] = [
   { icon: 'chatbubbles-outline', label: 'My groups', route: '/(coach)/communities' },
-  { icon: 'ribbon-outline', label: 'Belt review', route: '/(coach)/belt-review' },
+  { icon: 'megaphone-outline', label: 'Announcements', route: '/(coach)/post-announcement' },
   { icon: 'library-outline', label: 'Curriculum', route: '/(coach)/curriculum' },
 ];
 
@@ -48,18 +49,24 @@ const OPEN_SPRING = {
 
 type DrawerNavItemProps = {
   item: NavItem;
+  badgeCount?: number;
   onNavigate: (route: string) => void;
 };
 
-const DrawerNavItem = memo(function DrawerNavItem({ item, onNavigate }: DrawerNavItemProps) {
+const DrawerNavItem = memo(function DrawerNavItem({
+  item,
+  badgeCount = 0,
+  onNavigate,
+}: DrawerNavItemProps) {
   const { colors, typography, inset, gap, animations } = useTheme();
   const handlePress = useCallback(() => onNavigate(item.route), [item.route, onNavigate]);
+  const showBadge = badgeCount > 0;
 
   return (
     <Pressable
       onPressIn={triggerLightImpact}
       onPress={handlePress}
-      accessibilityLabel={item.label}
+      accessibilityLabel={showBadge ? `${item.label}, ${badgeCount} unread` : item.label}
       style={({ pressed }) => [
         styles.navItem,
         {
@@ -74,6 +81,13 @@ const DrawerNavItem = memo(function DrawerNavItem({ item, onNavigate }: DrawerNa
       <Text style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}>
         {item.label}
       </Text>
+      {showBadge ? (
+        <View style={[styles.badge, { backgroundColor: colors.status.error }]}>
+          <Text style={[typography.textPresets.caption, styles.badgeText, { color: colors.text.inverse }]}>
+            {badgeCount > 99 ? '99+' : badgeCount}
+          </Text>
+        </View>
+      ) : null}
     </Pressable>
   );
 });
@@ -83,6 +97,7 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { drawer } = useResponsiveLayout();
+  const { unreadTotal: coachCommunityUnreadTotal } = useCoachCommunityUnreadTotal(true);
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(visible ? 1 : 0);
   const contentTopPadding = Math.round(inset.lg * 0.8);
@@ -265,7 +280,14 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
               contentContainerStyle={[styles.navContent, { gap: inset['2xs'], paddingBottom: inset.md }]}
             >
               {COACH_NAV_ITEMS.map((item) => (
-                <DrawerNavItem key={item.label} item={item} onNavigate={navigate} />
+                <DrawerNavItem
+                  key={item.label}
+                  item={item}
+                  badgeCount={
+                    item.route === '/(coach)/communities' ? coachCommunityUnreadTotal : 0
+                  }
+                  onNavigate={navigate}
+                />
               ))}
             </AppScrollView>
 
@@ -332,6 +354,18 @@ const styles = StyleSheet.create({
   navLabel: {
     flex: 1,
     minWidth: 0,
+  },
+  badge: {
+    alignItems: 'center',
+    borderRadius: 999,
+    justifyContent: 'center',
+    minWidth: 22,
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+  },
+  badgeText: {
+    fontSize: 11,
+    fontWeight: '800',
   },
   footer: {},
   footerBtn: {

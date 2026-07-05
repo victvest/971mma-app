@@ -47,16 +47,18 @@ export class MbError extends Error {
   }
 }
 
-export function toErrorResponse(error: unknown): Response {
+export function toErrorResponse(error: unknown, req?: Request): Response {
   if (error instanceof MbError) {
     return jsonResponse(
       { error: { code: error.code, message: error.message } },
       { status: error.status },
+      req,
     );
   }
 
   return jsonResponse(
     { error: { code: 'UPSTREAM_ERROR', message: 'Unexpected server error.' } },
     { status: 500 },
+    req,
   );
 }

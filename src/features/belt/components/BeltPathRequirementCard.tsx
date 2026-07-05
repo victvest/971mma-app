@@ -68,8 +68,6 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
           borderRadius: radius.cardLarge,
           padding: inset.md,
           gap: gap.sm,
-          borderWidth: item.status === 'now' ? 1.5 : 0,
-          borderColor: item.status === 'now' ? colors.accent.default : 'transparent',
         },
       ]}
     >

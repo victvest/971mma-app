@@ -14,7 +14,8 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { Check, Lock, ShieldCheck } from 'lucide-react-native';
 
 import { AppBar } from '@/shared/components/ui';
@@ -137,7 +138,7 @@ export default function ChangePasswordScreen() {
   const barStyle = useEntrance(220);
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top']}>
+    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top']}>
       <AppBar title="Change Password" showBackButton />
 
       <KeyboardAvoidingView
@@ -229,7 +230,7 @@ export default function ChangePasswordScreen() {
           />
         </Animated.View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

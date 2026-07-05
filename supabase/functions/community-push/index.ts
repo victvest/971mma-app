@@ -6,7 +6,6 @@ import { serviceClient } from '../_shared/supabase.ts';
 
 type CommunityPushRequest = {
   postId?: unknown;
-  replyId?: unknown;
 };
 
 function readId(value: unknown): string | null {
@@ -28,78 +27,53 @@ Deno.serve(async (req) => {
     const caller = await requireUser(req);
     const body = (await req.json().catch(() => ({}))) as CommunityPushRequest;
     const postId = readId(body.postId);
-    const replyId = readId(body.replyId);
 
-    if (!postId && !replyId) {
-      throw new MbError('BAD_REQUEST', 'postId or replyId is required.');
+    if (!postId) {
+      throw new MbError('BAD_REQUEST', 'postId is required.');
     }
 
     const svc = serviceClient();
 
-    if (postId) {
-      const { data: postRow, error: postError } = await svc
-        .from('community_posts')
-        .select('id, author_id, channel_id')
-        .eq('id', postId)
-        .maybeSingle();
+    const { data: postRow, error: postError } = await svc
+      .from('community_posts')
+      .select('id, author_id, channel_id')
+      .eq('id', postId)
+      .maybeSingle();
 
-      if (postError) {
-        throw new MbError('UPSTREAM_ERROR', postError.message);
-      }
+    if (postError) {
+      throw new MbError('UPSTREAM_ERROR', postError.message);
+    }
 
-      if (!postRow) {
-        throw new MbError('NOT_FOUND', 'Post not found.');
-      }
+    if (!postRow) {
+      throw new MbError('NOT_FOUND', 'Post not found.');
+    }
 
-      const { data: channelRow, error: channelError } = await svc
-        .from('community_channels')
-        .select('coach_id, coaches(user_id)')
-        .eq('id', postRow.channel_id)
-        .maybeSingle();
+    const { data: channelRow, error: channelError } = await svc
+      .from('community_channels')
+      .select('coach_id, coaches(user_id)')
+      .eq('id', postRow.channel_id)
+      .maybeSingle();
 
-      if (channelError) {
-        throw new MbError('UPSTREAM_ERROR', channelError.message);
-      }
+    if (channelError) {
+      throw new MbError('UPSTREAM_ERROR', channelError.message);
+    }
 
-      const coachRecord = channelRow?.coaches as
-        | { user_id?: string | null }
-        | Array<{ user_id?: string | null }>
-        | null;
-      const coachUserId = Array.isArray(coachRecord) ? coachRecord[0]?.user_id : coachRecord?.user_id;
+    const coachRecord = channelRow?.coaches as
+      | { user_id?: string | null }
+      | Array<{ user_id?: string | null }>
+      | null;
+    const coachUserId = Array.isArray(coachRecord) ? coachRecord[0]?.user_id : coachRecord?.user_id;
 
-      const isAuthor = postRow.author_id === caller.userId;
-      const isCoachOwner = coachUserId === caller.userId;
-      const isAdmin = caller.role === 'admin';
+    const isAuthor = postRow.author_id === caller.userId;
+    const isCoachOwner = coachUserId === caller.userId;
+    const isAdmin = caller.role === 'admin';
 
-      if (!isAuthor && !isCoachOwner && !isAdmin) {
-        throw new MbError('FORBIDDEN', 'Only the channel coach can fan out announcement push.');
-      }
-    } else if (replyId) {
-      const { data: replyRow, error: replyError } = await svc
-        .from('community_replies')
-        .select('id, user_id')
-        .eq('id', replyId)
-        .maybeSingle();
-
-      if (replyError) {
-        throw new MbError('UPSTREAM_ERROR', replyError.message);
-      }
-
-      if (!replyRow) {
-        throw new MbError('NOT_FOUND', 'Reply not found.');
-      }
-
-      const isAuthor = replyRow.user_id === caller.userId;
-      const isAdmin = caller.role === 'admin';
-
-      if (!isAuthor && !isAdmin) {
-        throw new MbError('FORBIDDEN', 'Only the reply author can fan out reply push.');
-      }
+    if (!isAuthor && !isCoachOwner && !isAdmin) {
+      throw new MbError('FORBIDDEN', 'Only the post author or channel coach can fan out push.');
     }
 
     const { data: recipients, error: recipientError } = await svc.rpc('get_community_push_recipients', {
       p_post_id: postId,
-      p_reply_id: replyId,
       p_exclude_user_id: caller.userId,
     });
 
@@ -131,7 +105,6 @@ Deno.serve(async (req) => {
         type: 'community',
         channelId,
         postId: resolvedPostId,
-        replyId,
         url,
       },
     });

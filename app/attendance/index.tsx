@@ -1,13 +1,21 @@
 import React, { useCallback } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { FlashList } from '@shopify/flash-list';
 import { useRouter } from 'expo-router';
 import { AttendanceRow } from '@/features/checkin/components/AttendanceRow';
 import { useAttendance } from '@/features/checkin/hooks/useCheckin';
 import { AppBar, FlashListScrollComponent } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useTheme } from '@/shared/theme';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import type { CheckInRow } from '@/types/database';
 
 export default function AttendanceHistoryScreen() {
@@ -15,6 +23,7 @@ export default function AttendanceHistoryScreen() {
   const router = useRouter();
   const attendanceQuery = useAttendance();
   const checkIns = attendanceQuery.data?.pages.flat() ?? [];
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
 
   const renderItem = useCallback(
     ({ item }: { item: CheckInRow }) => <AttendanceRow item={item} />,
@@ -23,6 +32,14 @@ export default function AttendanceHistoryScreen() {
 
   const hasError = !!attendanceQuery.error;
   const hasData = checkIns.length > 0;
+  const isInitialLoading =
+    isQueryActivelyLoading(attendanceQuery.isLoading, attendanceQuery.isFetching) && !hasData;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
   const errorMessage = attendanceQuery.error instanceof Error ? attendanceQuery.error.message : 'Please check your connection.';
 
   const listHeader = (
@@ -55,10 +72,19 @@ export default function AttendanceHistoryScreen() {
   );
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
+    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
       <AppBar title="Gym visits" />
 
-      {attendanceQuery.isLoading ? (
+      {isOfflineBlocked ? (
+        <StateBlock
+          kind="error"
+          title={OFFLINE_TITLE}
+          message={OFFLINE_MESSAGE}
+          actionLabel="Retry"
+          onAction={() => attendanceQuery.refetch()}
+          offlineAwareRetry
+        />
+      ) : isInitialLoading ? (
         <StateBlock kind="loading" title="Loading gym visits" />
       ) : hasError && !hasData ? (
         <StateBlock
@@ -67,6 +93,7 @@ export default function AttendanceHistoryScreen() {
           message={errorMessage}
           actionLabel="Retry"
           onAction={() => attendanceQuery.refetch()}
+          offlineAwareRetry
         />
       ) : !hasError && checkIns.length === 0 ? (
         <StateBlock
@@ -78,6 +105,7 @@ export default function AttendanceHistoryScreen() {
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
           data={checkIns}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.attendanceRow)}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={listHeader}
@@ -96,7 +124,7 @@ export default function AttendanceHistoryScreen() {
           }
         />
       )}
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

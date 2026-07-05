@@ -73,6 +73,7 @@ type IntroActionButtonProps = {
   label: string;
   onPress: () => void;
   variant: 'primary' | 'outline' | 'ghost';
+  testID?: string;
 };
 
 type IntroGlassSheetProps = {
@@ -210,7 +211,7 @@ function useIntroBackgroundVideo() {
   return player;
 }
 
-function IntroActionButton({ label, onPress, variant }: IntroActionButtonProps) {
+function IntroActionButton({ label, onPress, variant, testID }: IntroActionButtonProps) {
   const { typography, layout, radius, animations } = useTheme();
   const scale = useSharedValue<number>(animations.scale.resting);
   const isPrimary = variant === 'primary';
@@ -232,6 +233,7 @@ function IntroActionButton({ label, onPress, variant }: IntroActionButtonProps) 
   return (
     <AnimatedPressable
       accessibilityRole="button"
+      testID={testID}
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
@@ -275,14 +277,14 @@ export function AuthIntroScreen() {
 
   const copyStyle = useAuthEntranceAnimation();
   const getStartedStyle = useAuthSlideUpAnimation({ delay: animations.duration.base });
-  const loginStyle = useAuthSlideUpAnimation({
+  const signInStyle = useAuthSlideUpAnimation({
     delay: animations.duration.base + animations.stagger.base,
   });
-  const guestStyle = useAuthSlideUpAnimation({
+  const exploreStyle = useAuthSlideUpAnimation({
     delay: animations.duration.base + animations.stagger.base * 2,
   });
 
-  const handleContinueAsGuest = useCallback(() => {
+  const handleExploreApp = useCallback(() => {
     triggerLightImpact();
     loginAsGuest();
     router.replace('/(tabs)');
@@ -368,7 +370,7 @@ export function AuthIntroScreen() {
               style={[
                 typography.textPresets.academyKicker,
                 styles.kicker,
-                { color: INTRO_PALETTE.flagRed },
+                { color: INTRO_PALETTE.accentGreen },
               ]}
             >
               971 MMA & Fitness Academy
@@ -400,23 +402,26 @@ export function AuthIntroScreen() {
               <IntroActionButton
                 label="Get Started"
                 variant="primary"
+                testID="auth-intro-get-started"
                 onPress={openAuthRegisterFromIntro}
               />
             </AnimatedView>
 
-            <AnimatedView style={loginStyle}>
+            <AnimatedView style={signInStyle}>
               <IntroActionButton
-                label="Log In"
+                label="Sign In"
                 variant="outline"
+                testID="auth-intro-sign-in"
                 onPress={openAuthLoginFromIntro}
               />
             </AnimatedView>
 
-            <AnimatedView style={guestStyle}>
+            <AnimatedView style={exploreStyle}>
               <IntroActionButton
-                label="Continue as a guest"
+                label="Explore the app"
                 variant="ghost"
-                onPress={handleContinueAsGuest}
+                testID="auth-intro-explore"
+                onPress={handleExploreApp}
               />
             </AnimatedView>
           </View>

@@ -1,5 +1,5 @@
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 
 /**
  * Top safe-area inset for layout inside the app shell.
@@ -8,6 +8,6 @@ import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
  */
 export function useAppTopInset(): number {
   const insets = useSafeAreaInsets();
-  const { isOnline } = useNetworkStatus();
-  return isOnline ? insets.top : 0;
+  const offlineBannerVisible = useOfflineBannerVisible();
+  return offlineBannerVisible ? 0 : insets.top;
 }

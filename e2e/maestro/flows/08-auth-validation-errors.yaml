@@ -1,0 +1,23 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/launch-app.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+- tapOn:
+    id: "auth-intro-sign-in"
+- tapOn:
+    id: "auth-login-email"
+- inputText: "not-an-email"
+- tapOn:
+    id: "auth-login-password"
+- inputText: "short"
+- hideKeyboard
+- tapOn:
+    id: "auth-login-submit"
+- extendedWaitUntil:
+    visible:
+      text: "Sign In Failed"
+    timeout: 10000
+- takeScreenshot: validation-error

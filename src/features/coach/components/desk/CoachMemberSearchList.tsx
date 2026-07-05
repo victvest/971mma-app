@@ -5,6 +5,7 @@ import { MotiPressable } from '@/shared/animations/MotiPressable';
 import { useCoachMemberSearch } from '@/features/belt/hooks/useBeltPath';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { FlashListScrollComponent, TextField } from '@/shared/components/ui';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import type { CoachMemberSearchItem } from '@/types/domain';
@@ -100,7 +101,7 @@ export function CoachMemberSearchList({ onSelectMember }: CoachMemberSearchListP
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          estimatedItemSize={88}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.coachMemberSearchRow)}
           scrollEnabled={false}
           contentContainerStyle={{ gap: gap.sm }}
         />

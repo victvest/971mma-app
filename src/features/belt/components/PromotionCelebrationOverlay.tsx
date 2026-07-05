@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, Dimensions } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Modal, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -8,53 +8,77 @@ import Animated, {
   withRepeat,
   withTiming,
   Easing,
+  runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnseenPromotion, useMarkPromotionCelebrationSeen } from '../hooks/useBeltPath';
 import { useTheme } from '@/shared/theme';
 import { triggerSuccessNotification } from '@/shared/haptics';
 
-const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const CONFETTI_COUNT = 20;
+const CONFETTI_COLORS = ['#FFD700', '#FF4500', '#1E90FF', '#32CD32', '#FF69B4', '#8A2BE2'];
+
+type ConfettiLayout = {
+  startX: number;
+  scale: number;
+  fallDuration: number;
+  spinDuration: number;
+  spinDirection: number;
+  delay: number;
+};
+
+function createConfettiLayout(screenWidth: number): ConfettiLayout[] {
+  return Array.from({ length: CONFETTI_COUNT }, () => ({
+    startX: Math.random() * screenWidth,
+    scale: Math.random() * 0.6 + 0.6,
+    fallDuration: Math.random() * 2000 + 2000,
+    spinDuration: Math.random() * 1500 + 1000,
+    spinDirection: Math.random() > 0.5 ? 1 : -1,
+    delay: Math.random() * 1500,
+  }));
+}
 
 interface ConfettiPieceProps {
   index: number;
+  layout: ConfettiLayout;
+  screenHeight: number;
 }
 
-function ConfettiPiece({ index }: ConfettiPieceProps) {
+function ConfettiPiece({ index, layout, screenHeight }: ConfettiPieceProps) {
   const y = useSharedValue(-50);
-  const x = useSharedValue(Math.random() * SCREEN_WIDTH);
+  const x = useSharedValue(0);
   const rotation = useSharedValue(0);
-  const scale = useSharedValue(Math.random() * 0.6 + 0.6);
-
-  const colors = ['#FFD700', '#FF4500', '#1E90FF', '#32CD32', '#FF69B4', '#8A2BE2'];
-  const color = colors[index % colors.length];
+  const scale = useSharedValue(1);
+  const color = CONFETTI_COLORS[index % CONFETTI_COLORS.length];
 
   useEffect(() => {
-    const delay = Math.random() * 1500;
+    x.value = layout.startX;
+    scale.value = layout.scale;
+
     y.value = withDelay(
-      delay,
+      layout.delay,
       withRepeat(
-        withTiming(SCREEN_HEIGHT + 50, {
-          duration: Math.random() * 2000 + 2000,
+        withTiming(screenHeight + 50, {
+          duration: layout.fallDuration,
           easing: Easing.linear,
         }),
         -1,
-        false
-      )
+        false,
+      ),
     );
 
     rotation.value = withDelay(
-      delay,
+      layout.delay,
       withRepeat(
-        withTiming(360 * (Math.random() > 0.5 ? 1 : -1), {
-          duration: Math.random() * 1500 + 1000,
+        withTiming(360 * layout.spinDirection, {
+          duration: layout.spinDuration,
           easing: Easing.linear,
         }),
         -1,
-        false
-      )
+        false,
+      ),
     );
-  }, []);
+  }, [layout, rotation, scale, screenHeight, x, y]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [
@@ -71,9 +95,15 @@ function ConfettiPiece({ index }: ConfettiPieceProps) {
 
 export function PromotionCelebrationOverlay() {
   const { colors, typography, radius, inset, gap } = useTheme();
+  const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { data: promotion, isLoading } = useUnseenPromotion();
   const { mutate: markSeen } = useMarkPromotionCelebrationSeen();
   const [visible, setVisible] = useState(false);
+
+  const confettiLayouts = useMemo(
+    () => (visible ? createConfettiLayout(screenWidth) : []),
+    [screenWidth, visible],
+  );
 
   const scaleVal = useSharedValue(0.3);
   const opacityVal = useSharedValue(0);
@@ -87,19 +117,7 @@ export function PromotionCelebrationOverlay() {
     } else {
       setVisible(false);
     }
-  }, [promotion]);
-
-  if (isLoading || !promotion || !visible) return null;
-
-  const isWrestling = promotion.discipline === 'wrestling';
-  const toStripe = promotion.toStripe ?? 0;
-
-  const handleDismiss = () => {
-    scaleVal.value = withTiming(0.5, { duration: 250 });
-    opacityVal.value = withTiming(0, { duration: 250 }, () => {
-      markSeen(promotion.id);
-    });
-  };
+  }, [opacityVal, promotion, scaleVal]);
 
   const cardAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleVal.value }],
@@ -110,14 +128,33 @@ export function PromotionCelebrationOverlay() {
     opacity: opacityVal.value,
   }));
 
+  if (isLoading || !promotion || !visible) return null;
+
+  const isWrestling = promotion.discipline === 'wrestling';
+  const toStripe = promotion.toStripe ?? 0;
+
+  const handleDismiss = () => {
+    scaleVal.value = withTiming(0.5, { duration: 250 });
+    opacityVal.value = withTiming(0, { duration: 250 }, (finished) => {
+      if (finished) {
+        runOnJS(setVisible)(false);
+        runOnJS(markSeen)(promotion.id);
+      }
+    });
+  };
+
   return (
     <Modal transparent visible={visible} animationType="none" onRequestClose={handleDismiss}>
       <View style={styles.container}>
         <Animated.View style={[styles.backdrop, backgroundAnimatedStyle]} />
 
-        {/* Confetti rain */}
-        {Array.from({ length: 40 }).map((_, i) => (
-          <ConfettiPiece key={i} index={i} />
+        {confettiLayouts.map((layout, index) => (
+          <ConfettiPiece
+            key={`${promotion.id}-${index}`}
+            index={index}
+            layout={layout}
+            screenHeight={screenHeight}
+          />
         ))}
 
         <Animated.View
@@ -181,7 +218,6 @@ export function PromotionCelebrationOverlay() {
               </View>
             ) : (
               <View style={styles.bjjBeltContainer}>
-                {/* Belt graphic representation */}
                 <View
                   style={[
                     styles.beltBar,
@@ -195,7 +231,7 @@ export function PromotionCelebrationOverlay() {
                           ? '#8B4513'
                           : promotion.toRankName?.toLowerCase() === 'black'
                           ? '#000000'
-                          : '#FFFFFF', // White belt default
+                          : '#FFFFFF',
                       borderColor: '#000000',
                       borderWidth: 1,
                       borderRadius: radius.tag,

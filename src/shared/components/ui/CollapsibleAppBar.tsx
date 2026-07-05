@@ -1,7 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -60,7 +60,7 @@ export function CollapsibleAppBar({
   const theme = useTheme();
   const { colors, inset, layout } = theme;
   const router = useRouter();
-  const safeInsets = useSafeAreaInsets();
+  const topInset = useAppTopInset();
   const iconLayers = useCollapsibleAppBarIconLayers(scrollY, collapseStart, collapseEnd);
 
   const handleBack = () => {
@@ -110,10 +110,10 @@ export function CollapsibleAppBar({
         {
           alignItems: 'center',
           flexDirection: 'row',
-          height: barHeight + safeInsets.top,
+          height: barHeight + topInset,
           justifyContent: 'space-between',
           paddingHorizontal: inset.md,
-          paddingTop: safeInsets.top,
+          paddingTop: topInset,
           borderBottomWidth: StyleSheet.hairlineWidth,
         },
         shellStyle,

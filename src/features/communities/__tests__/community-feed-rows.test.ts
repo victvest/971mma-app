@@ -20,7 +20,6 @@ function makePost(id: string, publishedAt: string, isUnread = false): CommunityP
     pinnedAt: null,
     publishedAt,
     reactionCounts: {},
-    replyCount: 0,
     myReactions: [],
     isUnread,
   };

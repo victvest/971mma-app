@@ -23,7 +23,7 @@ import {
 } from '@/shared/animations';
 import { animations } from '@/shared/theme/animations';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
-import { isGymToday } from '@/core/time/gymTime';
+import { isGymToday, isGymTomorrow } from '@/core/time/gymTime';
 import { useCoachClasses } from '@/features/coach/hooks/useCoachMode';
 import { ScheduleClassCard } from '@/features/schedule/components/ScheduleClassCard';
 import { ScheduleListRow } from '@/features/schedule/components/ScheduleListRow';
@@ -46,7 +46,13 @@ type ClassListItem = {
   classIndex: number;
 };
 
-type ListItem = SectionHeaderItem | ClassListItem;
+type TodayEmptyItem = {
+  _kind: 'today-empty';
+  id: string;
+  sectionIndex: number;
+};
+
+type ListItem = SectionHeaderItem | ClassListItem | TodayEmptyItem;
 
 type ClassRowProps = {
   item: ClassItem;
@@ -148,7 +154,7 @@ function ScheduleHeaderMotion({ children, replayKey }: ScheduleHeaderMotionProps
 }
 
 export default function CoachClassesScreen() {
-  const { colors, inset, layout } = useTheme();
+  const { colors, typography, inset, layout } = useTheme();
   const topInset = useAppTopInset();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
@@ -160,7 +166,7 @@ export default function CoachClassesScreen() {
     const all = classesQuery.data ?? [];
     return {
       today: all.filter((item) => isGymToday(item.startsAt)),
-      upcoming: all.filter((item) => !isGymToday(item.startsAt)),
+      tomorrow: all.filter((item) => isGymTomorrow(item.startsAt)),
     };
   }, [classesQuery.data]);
 
@@ -181,17 +187,24 @@ export default function CoachClassesScreen() {
         result.push({ _kind: 'class', item, classIndex });
         classIndex += 1;
       }
-    }
-
-    if (sections.upcoming.length > 0) {
+    } else if (sections.tomorrow.length > 0) {
       result.push({
-        _kind: 'header',
-        id: 'header-upcoming',
-        label: `Upcoming · ${sections.upcoming.length}`,
+        _kind: 'today-empty',
+        id: 'today-empty',
         sectionIndex,
       });
       sectionIndex += 1;
-      for (const item of sections.upcoming) {
+    }
+
+    if (sections.tomorrow.length > 0) {
+      result.push({
+        _kind: 'header',
+        id: 'header-tomorrow',
+        label: `Tomorrow · ${sections.tomorrow.length}`,
+        sectionIndex,
+      });
+      sectionIndex += 1;
+      for (const item of sections.tomorrow) {
         result.push({ _kind: 'class', item, classIndex });
         classIndex += 1;
       }
@@ -242,6 +255,19 @@ export default function CoachClassesScreen() {
         );
       }
 
+      if (item._kind === 'today-empty') {
+        return (
+          <View style={styles.todayEmptyWrap}>
+            <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+              No classes today
+            </Text>
+            <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+              Tomorrow&apos;s schedule is below.
+            </Text>
+          </View>
+        );
+      }
+
       return (
         <ClassRow
           item={item.item}
@@ -251,7 +277,7 @@ export default function CoachClassesScreen() {
         />
       );
     },
-    [entranceSignal, handleClassPress],
+    [colors.text.primary, colors.text.secondary, entranceReplayKey, entranceSignal, handleClassPress, typography.textPresets.body, typography.textPresets.bodyStrong],
   );
 
   const hasError = Boolean(classesQuery.error);
@@ -267,7 +293,7 @@ export default function CoachClassesScreen() {
       <>
         <ScheduleHeaderMotion replayKey={entranceReplayKey}>
           <View style={styles.heroTextSection}>
-            <AcademyEyebrow label="Today's schedule" accent showFlag={false} />
+            <AcademyEyebrow label="Today & tomorrow" accent showFlag={false} />
             <TabHeroTitle lines={[[{ text: 'Your ' }, { text: 'classes.', accent: true }]]} />
           </View>
         </ScheduleHeaderMotion>
@@ -295,7 +321,11 @@ export default function CoachClassesScreen() {
   const listEmptyComponent = useMemo(
     () =>
       hasError ? null : (
-        <StateBlock kind="empty" title="No classes today" message="Your schedule will appear here." />
+        <StateBlock
+          kind="empty"
+          title="No classes today or tomorrow"
+          message="Your schedule will appear here."
+        />
       ),
     [hasError],
   );
@@ -365,5 +395,10 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   emptyListContent: { flexGrow: 1 },
+  todayEmptyWrap: {
+    gap: 4,
+    paddingVertical: 16,
+    paddingHorizontal: 4,
+  },
   errorWrap: { marginBottom: 8 },
 });

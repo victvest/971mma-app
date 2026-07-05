@@ -9,7 +9,7 @@ export default function CommunitiesLayout() {
     <Stack screenOptions={createStackScreenOptions(colors.background.primary, 'push')}>
       <Stack.Screen name="index" options={{ title: 'Communities' }} />
       <Stack.Screen name="[id]" options={{ title: 'Group' }} />
-      <Stack.Screen name="post/[postId]" options={{ title: 'Thread' }} />
+      <Stack.Screen name="post/[postId]" options={{ title: 'Communities' }} />
     </Stack>
   );
 }

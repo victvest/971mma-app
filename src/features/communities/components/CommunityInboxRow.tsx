@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { formatCommunityInboxTime } from '@/features/communities/components/community-chat-utils';
@@ -10,14 +10,28 @@ import type { CommunityChannelItem } from '@/types/domain';
 type CommunityInboxRowProps = {
   channel: CommunityChannelItem;
   onPress: () => void;
+  actionLabel?: string;
+  actionLoading?: boolean;
+  onAction?: () => void;
 };
 
-export function CommunityInboxRow({ channel, onPress }: CommunityInboxRowProps) {
-  const { colors, typography, inset, gap, layout } = useTheme();
+function formatMemberCount(count: number): string {
+  if (count === 1) return '1 member';
+  return `${count} members`;
+}
+
+export function CommunityInboxRow({
+  channel,
+  onPress,
+  actionLabel,
+  actionLoading,
+  onAction,
+}: CommunityInboxRowProps) {
+  const { colors, typography, inset, gap, layout, radius } = useTheme();
   const preview = useMemo(() => {
     if (channel.lastMessagePreview) return channel.lastMessagePreview;
-    return 'No messages yet';
-  }, [channel.lastMessagePreview]);
+    return channel.channelKind === 'community' ? 'No announcements yet' : 'No messages yet';
+  }, [channel.channelKind, channel.lastMessagePreview]);
 
   const timeLabel = formatCommunityInboxTime(channel.lastMessageAt ?? channel.latestPostAt);
   const hasUnread = channel.unreadCount > 0;
@@ -96,13 +110,45 @@ export function CommunityInboxRow({ channel, onPress }: CommunityInboxRowProps) 
 
         <View style={[styles.metaRow, { gap: gap.sm }]}>
           <Text style={[styles.meta, { color: colors.text.tertiary }]} numberOfLines={1}>
-            {channel.disciplineName}
+            {channel.disciplineName} ·{' '}
+            {channel.channelKind === 'community'
+              ? 'Community announcements'
+              : formatMemberCount(channel.memberCount)}
           </Text>
           {hasUnread ? <CommunityUnreadChip count={channel.unreadCount} size="sm" /> : null}
         </View>
       </View>
 
-      <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+      {actionLabel && onAction ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={actionLabel}
+          disabled={actionLoading}
+          onPress={(event) => {
+            event.stopPropagation();
+            onAction();
+          }}
+          style={({ pressed }) => [
+            styles.action,
+            {
+              backgroundColor: colors.accent.default,
+              borderRadius: radius.pill,
+              opacity: actionLoading ? 0.6 : pressed ? 0.88 : 1,
+              paddingHorizontal: inset.sm + 2,
+            },
+          ]}
+        >
+          {actionLoading ? (
+            <ActivityIndicator size="small" color={colors.accent.onAccent} />
+          ) : (
+            <Text style={[styles.actionText, { color: colors.accent.onAccent }]}>
+              {actionLabel}
+            </Text>
+          )}
+        </Pressable>
+      ) : (
+        <Ionicons name="chevron-forward" size={16} color={colors.text.tertiary} />
+      )}
     </Pressable>
   );
 }
@@ -146,5 +192,15 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 12,
     fontWeight: '500',
+  },
+  action: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    minHeight: 34,
+    minWidth: 64,
+  },
+  actionText: {
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

@@ -1,0 +1,13 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/launch-app.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+- tapOn:
+    id: "auth-intro-get-started"
+- extendedWaitUntil:
+    visible: "Create account"
+    timeout: 15000
+- takeScreenshot: register-screen

@@ -151,10 +151,6 @@ export default function CheckInScreen() {
     [attendanceQuery.data?.pages],
   );
 
-  usePerfOnceReady(PerfMark.qrTokenVisible, qrPassEnabled && Boolean(qrPassQuery.data?.token), {
-    memberId: activeMemberId,
-  });
-
   const topInset = useAppTopInset();
 
   const memberName = isAnonymousGuest

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { StyleSheet } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { CommunityInboxScreen, CommunityUnreadChip } from '@/features/communities/components';
 import { useCommunityChannels, useCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
 import { useCommunityInboxRealtime } from '@/features/communities/hooks/useCommunityRealtime';
@@ -17,7 +17,7 @@ export default function CommunitiesScreen() {
   useCommunityInboxRealtime(channelIds, !channelsQuery.isLoading && channels.length > 0);
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top', 'bottom']}
     >
@@ -34,12 +34,12 @@ export default function CommunitiesScreen() {
         onRetry={() => channelsQuery.refetch()}
         unreadTotal={unreadTotal}
         eyebrow="971 MMA · Community"
-        title="Your groups."
-        subtitle="Coach updates and member discussions for your enrolled disciplines."
+        title="Your communities."
+        subtitle="Community announcements plus group chats you've been added to."
         emptyTitle="No groups yet"
-        emptyMessage="Groups appear when you are enrolled in a discipline, attend a class, or academy staff links your membership. Pull to refresh after your next visit."
+        emptyMessage="Groups appear here once your coach adds you to one."
       />
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 

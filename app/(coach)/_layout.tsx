@@ -36,6 +36,8 @@ export default function CoachLayout() {
           <Stack.Screen name="belt-review" options={pushOptions} />
           <Stack.Screen name="curriculum" options={pushOptions} />
           <Stack.Screen name="communities" options={pushOptions} />
+          <Stack.Screen name="community-groups/new" options={pushOptions} />
+          <Stack.Screen name="community-groups/[id]/settings" options={pushOptions} />
           <Stack.Screen name="post-announcement" options={pushOptions} />
           <Stack.Screen name="profile" options={pushOptions} />
           <Stack.Screen name="roll-call-preview" options={pushOptions} />

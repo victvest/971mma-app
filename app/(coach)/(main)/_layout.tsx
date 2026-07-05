@@ -70,7 +70,7 @@ export default function CoachMainTabsLayout() {
     <Tabs tabBar={(props) => <CoachCustomTabBar {...props} />} screenOptions={createTabScreenOptions()}>
       <Tabs.Screen name="index" options={{ title: 'Class' }} />
       <Tabs.Screen name="classes" options={{ title: 'Classes' }} />
-      <Tabs.Screen name="promotions" options={{ title: 'Promote' }} />
+      <Tabs.Screen name="promotions" options={{ title: 'Review' }} />
     </Tabs>
   );
 }

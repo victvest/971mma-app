@@ -128,6 +128,17 @@ export function isGymToday(iso: string, now = new Date()): boolean {
   return day(new Date(iso)) === day(now);
 }
 
+export function isGymTomorrow(iso: string, now = new Date()): boolean {
+  const todayParts = gymParts(now);
+  const todayNoonMs = new Date(
+    `${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`,
+  ).getTime();
+  const tomorrow = gymParts(new Date(todayNoonMs + 24 * 60 * 60 * 1000));
+  const day = (d: Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(d);
+  return day(new Date(iso)) === `${tomorrow.year}-${tomorrow.month}-${tomorrow.day}`;
+}
+
 export function isClassLiveNow(
   startsAt: string,
   durationMinutes: number,

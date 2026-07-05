@@ -23,31 +23,30 @@ enabled = false
 enabled = true
 site_url = "nine71mma://auth/callback"
 additional_redirect_urls = [
-  "nine71mma://**",
   "nine71mma://auth/callback",
   "https://app.971mma.com/auth/callback",
-  "exp://**",
 ]
 enable_signup = true
-minimum_password_length = 6
+minimum_password_length = 8
 
 [auth.rate_limit]
-# Dev-friendly limits while testing signup / link flows.
-email_sent = 100
+# Production limits — sized to block brute-force / enumeration at launch scale.
+email_sent = 20
 sms_sent = 30
-anonymous_users = 100
-token_refresh = 500
-sign_in_sign_ups = 500
-token_verifications = 500
+anonymous_users = 30
+token_refresh = 150
+sign_in_sign_ups = 30
+token_verifications = 30
 
 [auth.email]
 enable_signup = true
 enable_confirmations = true
 double_confirm_changes = true
-secure_password_change = false
+secure_password_change = true
 max_frequency = "1s"
 otp_length = 6
-otp_expiry = 45
+# 5 minutes — UAE email delivery can exceed the previous 45s window.
+otp_expiry = 300
 
 [functions.mb-health]
 verify_jwt = true
@@ -122,4 +121,10 @@ verify_jwt = false
 verify_jwt = true
 
 [functions.account-delete]
+verify_jwt = true
+
+[functions.mb-admin-clients]
+verify_jwt = true
+
+[functions.auth-sign-out-others]
 verify_jwt = true

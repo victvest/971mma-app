@@ -46,7 +46,6 @@ type DrawerMenuProps = {
 
 const LOCKED_ROUTE_ACTIONS: Record<string, AccountActionKey> = {
   '/communities': 'access-communities',
-  '/mindbody-info': 'access-mindbody',
   '/family-trainees': 'family-profiles',
   '/(tabs)/belt-path': 'track-progress',
   '/(tabs)/rewards': 'earn-rewards',
@@ -54,7 +53,6 @@ const LOCKED_ROUTE_ACTIONS: Record<string, AccountActionKey> = {
 
 const NAV_ITEMS: NavItem[] = [
   { icon: 'chatbubbles-outline', label: 'Communities', route: '/communities' },
-  { icon: 'barcode-outline', label: 'Mindbody ID', route: '/mindbody-info' },
   { icon: 'people-outline', label: 'Family profiles', route: '/family-trainees' },
   { icon: 'ribbon-outline', label: 'Belt path', route: '/(tabs)/belt-path' },
   { icon: 'gift-outline', label: 'Rewards', route: '/(tabs)/rewards' },

@@ -4,13 +4,12 @@ import { Mail, Send } from 'lucide-react-native';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { authToast } from '@/shared/components/Toast';
 import {
-  AuthBackLink,
   AuthScreen,
   AuthSubmitButton,
   AuthTextField,
 } from '@/features/auth/components/AuthExperience';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
-import { authRoutes } from '@/features/auth/navigation/authNavigation';
+import { authRoutes, backFromForgotPassword } from '@/features/auth/navigation/authNavigation';
 import { formatAuthError, normalizeEmail, validateEmail } from '@/features/auth/services/authValidation';
 
 export default function ForgotPasswordScreen() {
@@ -56,7 +55,8 @@ export default function ForgotPasswordScreen() {
     <AuthScreen
       title="Reset password"
       subtitle="Enter your email and we'll send a 6-digit code to verify it's you."
-      footer={<AuthBackLink href={authRoutes.login} label="Back to sign in" navigate="back" />}
+      showBackButton
+      onBackPress={backFromForgotPassword}
     >
       <AuthTextField
         label="Email"

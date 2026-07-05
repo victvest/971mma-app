@@ -80,16 +80,14 @@ export function CommunityChatBubble({
   return (
     <View style={styles.root}>
       <View style={[styles.row, { gap: gap.sm }]}>
-        {showAvatar && isCoach ? (
+        {showAvatar ? (
           <MemberAvatar
             name={post.authorName}
             avatarUrl={post.authorAvatarUrl}
             size={36}
-            backgroundColor={colors.accent.default}
-            textColor={colors.text.inverse}
+            backgroundColor={isCoach ? colors.accent.default : colors.fill.secondary}
+            textColor={isCoach ? colors.text.inverse : colors.text.primary}
           />
-        ) : showAvatar ? (
-          <View style={styles.avatarSpacer} />
         ) : null}
 
         <View
@@ -152,9 +150,6 @@ const styles = StyleSheet.create({
   row: {
     alignItems: 'flex-end',
     flexDirection: 'row',
-  },
-  avatarSpacer: {
-    width: 36,
   },
   stack: {
     flex: 1,

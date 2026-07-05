@@ -2,7 +2,6 @@ import { getMyProfile, updateMyProfile, getMembershipSummary } from '@/services/
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { parseMemberQrToken } from '@/services/qr/token';
 import type {
-  CheckInResult,
   MemberProfile,
   MemberRef,
   Membership,
@@ -41,28 +40,6 @@ export class SupabaseProvider implements IntegrationProvider {
         expiresAt: summary.expiresAt,
       },
     ];
-  }
-
-  async recordCheckIn(input: {
-    memberId?: string;
-    classId?: string | null;
-    method?: string;
-  }): Promise<CheckInResult> {
-
-    const result = await invokeEdge<{
-      success: boolean;
-      memberName: string;
-      checkedInAt: string;
-      checkInId: string;
-    }>('mb-checkin', {
-      classId: input.classId ?? undefined,
-    });
-    return {
-      id: result.checkInId,
-      classId: input.classId ?? null,
-      checkedInAt: result.checkedInAt,
-      method: input.method ?? 'qr',
-    };
   }
 
   async refreshPrograms() {

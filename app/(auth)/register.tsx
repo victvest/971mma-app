@@ -7,6 +7,7 @@ import { useAuth } from '@/features/auth/context/AuthContext';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authToast } from '@/shared/components/Toast';
 import {
+  AuthAppleButton,
   AuthGoogleButton,
   AuthOrDivider,
   AuthScreen,
@@ -24,7 +25,7 @@ import {
 
 export default function RegisterScreen() {
   const router = useRouter();
-  const { signUp, signUpWithGoogle, configError } = useAuth();
+  const { signUp, signUpWithGoogle, signUpWithApple, configError } = useAuth();
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmPasswordRef = useRef<TextInput>(null);
@@ -34,6 +35,8 @@ export default function RegisterScreen() {
   const [referralCode, setReferralCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [appleLoading, setAppleLoading] = useState(false);
+  const socialLoading = googleLoading || appleLoading;
 
   useEffect(() => {
     if (configError) {
@@ -102,6 +105,23 @@ export default function RegisterScreen() {
     }
   }
 
+  async function handleAppleSignUp() {
+    setAppleLoading(true);
+    try {
+      await setPendingReferralCode(referralCode);
+      const result = await signUpWithApple();
+      if (result.cancelled) return;
+      if (result.recovery) return;
+      if (result.error) {
+        authToast.error('Apple Sign Up Failed', result.error);
+      }
+    } catch (authError) {
+      authToast.error('Apple Sign Up Failed', formatAuthError(authError));
+    } finally {
+      setAppleLoading(false);
+    }
+  }
+
   async function handleGoogleSignUp() {
     setGoogleLoading(true);
     try {
@@ -133,10 +153,16 @@ export default function RegisterScreen() {
         />
       }
     >
+      <AuthAppleButton
+        onPress={handleAppleSignUp}
+        loading={appleLoading}
+        disabled={Boolean(configError) || loading || googleLoading}
+      />
+
       <AuthGoogleButton
         onPress={handleGoogleSignUp}
         loading={googleLoading}
-        disabled={Boolean(configError) || loading}
+        disabled={Boolean(configError) || loading || appleLoading}
       />
 
       <AuthOrDivider />
@@ -205,7 +231,7 @@ export default function RegisterScreen() {
         label="Continue"
         onPress={handleSignUp}
         loading={loading}
-        disabled={Boolean(configError) || googleLoading}
+        disabled={Boolean(configError) || socialLoading}
       />
     </AuthScreen>
   );

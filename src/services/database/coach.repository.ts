@@ -131,10 +131,12 @@ export async function listPromotionCandidates(
     training_days: number;
     recent_check_ins: number;
     candidate_reason: PromotionCandidateItem['candidateReason'];
+    avatar_url: string | null;
   }>).map((row) => ({
     userId: row.user_id,
     fullName: row.full_name,
     email: row.email,
+    avatarUrl: row.avatar_url,
     beltRank: row.belt_rank,
     beltStripes: row.belt_stripes ?? 0,
     percent: Number(row.percent),

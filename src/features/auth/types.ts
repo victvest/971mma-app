@@ -20,6 +20,8 @@ export interface AuthService {
   signUp(email: string, password: string): Promise<AuthResult>;
   signInWithGoogle(): Promise<AuthResult>;
   signUpWithGoogle(): Promise<AuthResult>;
+  signInWithApple(): Promise<AuthResult>;
+  signUpWithApple(): Promise<AuthResult>;
   verifySignupOtp(email: string, token: string): Promise<AuthResult>;
   resendSignupOtp(email: string): Promise<AuthResult>;
   sendRecoveryOtp(email: string): Promise<AuthResult>;
@@ -28,6 +30,7 @@ export interface AuthService {
   resetPassword(email: string): Promise<AuthResult>;
   updatePassword(password: string): Promise<AuthResult>;
   signOut(): Promise<void>;
+  signOutOtherDevices(): Promise<AuthResult>;
   startAutoRefresh(): void;
   stopAutoRefresh(): void;
 }

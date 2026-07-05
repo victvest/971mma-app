@@ -1,5 +1,11 @@
 import { gymRangeIso } from '@/core/time/gymTime';
 import {
+  getAcademyDemoClassById,
+  getAcademyDemoClassesForCoach,
+  getAcademyDemoScheduleClasses,
+  isDemoAcademyClassId,
+} from '@/features/coaches/demo/academyCoachScheduleFixtures';
+import {
   selectClassesByCoach,
   selectScheduleCategories,
   selectSchedulePage,
@@ -14,6 +20,39 @@ import { mapClassRow } from './mappers';
 
 const CLASS_COLUMNS =
   'id, title, discipline, discipline_id, description, coach_name, coach_id, starts_at, duration_minutes, capacity, level, image_url, mindbody_class_id, staff_mindbody_id, booked_count, is_available, is_waitlist_available, is_cancelled';
+
+export const HOME_HERO_CLASS_LIMIT = 3;
+
+export function selectUpcomingHeroClasses(
+  classes: ClassItem[],
+  limit: number,
+  now = Date.now(),
+): ClassItem[] {
+  return classes
+    .filter((item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now)
+    .slice(0, limit);
+}
+
+/** Home hero must never be empty — fall back to demo schedule for guests and stale mirrors. */
+export function resolveHomeHeroClasses(
+  classes: ClassItem[],
+  limit: number = HOME_HERO_CLASS_LIMIT,
+  now = Date.now(),
+): ClassItem[] {
+  const upcoming = selectUpcomingHeroClasses(classes, limit, now);
+  if (upcoming.length > 0) return upcoming;
+
+  const future = classes
+    .filter((item) => new Date(item.startsAt).getTime() > now)
+    .slice(0, limit);
+  if (future.length > 0) return future;
+
+  if (classes.length > 0) return classes.slice(0, limit);
+
+  const demo = getAcademyDemoScheduleClasses(new Date(now));
+  const demoUpcoming = selectUpcomingHeroClasses(demo, limit, now);
+  return demoUpcoming.length > 0 ? demoUpcoming : demo.slice(0, limit);
+}
 
 export type SchedulePageInput = {
   fromISO: string;
@@ -41,7 +80,14 @@ export async function fetchScheduleDayClasses(
 ): Promise<ClassItem[]> {
   const { data, error } = await buildScheduleDayQuery(fromISO, toISO);
   if (error) throw error;
-  return ((data ?? []) as ClassRow[]).map(mapClassRow);
+  const items = ((data ?? []) as ClassRow[]).map(mapClassRow);
+  if (items.length > 0) {
+    const hasUpcoming = items.some(
+      (item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > Date.now(),
+    );
+    if (hasUpcoming) return items;
+  }
+  return getAcademyDemoScheduleClasses();
 }
 
 export async function fetchCoachDayClasses(
@@ -55,11 +101,15 @@ export async function fetchCoachDayClasses(
       coach.mindbodyStaffId,
     );
     if (error) throw error;
-    return ((data ?? []) as ClassRow[]).map(mapClassRow);
+    const byStaff = ((data ?? []) as ClassRow[]).map(mapClassRow);
+    if (byStaff.length > 0) return byStaff;
   }
 
   const day = await fetchScheduleDayClasses(fromISO, toISO);
-  return selectClassesByCoach(day, coach);
+  const matched = selectClassesByCoach(day, coach);
+  if (matched.length > 0) return matched;
+
+  return getAcademyDemoClassesForCoach(coach);
 }
 
 /** Next non-cancelled Mindbody classes in the gym-local today/tomorrow window. */
@@ -89,9 +139,11 @@ export async function fetchUpcomingHeroClasses(
 
   if (error) throw error;
 
-  let items = ((data ?? []) as ClassRow[])
-    .map(mapClassRow)
-    .filter((item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now);
+  let items = ((data ?? []) as ClassRow[]).map(mapClassRow);
+
+  if (items.length === 0) {
+    return resolveHomeHeroClasses(getAcademyDemoScheduleClasses(), limit, now);
+  }
 
   if (enrolledDisciplineIds) {
     items = items.filter(
@@ -99,7 +151,7 @@ export async function fetchUpcomingHeroClasses(
     );
   }
 
-  return items.slice(0, limit);
+  return resolveHomeHeroClasses(items, limit, now);
 }
 
 export async function getUpcomingClasses(): Promise<ClassItem[]> {
@@ -129,6 +181,10 @@ export async function getSchedulePage(input: SchedulePageInput): Promise<ClassIt
 }
 
 export async function getClassById(id: string): Promise<ClassItem | null> {
+  if (isDemoAcademyClassId(id)) {
+    return getAcademyDemoClassById(id);
+  }
+
   const { data, error } = await getSupabaseClient()
     .from('classes')
     .select(CLASS_COLUMNS)
@@ -136,7 +192,9 @@ export async function getClassById(id: string): Promise<ClassItem | null> {
     .maybeSingle<ClassRow>();
 
   if (error) throw error;
-  return data ? mapClassRow(data) : null;
+  if (data) return mapClassRow(data);
+
+  return getAcademyDemoClassById(id);
 }
 
 export async function getClassesByCoach(coach: CoachItem): Promise<ClassItem[]> {
@@ -163,5 +221,9 @@ export async function getClassesByCoachId(coachId: string): Promise<ClassItem[]>
 
   const coach = await getCoachById(coachId);
   if (!coach) return [];
-  return getClassesByCoach(coach);
+
+  const byStaffOrName = await getClassesByCoach(coach);
+  if (byStaffOrName.length > 0) return byStaffOrName;
+
+  return getAcademyDemoClassesForCoach(coach);
 }

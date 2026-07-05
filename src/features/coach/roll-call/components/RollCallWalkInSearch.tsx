@@ -8,6 +8,7 @@ import { useRollCallMemberSearch } from '@/features/coach/roll-call/hooks/useRol
 import { searchResultToWalkInMember } from '@/features/coach/roll-call/utils/rollCallSearchUtils';
 import { MotiPressable } from '@/shared/animations/MotiPressable';
 import { FlashListScrollComponent, TextField } from '@/shared/components/ui';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -311,6 +312,7 @@ export const RollCallWalkInSearch = memo(function RollCallWalkInSearch({
               data={results}
               renderItem={renderItem}
               keyExtractor={keyExtractor}
+              overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSearchRow)}
               ItemSeparatorComponent={SearchSeparator}
               renderScrollComponent={FlashListScrollComponent}
               ListEmptyComponent={listEmpty}

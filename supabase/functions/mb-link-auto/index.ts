@@ -171,6 +171,13 @@ async function findLinkableEmailMatch(
   return available.length === 1 ? available[0] : null;
 }
 
+// Mirrors mb-link: creating Mindbody clients from the app is opt-out via
+// MB_ALLOW_CLIENT_CREATE=false. Both link paths must honor it, otherwise
+// disabling creation in one place silently leaks through the other.
+function allowClientCreate(): boolean {
+  return Deno.env.get('MB_ALLOW_CLIENT_CREATE')?.toLowerCase() !== 'false';
+}
+
 async function createMindbodyClient(
   email: string,
   profile: ProfileRow,
@@ -335,7 +342,7 @@ Deno.serve(async (req) => {
         [emailMatch],
       );
       result = stored;
-    } else if (caller.role === 'coach') {
+    } else if (caller.role === 'coach' || !allowClientCreate()) {
       throw new MbError(
         'NOT_LINKED',
         'No exact Mindbody email match found. Enter the member Mindbody client ID manually.',

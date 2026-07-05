@@ -32,7 +32,7 @@ export const COACH_TAB_ROUTES = [
   {
     name: 'promotions',
     href: '/(coach)/(main)/promotions',
-    label: 'Promote',
+    label: 'Review',
     icon: 'ribbon-outline',
     activeIcon: 'ribbon',
   },

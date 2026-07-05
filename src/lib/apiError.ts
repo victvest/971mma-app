@@ -13,3 +13,9 @@ export type ApiError = {
   status: number | null;
   rawCode?: string;
 };
+
+export function isApiError(error: unknown): error is ApiError {
+  if (!error || typeof error !== 'object') return false;
+  const maybe = error as Partial<ApiError>;
+  return typeof maybe.message === 'string' && typeof maybe.code === 'string';
+}

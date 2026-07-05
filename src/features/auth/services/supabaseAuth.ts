@@ -2,6 +2,7 @@ import { getSupabaseClient } from '@/services/supabase/client';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import type { ApiError } from '@/lib/apiError';
 import { formatAuthError, normalizeEmail } from './authValidation';
+import { continueWithApple } from './appleAuth';
 import { continueWithGoogle } from './googleAuth';
 import type { AuthService } from '../types';
 
@@ -13,11 +14,33 @@ type AuthSignInResponse = {
 };
 
 async function signInDirect(email: string, password: string) {
-  const { error } = await getSupabaseClient().auth.signInWithPassword({
+  console.warn('[auth] auth-sign-in edge unavailable — using direct sign-in fallback');
+  const client = getSupabaseClient();
+  const { data, error } = await client.auth.signInWithPassword({
     email: normalizeEmail(email),
     password,
   });
-  return { error: error ? formatAuthError(error) : null };
+  if (error) {
+    return { error: formatAuthError(error) };
+  }
+
+  // The primary path (auth-sign-in edge function) refuses admin accounts on the
+  // member app. This fallback must enforce the same rule so a network blip can't
+  // become an admin-login bypass.
+  const userId = data.user?.id;
+  if (userId) {
+    const { data: profile } = await client
+      .from('profiles')
+      .select('role')
+      .eq('id', userId)
+      .maybeSingle<{ role: string | null }>();
+    if (profile?.role === 'admin') {
+      await client.auth.signOut();
+      return { error: formatAuthError({ rawCode: 'INVALID_CREDENTIALS' }) };
+    }
+  }
+
+  return { error: null };
 }
 
 export const supabaseAuthService: AuthService = {
@@ -89,6 +112,14 @@ export const supabaseAuthService: AuthService = {
 
   async signUpWithGoogle() {
     return continueWithGoogle();
+  },
+
+  async signInWithApple() {
+    return continueWithApple();
+  },
+
+  async signUpWithApple() {
+    return continueWithApple();
   },
 
   async verifySignupOtp(email, token) {
@@ -168,6 +199,18 @@ export const supabaseAuthService: AuthService = {
 
   async signOut() {
     await getSupabaseClient().auth.signOut();
+  },
+
+  async signOutOtherDevices() {
+    try {
+      await invokeEdge<{ ok: boolean }>('auth-sign-out-others');
+      return { error: null };
+    } catch (error) {
+      const apiError = error as ApiError;
+      return {
+        error: apiError.message || 'Unable to sign out other devices.',
+      };
+    }
   },
 
   startAutoRefresh() {

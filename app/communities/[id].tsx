@@ -1,7 +1,9 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { FlashList, type FlashListRef } from '@shopify/flash-list';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { AppBottomSheet, AppBottomSheetButton } from '@/shared/components/AppBottomSheet';
+import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { AppBar, FlashListScrollComponent } from '@/shared/components/ui';
 import {
@@ -10,15 +12,16 @@ import {
   CommunityDateSeparator,
   CommunityFeedMessage,
   CommunityFeedSkeleton,
-  CommunityAnnouncementSheet,
   CommunityGroupsFab,
 } from '@/features/communities/components';
 import {
   useCommunityChannelFeedInfinite,
   useCommunityChannelHeader,
   useMarkCommunityChannelReadOnFocus,
+  usePinCommunityPost,
   usePublishCommunityPost,
   useToggleCommunityReaction,
+  useUnpinCommunityPost,
 } from '@/features/communities/hooks/useCommunities';
 import { useCommunityChannelRealtime } from '@/features/communities/hooks/useCommunityRealtime';
 import {
@@ -28,23 +31,30 @@ import {
 } from '@/features/communities/utils/community-feed-rows';
 import { useMyCoachRecord } from '@/features/coach/hooks/useMyCoachRecord';
 import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import {
+  canManageCommunityChannel,
+  canPostInCommunityChannel,
+} from '@/features/communities/utils/communityPermissions';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import { triggerLightImpact } from '@/shared/haptics';
 import { toast } from '@/shared/components/Toast';
 import { useTheme } from '@/shared/theme';
+import { useAuthStore } from '@/stores/useAuthStore';
 import type { CommunityPostItem } from '@/types/domain';
 
 type FeedPostItemProps = {
   post: CommunityPostItem;
   channelId: string;
   readOnly: boolean;
-  onOpenThread: (postId: string) => void;
+  onLongPress?: (post: CommunityPostItem) => void;
 };
 
 const FeedPostItem = memo(function FeedPostItem({
   post,
   channelId,
   readOnly,
-  onOpenThread,
+  onLongPress,
 }: FeedPostItemProps) {
   const reactionMutation = useToggleCommunityReaction(post.id, channelId);
 
@@ -52,8 +62,7 @@ const FeedPostItem = memo(function FeedPostItem({
     <CommunityFeedMessage
       post={post}
       readOnly={readOnly}
-      onPress={() => onOpenThread(post.id)}
-      onOpenThread={() => onOpenThread(post.id)}
+      onLongPress={onLongPress ? () => onLongPress(post) : undefined}
       onReact={readOnly ? undefined : (emoji) => reactionMutation.mutate(emoji)}
     />
   );
@@ -65,19 +74,26 @@ export default function CommunityChannelScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const channelId = typeof id === 'string' ? id : '';
   const viewingChild = useIsViewingChildProfile();
+  const role = useAuthStore((state) => state.role);
   const { coach } = useMyCoachRecord();
   const [refreshing, setRefreshing] = useState(false);
   const [message, setMessage] = useState('');
-  const [announcementOpen, setAnnouncementOpen] = useState(false);
   const listRef = useRef<FlashListRef<CommunityFeedRow>>(null);
   const didInitialScrollRef = useRef(false);
 
   const headerQuery = useCommunityChannelHeader(channelId, Boolean(channelId));
   const feedQuery = useCommunityChannelFeedInfinite(channelId, Boolean(channelId));
-  const publishMutation = usePublishCommunityPost(coach?.id ?? '');
+  const publishMutation = usePublishCommunityPost(coach?.id);
+  const pinMutation = usePinCommunityPost(channelId, coach?.id);
+  const unpinMutation = useUnpinCommunityPost(channelId, coach?.id);
+  const [pinSheetPost, setPinSheetPost] = useState<CommunityPostItem | null>(null);
 
   const isCoachOwner = headerQuery.data?.isCoachOwner ?? false;
-  const canCompose = isCoachOwner && !viewingChild;
+  const channelKind = headerQuery.data?.channelKind ?? 'group';
+  const isGroupChannel = channelKind === 'group';
+  const canCompose = canPostInCommunityChannel(channelKind, role, isCoachOwner, viewingChild);
+  const canManageGroup =
+    canManageCommunityChannel(role, isCoachOwner, viewingChild) && isGroupChannel;
 
   useMarkCommunityChannelReadOnFocus(channelId, Boolean(channelId));
   useCommunityChannelRealtime(channelId, Boolean(channelId));
@@ -125,12 +141,27 @@ export default function CommunityChannelScreen() {
     }
   }, [feedQuery, headerQuery]);
 
-  const handleOpenThread = useCallback(
-    (postId: string) => {
-      router.push(`/communities/post/${postId}`);
-    },
-    [router],
-  );
+  const handleLongPressPost = useCallback((post: CommunityPostItem) => {
+    triggerLightImpact();
+    setPinSheetPost(post);
+  }, []);
+
+  const handleTogglePin = useCallback(() => {
+    if (!pinSheetPost) return;
+    if (pinSheetPost.isPinned) {
+      unpinMutation.mutate(pinSheetPost.id);
+    } else {
+      pinMutation.mutate(pinSheetPost.id);
+    }
+    setPinSheetPost(null);
+  }, [pinMutation, pinSheetPost, unpinMutation]);
+
+  const handleOpenSettings = useCallback(() => {
+    router.push({
+      pathname: '/(coach)/community-groups/[id]/settings',
+      params: { id: channelId },
+    });
+  }, [channelId, router]);
 
   const handleLoadOlder = useCallback(() => {
     if (!feedQuery.hasNextPage || feedQuery.isFetchingNextPage) return;
@@ -139,7 +170,7 @@ export default function CommunityChannelScreen() {
 
   const handleSend = useCallback(() => {
     const body = message.trim();
-    if (!body || !canCompose || !coach?.id) return;
+    if (!body || !canCompose) return;
 
     publishMutation.mutate(
       {
@@ -157,7 +188,7 @@ export default function CommunityChannelScreen() {
         },
       },
     );
-  }, [canCompose, channelId, coach?.id, message, publishMutation, scrollToLatest]);
+  }, [canCompose, channelId, message, publishMutation, scrollToLatest]);
 
   const renderItem = useCallback(
     ({ item }: { item: CommunityFeedRow }) => {
@@ -170,11 +201,11 @@ export default function CommunityChannelScreen() {
           post={item.post}
           channelId={channelId}
           readOnly={viewingChild}
-          onOpenThread={handleOpenThread}
+          onLongPress={canManageGroup ? handleLongPressPost : undefined}
         />
       );
     },
-    [channelId, handleOpenThread, viewingChild],
+    [canManageGroup, channelId, handleLongPressPost, viewingChild],
   );
 
   const listHeader = useMemo(() => {
@@ -250,21 +281,33 @@ export default function CommunityChannelScreen() {
       <View style={{ paddingHorizontal: inset.lg }}>
         <StateBlock
           kind="empty"
-          title="No messages yet"
-          message={canCompose ? 'Be the first to say something.' : 'Your coach has not posted yet.'}
+          title={isGroupChannel ? 'No messages yet' : 'No announcements yet'}
+          message={
+            canCompose
+              ? isGroupChannel
+                ? 'Be the first to post in this group.'
+                : 'Post the first community announcement.'
+              : isGroupChannel
+                ? 'No messages yet.'
+                : 'Your coach has not posted an announcement yet.'
+          }
         />
       </View>
     );
-  }, [canCompose, feedQuery, headerQuery, inset.lg]);
+  }, [canCompose, feedQuery, headerQuery, inset.lg, isGroupChannel]);
 
-  const screenTitle = headerQuery.data?.disciplineName ?? headerQuery.data?.title ?? 'Group';
+  const screenTitle = headerQuery.data?.title ?? headerQuery.data?.disciplineName ?? 'Group';
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top']}
     >
-      <AppBar title={screenTitle} showBackButton />
+      <AppBar
+        title={screenTitle}
+        showBackButton
+        fallbackHref={role === 'coach' ? '/(coach)/communities' : '/communities'}
+      />
 
       <View style={styles.body}>
         <CommunityChatLayout
@@ -274,6 +317,7 @@ export default function CommunityChannelScreen() {
               ref={listRef}
               renderScrollComponent={FlashListScrollComponent}
               data={feedQuery.isLoading || feedQuery.isError ? [] : feedRows}
+              overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.communityFeedMessage)}
               keyExtractor={(item) => item.id}
               renderItem={renderItem}
               ListHeaderComponent={listHeader}
@@ -294,27 +338,53 @@ export default function CommunityChannelScreen() {
               onSend={handleSend}
               sending={publishMutation.isPending}
               readOnly={!canCompose}
-              placeholder={canCompose ? 'Post an announcement...' : undefined}
+              placeholder={
+                canCompose
+                  ? isGroupChannel
+                    ? 'Message group...'
+                    : 'Post a community announcement...'
+                  : undefined
+              }
               readOnlyHint={
                 viewingChild
                   ? 'Family view is read-only.'
-                  : 'Open an announcement to join the thread.'
+                  : 'Announcements are posted by your coach.'
               }
             />
           }
         />
-        {canCompose ? (
-          <CommunityGroupsFab bottomOffset={72} onPress={() => setAnnouncementOpen(true)} />
+        {canManageGroup ? (
+          <CommunityGroupsFab
+            bottomOffset={72}
+            icon="settings-outline"
+            accessibilityLabel="Group settings"
+            onPress={handleOpenSettings}
+          />
         ) : null}
       </View>
 
-      <CommunityAnnouncementSheet
-        visible={announcementOpen}
-        onDismiss={() => setAnnouncementOpen(false)}
-        initialChannelId={channelId}
-        lockChannel
-      />
-    </SafeAreaView>
+      <AppBottomSheet visible={Boolean(pinSheetPost)} onDismiss={() => setPinSheetPost(null)}>
+        <View style={[styles.pinSheetRow, { gap: inset.sm }]}>
+          <Ionicons
+            name={pinSheetPost?.isPinned ? 'pin' : 'pin-outline'}
+            size={18}
+            color={colors.accent.default}
+          />
+          <Text style={{ color: colors.text.primary, fontSize: 15, fontWeight: '700' }}>
+            {pinSheetPost?.isPinned ? 'Unpin message' : 'Pin message'}
+          </Text>
+        </View>
+        <AppBottomSheetButton
+          label={pinSheetPost?.isPinned ? 'Unpin' : 'Pin'}
+          onPress={handleTogglePin}
+        />
+        <AppBottomSheetButton
+          label="Cancel"
+          variant="secondary"
+          onPress={() => setPinSheetPost(null)}
+        />
+      </AppBottomSheet>
+    </AppSafeAreaView>
   );
 }
 
@@ -323,6 +393,10 @@ const styles = StyleSheet.create({
   body: { flex: 1 },
   listHeader: {
     width: '100%',
+  },
+  pinSheetRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
   },
   readOnlyNotice: {
     borderRadius: 16,

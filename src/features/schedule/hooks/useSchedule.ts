@@ -7,7 +7,6 @@ import {
   useQueryClient,
   type QueryClient,
 } from '@tanstack/react-query';
-import { useAuthStore } from '@/stores/useAuthStore';
 import { gymDayKey, gymRangeIso, gymTodayTomorrowRange } from '@/core/time/gymTime';
 import type { ScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
 import {
@@ -20,6 +19,8 @@ import {
   getPrograms,
 } from '@/services/database';
 import { getScheduleProvider } from '@/services/integrations';
+import { useCanInvokeProtectedEdge, canInvokeProtectedEdge } from '@/features/auth/utils/canInvokeProtectedEdge';
+import { isApiError } from '@/lib/apiError';
 import {
   SCHEDULE_MIRROR_STALE_MS,
   SCHEDULE_PAGE_STALE_MS,
@@ -90,10 +91,20 @@ type ScheduleMirrorResult = {
   schedule: { refreshed: boolean; count?: number };
 };
 
+const EMPTY_SCHEDULE_MIRROR_RESULT: ScheduleMirrorResult = {
+  refreshed: false,
+  programs: { refreshed: false },
+  schedule: { refreshed: false },
+};
+
 async function runScheduleMirrorSync(
   range: { startDate: string; endDate: string },
   force = false,
 ): Promise<ScheduleMirrorResult> {
+  if (!canInvokeProtectedEdge()) {
+    return EMPTY_SCHEDULE_MIRROR_RESULT;
+  }
+
   const provider = getScheduleProvider();
   const programs = await provider.refreshPrograms();
   const schedule = await provider.refreshSchedule(force ? { ...range, force: true } : range);
@@ -105,13 +116,12 @@ async function runScheduleMirrorSync(
 }
 
 export function useScheduleRefresh(range = gymTodayTomorrowRange()) {
-  const role = useAuthStore((s) => s.role);
-  const isGuest = role === 'guest';
+  const canSync = useCanInvokeProtectedEdge();
 
   return useQuery({
     queryKey: scheduleRefreshKey(range),
     queryFn: () => runScheduleMirrorSync(range),
-    enabled: !isGuest,
+    enabled: canSync,
     staleTime: SCHEDULE_MIRROR_STALE_MS,
   });
 }
@@ -138,17 +148,15 @@ export function useScheduleDay(range = gymRangeIso()) {
  */
 export function useScheduleFocusSync(enabled = true) {
   const queryClient = useQueryClient();
+  const canSync = useCanInvokeProtectedEdge();
+  const mirrorEnabled = enabled && canSync;
   const lastSyncRef = useRef(0);
   const lastDayKeyRef = useRef(gymDayKey());
   const syncingRef = useRef(false);
 
-  const role = useAuthStore((s) => s.role);
-  const isGuest = role === 'guest';
-  const actualEnabled = enabled && !isGuest;
-
   const sync = useCallback(
     async (force = false) => {
-      if (!actualEnabled || syncingRef.current) return;
+      if (!mirrorEnabled || syncingRef.current) return;
 
       const now = Date.now();
       const currentDayKey = gymDayKey();
@@ -169,11 +177,15 @@ export function useScheduleFocusSync(enabled = true) {
           await invalidateScheduleQueries(queryClient);
           await queryClient.invalidateQueries({ queryKey: ['home-dashboard'] });
         }
+      } catch (error) {
+        if (__DEV__ && !(isApiError(error) && error.code === 'UNAUTHORIZED')) {
+          console.warn('[schedule] mirror sync failed', error);
+        }
       } finally {
         syncingRef.current = false;
       }
     },
-    [actualEnabled, queryClient],
+    [mirrorEnabled, queryClient],
   );
 
   useFocusEffect(

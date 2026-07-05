@@ -1,16 +1,25 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { Pressable, RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { Image } from 'expo-image';
 import { useRouter } from 'expo-router';
 import { AppScrollView } from '@/shared/components/ui';
 import { AcademyEyebrow } from '@/shared/components/brand';
+import { MemberAvatar } from '@/shared/components/MemberAvatar';
+import { StateBlock } from '@/shared/components/StateBlock';
 import { useActiveProfileOptions, useGuardianLinks } from '@/features/guardian/hooks/useGuardian';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
 import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
 import { useIsGuest } from '@/shared/hooks/useIsGuest';
+import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import { useOfflineRetry } from '@/shared/hooks/useOfflineRetry';
 import { useTheme } from '@/shared/theme';
+import {
+  isOfflineWithoutCache,
+  isQueryActivelyLoading,
+  OFFLINE_MESSAGE,
+  OFFLINE_TITLE,
+} from '@/lib/offlineState';
 import type { GuardianLinkItem } from '@/types/domain';
 
 type ProfileRowProps = {
@@ -23,7 +32,6 @@ type ProfileRowProps = {
 
 function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: ProfileRowProps) {
   const { colors, typography, inset } = useTheme();
-  const initial = name.trim().slice(0, 1).toUpperCase() || 'M';
   const isInteractive = Boolean(onPress) && !pending;
 
   return (
@@ -45,19 +53,13 @@ function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: Pro
         },
       ]}
     >
-      {avatarUrl ? (
-        <Image
-          source={{ uri: avatarUrl }}
-          style={[styles.avatar, { backgroundColor: colors.fill.secondary }]}
-          contentFit="cover"
-          cachePolicy="memory-disk"
-          recyclingKey={avatarUrl}
-        />
-      ) : (
-        <View style={[styles.avatar, { backgroundColor: colors.fill.secondary }]}>
-          <Text style={[styles.avatarText, { color: colors.text.secondary }]}>{initial}</Text>
-        </View>
-      )}
+      <MemberAvatar
+        name={name}
+        avatarUrl={avatarUrl}
+        size={48}
+        backgroundColor={colors.accent.default}
+        textColor={colors.text.inverse}
+      />
 
       <View style={styles.nameBlock}>
         <Text
@@ -96,7 +98,7 @@ function RowDivider() {
         styles.divider,
         {
           backgroundColor: colors.border.subtle,
-          marginLeft: inset.md + 44 + inset.sm,
+          marginLeft: inset.md + 48 + inset.sm,
         },
       ]}
     />
@@ -117,6 +119,16 @@ export function FamilyTraineesScreenContent() {
   const [refreshing, setRefreshing] = useState(false);
 
   const links = useMemo(() => linksQuery.data ?? [], [linksQuery.data]);
+  const { isOnline, networkStatusKnown } = useNetworkStatus();
+  const hasData = links.length > 0 || activeProfileOptions.length > 0;
+  const hasError = linksQuery.isError;
+  const isInitialLoading = isQueryActivelyLoading(linksQuery.isLoading, linksQuery.isFetching) && !hasData;
+  const isOfflineBlocked = isOfflineWithoutCache({
+    networkStatusKnown,
+    isOnline,
+    hasData,
+    hasError,
+  });
   const listLinks = useMemo(
     () =>
       links
@@ -137,7 +149,7 @@ export function FamilyTraineesScreenContent() {
   const selfLabel = user?.fullName?.trim() || 'Me';
   const isSelfSelected = !selectedTraineeId;
 
-  const handleRefresh = useCallback(async () => {
+  const handleRefreshBase = useCallback(async () => {
     setRefreshing(true);
     try {
       await linksQuery.refetch();
@@ -145,6 +157,7 @@ export function FamilyTraineesScreenContent() {
       setRefreshing(false);
     }
   }, [linksQuery]);
+  const handleRefresh = useOfflineRetry(handleRefreshBase);
 
   const handleSwitchToSelf = useCallback(() => {
     if (hasLimitedAccess) {
@@ -182,6 +195,18 @@ export function FamilyTraineesScreenContent() {
 
   return (
     <View style={styles.root}>
+      {isOfflineBlocked ? (
+        <View style={[styles.offlineWrap, { padding: inset.lg }]}>
+          <StateBlock
+            kind="error"
+            title={OFFLINE_TITLE}
+            message={OFFLINE_MESSAGE}
+            actionLabel="Retry"
+            onAction={handleRefresh}
+            offlineAwareRetry
+          />
+        </View>
+      ) : (
       <AppScrollView
         contentContainerStyle={[styles.scrollContent, { padding: inset.lg, gap: gap.lg }]}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
@@ -246,7 +271,7 @@ export function FamilyTraineesScreenContent() {
             );
           })}
 
-          {linksQuery.isLoading ? (
+          {isInitialLoading ? (
             <>
               <RowDivider />
               <View style={[styles.loadingRow, { padding: inset.md }]}>
@@ -256,8 +281,9 @@ export function FamilyTraineesScreenContent() {
           ) : null}
         </View>
       </AppScrollView>
+      )}
 
-      {!linksQuery.isLoading && listLinks.length === 0 ? (
+      {!isInitialLoading && !isOfflineBlocked && listLinks.length === 0 ? (
         <View style={[styles.footer, { paddingHorizontal: inset.lg, paddingBottom: inset.lg }]}>
           <Text style={[styles.staffNote, { color: colors.text.secondary }]}>
             Ask the front desk to link a child or teen to your account.
@@ -271,6 +297,10 @@ export function FamilyTraineesScreenContent() {
 
 const styles = StyleSheet.create({
   root: { flex: 1 },
+  offlineWrap: {
+    flex: 1,
+    justifyContent: 'center',
+  },
   scrollContent: { flexGrow: 1 },
   listShell: { width: '100%' },
   row: {
@@ -279,15 +309,6 @@ const styles = StyleSheet.create({
     gap: 12,
     minHeight: 64,
   },
-  avatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-  },
-  avatarText: { fontSize: 16, fontWeight: '700' },
   nameBlock: { flex: 1, minWidth: 0, gap: 2 },
   name: {},
   pendingLabel: { fontSize: 12, fontWeight: '500' },

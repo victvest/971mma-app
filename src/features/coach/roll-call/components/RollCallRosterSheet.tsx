@@ -7,6 +7,7 @@ import { RollCallMarkStatusChip } from '@/features/coach/roll-call/components/Ro
 import type { RollCallDeckMember } from '@/features/coach/roll-call/types';
 import { rollCallStatusDisplayLabel } from '@/features/coach/roll-call/types';
 import { FlashListScrollComponent } from '@/shared/components/ui';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 
@@ -135,6 +136,7 @@ export const RollCallRosterSheet = memo(function RollCallRosterSheet({
             data={sortedMembers}
             renderItem={renderItem}
             keyExtractor={keyExtractor}
+            overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallRosterRow)}
             renderScrollComponent={FlashListScrollComponent}
             ItemSeparatorComponent={RosterRowSeparator}
           />

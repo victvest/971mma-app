@@ -7,7 +7,7 @@ import {
   getRankEligibility,
 } from './discipline.repository';
 import { getPointsAccount } from './points.repository';
-import { fetchUpcomingHeroClasses } from './classes.repository';
+import { fetchUpcomingHeroClasses, HOME_HERO_CLASS_LIMIT } from './classes.repository';
 import type {
   BeltProgressItem,
   ClassItem,
@@ -18,7 +18,7 @@ import type {
   RankEligibility,
 } from '@/types/domain';
 
-const HOME_SCHEDULE_LIMIT = 3;
+const HOME_SCHEDULE_LIMIT = HOME_HERO_CLASS_LIMIT;
 const HOME_COACH_PREVIEW_LIMIT = 5;
 
 export type HomeDashboardSummary = {
@@ -155,21 +155,10 @@ export async function getHomeDashboardSummary(userId: string): Promise<HomeDashb
     };
   }
 
-  let summary: HomeDashboardSummary;
-
   try {
-    summary = await getHomeDashboardViaRpc(userId);
+    return await getHomeDashboardViaRpc(userId);
   } catch (error) {
     if (!isMissingHomeDashboardRpc(error)) throw error;
-    summary = await getHomeDashboardFallback(userId);
+    return getHomeDashboardFallback(userId);
   }
-
-  if (summary.upcomingClasses.length === 0) {
-    const upcomingClasses = await fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId);
-    if (upcomingClasses.length > 0) {
-      summary = { ...summary, upcomingClasses };
-    }
-  }
-
-  return summary;
 }

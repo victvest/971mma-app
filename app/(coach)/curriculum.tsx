@@ -1,15 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
-import { AppBar, AppScrollView, BrandedButton } from '@/shared/components/ui';
-import { BeltPathSectionTitle } from '@/features/belt/components/BeltPathSectionTitle';
+import { StyleSheet, Text, View } from 'react-native';
+import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
+import { AppBar, AppBarIconButton, AppSafeAreaView, AppScrollView, PillSegmentedTabs } from '@/shared/components/ui';
+import {
+  CoachCurriculumRequirementCard,
+} from '@/features/coach/components/curriculum/CoachCurriculumRequirementCard';
 import {
   CoachCurriculumRequirementEditor,
   type CoachCurriculumRequirementDraft,
 } from '@/features/coach/components/curriculum/CoachCurriculumRequirementEditor';
-import { CommunityGroupsFab } from '@/features/communities/components/CommunityAnnouncementSheet';
 import {
   useCoachRankCurriculum,
   useDeleteCoachRankRequirement,
@@ -22,7 +21,7 @@ import {
 import { StateBlock } from '@/shared/components/StateBlock';
 import { toast } from '@/shared/components/Toast';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
-import { triggerLightImpact } from '@/shared/haptics';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useTheme } from '@/shared/theme';
 import type { CoachCurriculumRequirement } from '@/types/domain';
 
@@ -40,8 +39,8 @@ function groupRequirements(requirements: CoachCurriculumRequirement[]) {
 }
 
 export default function CoachCurriculumScreen() {
-  const { colors, typography, inset, gap, radius, layout } = useTheme();
-  const router = useRouter();
+  const { colors, typography, inset, gap } = useTheme();
+  const appTopInset = useAppTopInset();
   const { showConfirm } = useDialog();
   const assignedDisciplinesQuery = useCoachAssignedDisciplines();
   const rankDisciplines = assignedDisciplinesQuery.rankDisciplines;
@@ -51,6 +50,11 @@ export default function CoachCurriculumScreen() {
     assignedDisciplinesQuery.primaryRankDisciplineSlug ??
     (rankDisciplines[0]?.slug as RankDisciplineSlug | undefined) ??
     null;
+
+  const activeDiscipline = useMemo(
+    () => rankDisciplines.find((item) => item.slug === activeDisciplineSlug) ?? null,
+    [activeDisciplineSlug, rankDisciplines],
+  );
 
   const curriculumQuery = useCoachRankCurriculum(
     activeDisciplineSlug,
@@ -67,6 +71,15 @@ export default function CoachCurriculumScreen() {
   const groupedRequirements = useMemo(
     () => groupRequirements(curriculumQuery.data?.requirements ?? []),
     [curriculumQuery.data?.requirements],
+  );
+
+  const disciplineOptions = useMemo(
+    () =>
+      rankDisciplines.map((discipline) => ({
+        value: discipline.slug as RankDisciplineSlug,
+        label: discipline.displayName,
+      })),
+    [rankDisciplines],
   );
 
   const openCreateEditor = useCallback(() => {
@@ -131,18 +144,36 @@ export default function CoachCurriculumScreen() {
 
   const ranks = curriculumQuery.data?.ranks ?? [];
   const hasRankDiscipline = rankDisciplines.length > 0;
+  const appBarBottomInset = inset.sm;
+  const floatingAppBarOffset = 72 + appBarBottomInset;
 
   return (
-    <SafeAreaView
+    <AppSafeAreaView
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
-      edges={['top']}
+      edges={['bottom']}
     >
-      <AppBar title="Curriculum" showBackButton />
+      <AppBar
+        title=" "
+        showBackButton
+        floating
+        bottomInset={appBarBottomInset}
+        rightElement={
+          ranks.length > 0 && !editorOpen ? (
+            <AppBarIconButton
+              icon="add"
+              accessibilityLabel="Add requirement"
+              onPress={openCreateEditor}
+            />
+          ) : undefined
+        }
+      />
 
       {assignedDisciplinesQuery.isLoading ? (
-        <StateBlock kind="loading" title="Loading your disciplines" />
+        <View style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}>
+          <StateBlock kind="loading" title="Loading your disciplines" />
+        </View>
       ) : !hasRankDiscipline ? (
-        <View style={{ padding: inset.lg }}>
+        <View style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}>
           <StateBlock
             kind="empty"
             title="No rank disciplines assigned"
@@ -150,165 +181,85 @@ export default function CoachCurriculumScreen() {
           />
         </View>
       ) : (
-        <View style={styles.body}>
-          <AppScrollView
-            style={styles.flex}
-            contentContainerStyle={{
-              paddingHorizontal: inset.lg,
-              paddingTop: inset.lg,
-              paddingBottom: inset['3xl'] + 72,
-              gap: gap.lg,
-            }}
-            showsVerticalScrollIndicator={false}
-          >
-            <View style={{ gap: gap.xs }}>
-              <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
-                Stripe requirements
-              </Text>
-              <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-                Define what members must complete before earning their next stripe in your discipline.
-              </Text>
+        <AppScrollView
+          style={styles.flex}
+          contentContainerStyle={{
+            paddingHorizontal: inset.lg,
+            paddingTop: appTopInset + floatingAppBarOffset,
+            paddingBottom: inset['3xl'],
+            gap: gap.xl,
+          }}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={{ gap: gap.md }}>
+            <View style={{ gap: gap.sm }}>
+              <AcademyEyebrow
+                label={
+                  activeDiscipline
+                    ? `${activeDiscipline.displayName} curriculum`
+                    : 'Coach curriculum'
+                }
+                accent
+                showFlag={false}
+              />
+              <TabHeroTitle
+                lines={[[{ text: 'Stripe ' }, { text: 'requirements.', accent: true }]]}
+              />
             </View>
 
-            {rankDisciplines.length > 1 ? (
-              <View style={[styles.row, { gap: gap.sm }]}>
-                {rankDisciplines.map((discipline) => {
-                  const selected = discipline.slug === activeDisciplineSlug;
-                  return (
-                    <Pressable
-                      key={discipline.id}
-                      onPress={() => {
-                        triggerLightImpact();
-                        setDisciplineSlug(discipline.slug as RankDisciplineSlug);
-                      }}
-                      style={[
-                        styles.chip,
-                        {
-                          backgroundColor: selected ? colors.accent.default : colors.background.secondary,
-                          borderColor: selected ? colors.accent.default : colors.border.subtle,
-                          borderRadius: radius.pill,
-                          borderWidth: layout.borderWidth,
-                        },
-                      ]}
-                    >
-                      <Text
-                        style={[
-                          typography.textPresets.captionMedium,
-                          {
-                            color: selected ? colors.accent.onAccent : colors.text.secondary,
-                          },
-                        ]}
-                      >
-                        {discipline.displayName}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
+            {disciplineOptions.length > 1 && activeDisciplineSlug ? (
+              <PillSegmentedTabs
+                value={activeDisciplineSlug}
+                options={disciplineOptions}
+                onValueChange={setDisciplineSlug}
+                selectedVariant="accent"
+              />
             ) : null}
+          </View>
 
-            {curriculumQuery.isLoading ? (
-              <StateBlock kind="loading" title="Loading curriculum" />
-            ) : curriculumQuery.isError ? (
-              <StateBlock
-                kind="error"
-                title="Could not load curriculum"
-                actionLabel="Retry"
-                onAction={() => curriculumQuery.refetch()}
-              />
-            ) : ranks.length === 0 ? (
-              <StateBlock
-                kind="empty"
-                title="No ranks configured"
-                message="Academy staff must set up belt ranks before you can add requirements."
-              />
-            ) : groupedRequirements.length === 0 ? (
-              <StateBlock
-                kind="empty"
-                title="No requirements yet"
-                message="Add skill, assessment, or attendance targets for each stripe."
-                actionLabel="Add requirement"
-                onAction={openCreateEditor}
-              />
-            ) : (
-              groupedRequirements.map(([sectionTitle, items]) => (
-                <View key={sectionTitle} style={{ gap: gap.md }}>
-                  <BeltPathSectionTitle title={sectionTitle} />
+          {curriculumQuery.isLoading ? (
+            <StateBlock kind="loading" title="Loading curriculum" />
+          ) : curriculumQuery.isError ? (
+            <StateBlock
+              kind="error"
+              title="Could not load curriculum"
+              actionLabel="Retry"
+              onAction={() => curriculumQuery.refetch()}
+            />
+          ) : ranks.length === 0 ? (
+            <StateBlock
+              kind="empty"
+              title="No ranks configured"
+              message="Academy staff must set up belt ranks before you can add requirements."
+            />
+          ) : groupedRequirements.length === 0 ? (
+            <StateBlock
+              kind="empty"
+              title="No requirements yet"
+              message="Add skill, assessment, or attendance targets for each stripe."
+              actionLabel="Add requirement"
+              onAction={openCreateEditor}
+            />
+          ) : (
+            groupedRequirements.map(([sectionTitle, items]) => (
+              <View key={sectionTitle} style={{ gap: gap.md }}>
+                <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
+                  {sectionTitle.toUpperCase()}
+                </Text>
+                <View style={{ gap: gap.sm }}>
                   {items.map((item) => (
-                    <View
+                    <CoachCurriculumRequirementCard
                       key={item.id}
-                      style={[
-                        styles.requirementCard,
-                        {
-                          backgroundColor: colors.surface.secondary,
-                          borderColor: colors.border.subtle,
-                          borderRadius: radius.card,
-                          borderWidth: layout.borderWidth,
-                          padding: inset.md,
-                          gap: gap.sm,
-                        },
-                      ]}
-                    >
-                      <View style={styles.requirementHeader}>
-                        <View style={{ flex: 1, gap: gap.xs }}>
-                          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
-                            {item.title}
-                          </Text>
-                          {item.description ? (
-                            <Text
-                              style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
-                            >
-                              {item.description}
-                            </Text>
-                          ) : null}
-                        </View>
-                        <View style={[styles.actions, { gap: gap.sm }]}>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Edit requirement"
-                            onPress={() => openEditEditor(item)}
-                            hitSlop={8}
-                          >
-                            <Ionicons name="create-outline" size={18} color={colors.text.secondary} />
-                          </Pressable>
-                          <Pressable
-                            accessibilityRole="button"
-                            accessibilityLabel="Delete requirement"
-                            onPress={() => handleDeleteRequirement(item)}
-                            hitSlop={8}
-                          >
-                            <Ionicons name="trash-outline" size={18} color={colors.status.error} />
-                          </Pressable>
-                        </View>
-                      </View>
-                      <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
-                        {item.requirementType}
-                        {item.requirementType === 'attendance' && item.attendanceTarget
-                          ? ` · ${item.attendanceTarget} classes`
-                          : ''}
-                      </Text>
-                    </View>
+                      item={item}
+                      onEdit={openEditEditor}
+                      onDelete={handleDeleteRequirement}
+                    />
                   ))}
                 </View>
-              ))
-            )}
-
-            <BrandedButton
-              label="Open belt review"
-              variant="secondary"
-              full
-              onPress={() => router.push('/(coach)/belt-review')}
-            />
-          </AppScrollView>
-
-          {ranks.length > 0 && !editorOpen ? (
-            <CommunityGroupsFab
-              icon="add"
-              accessibilityLabel="Add requirement"
-              onPress={openCreateEditor}
-            />
-          ) : null}
-        </View>
+              </View>
+            ))
+          )}
+        </AppScrollView>
       )}
 
       <CoachCurriculumRequirementEditor
@@ -322,30 +273,11 @@ export default function CoachCurriculumScreen() {
         }}
         onSave={handleSaveRequirement}
       />
-    </SafeAreaView>
+    </AppSafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  body: { flex: 1 },
   flex: { flex: 1 },
-  row: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  requirementCard: {},
-  requirementHeader: {
-    alignItems: 'flex-start',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  actions: {
-    alignItems: 'center',
-    flexDirection: 'row',
-  },
 });

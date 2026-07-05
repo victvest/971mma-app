@@ -13,6 +13,7 @@ import {
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
 import { formatAuthError, validateEmail, validateOtpCode } from '@/features/auth/services/authValidation';
+import { useOtpResendCooldown } from '@/features/auth/hooks/useOtpResendCooldown';
 import { useTheme } from '@/shared/theme';
 
 export default function ResetVerifyOtpScreen() {
@@ -25,6 +26,7 @@ export default function ResetVerifyOtpScreen() {
   const [code, setCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [resending, setResending] = useState(false);
+  const { cooldownSec, canResend, startCooldown, showResentConfirmation } = useOtpResendCooldown();
 
   useEffect(() => {
     if (!email || validateEmail(email)) {
@@ -70,6 +72,8 @@ export default function ResetVerifyOtpScreen() {
   );
 
   async function handleResend() {
+    if (!canResend) return;
+
     setResending(true);
     try {
       const result = await resendRecoveryOtp(email);
@@ -79,6 +83,7 @@ export default function ResetVerifyOtpScreen() {
       }
 
       authFeedback.otpResent();
+      startCooldown();
       otpRef.current?.clear();
       setCode('');
       otpRef.current?.focus();
@@ -109,6 +114,17 @@ export default function ResetVerifyOtpScreen() {
         Didn&apos;t get it? Check spam or request a new code.
       </Text>
 
+      {showResentConfirmation ? (
+        <Text
+          style={[
+            typography.textPresets.footnote,
+            { color: colors.text.secondary, textAlign: 'center', fontWeight: '600' },
+          ]}
+        >
+          New code sent. Check your inbox for a fresh 6-digit code.
+        </Text>
+      ) : null}
+
       <AuthSubmitButton
         label="Continue"
         onPress={handleVerify}
@@ -117,10 +133,16 @@ export default function ResetVerifyOtpScreen() {
       />
 
       <AuthSubmitButton
-        label={resending ? 'Sending…' : 'Resend code'}
+        label={
+          resending
+            ? 'Sending…'
+            : canResend
+              ? 'Resend code'
+              : `Resend in ${cooldownSec}s`
+        }
         onPress={handleResend}
         loading={resending}
-        disabled={Boolean(configError) || loading}
+        disabled={Boolean(configError) || loading || !canResend}
         variant="outline"
       />
     </AuthScreen>

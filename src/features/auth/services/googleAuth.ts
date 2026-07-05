@@ -1,22 +1,20 @@
 import { Platform } from 'react-native';
 import * as WebBrowser from 'expo-web-browser';
-import type { WebBrowserAuthSessionResult } from 'expo-web-browser';
 import { getSupabaseClient } from '@/services/supabase/client';
 import { createSessionFromUrl } from './authDeepLink';
 import { getAuthRedirectUri } from './authRedirect';
 import { formatAuthError } from './authValidation';
 import { syncAuthProfileFromSession } from './authProfileSync';
 import { completeSignupActivation } from './postSignupActivation';
+import { isGoogleAuthCancelled } from './googleAuthHelpers';
 import type { AuthResult } from '../types';
+
+export { isGoogleAuthCancelled } from './googleAuthHelpers';
 
 const GOOGLE_PROVIDER = 'google';
 const GOOGLE_AUTH_QUERY_PARAMS = {
   prompt: 'select_account',
 } as const;
-
-export function isGoogleAuthCancelled(resultType: WebBrowserAuthSessionResult['type']): boolean {
-  return resultType === 'cancel' || resultType === 'dismiss';
-}
 
 export async function continueWithGoogle(): Promise<AuthResult> {
   const redirectTo = getAuthRedirectUri();

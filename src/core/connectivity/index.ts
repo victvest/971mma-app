@@ -3,3 +3,4 @@ export {
   installConnectivityBridge,
   refreshNetworkOnlineFromDevice,
 } from './installConnectivityBridge';
+export { reconnectFromOffline } from './reconnectFromOffline';

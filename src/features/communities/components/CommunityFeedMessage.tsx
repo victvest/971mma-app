@@ -1,7 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
 import { CommunityChatBubble } from '@/features/communities/components/CommunityChatBubble';
-import { CommunityReplyPreview } from '@/features/communities/components/CommunityReplyPreview';
 import { useTheme } from '@/shared/theme';
 import type { CommunityPostItem } from '@/types/domain';
 
@@ -9,17 +8,14 @@ type CommunityFeedMessageProps = {
   post: CommunityPostItem;
   onPress?: () => void;
   onLongPress?: () => void;
-  onOpenThread?: () => void;
   onReact?: (emoji: string) => void;
   readOnly?: boolean;
 };
 
-/** Coach announcement in the group feed with optional thread preview. */
 export function CommunityFeedMessage({
   post,
   onPress,
   onLongPress,
-  onOpenThread,
   onReact,
   readOnly = false,
 }: CommunityFeedMessageProps) {
@@ -36,7 +32,6 @@ export function CommunityFeedMessage({
         onReact={onReact}
         readOnly={readOnly}
       />
-      <CommunityReplyPreview replyCount={post.replyCount} onPress={onOpenThread ?? onPress} />
     </View>
   );
 }

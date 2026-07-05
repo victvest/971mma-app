@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse } from '../_shared/cors.ts';
+import { jsonResponse, withCors } from '../_shared/cors.ts';
 import { writeAdminAudit } from '../_shared/adminAudit.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireRole, requireUser } from '../_shared/jwt.ts';
@@ -50,10 +50,7 @@ async function fetchMindbodyClient(clientId: string): Promise<{ clientId: string
   };
 }
 
-Deno.serve(async (req) => {
-  const options = handleOptions(req);
-  if (options) return options;
-
+Deno.serve((req) => withCors(req, async () => {
   if (req.method !== 'POST') {
     return jsonResponse(
       { error: { code: 'BAD_REQUEST', message: 'POST required.' } },
@@ -138,4 +135,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return toErrorResponse(error);
   }
-});
+}));

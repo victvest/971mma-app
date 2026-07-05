@@ -7,7 +7,8 @@ import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { HomeDashboardSkeleton } from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useHomeDashboardSummary } from '@/features/home/hooks/useHomeDashboard';
-import { useScheduleFocusSync } from '@/features/schedule/hooks/useSchedule';
+import { useScheduleDay, useScheduleFocusSync } from '@/features/schedule/hooks/useSchedule';
+import { HOME_HERO_CLASS_LIMIT, resolveHomeHeroClasses } from '@/services/database/classes.repository';
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { HeroClassCard } from '@/features/home/components/HeroClassCard';
@@ -49,14 +50,27 @@ export default function HomeScreen() {
   const router = useRouter();
 
   const dashboardQuery = useHomeDashboardSummary();
+  const scheduleDayQuery = useScheduleDay();
   const { sync: syncScheduleMirror } = useScheduleFocusSync();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
+  const { hasLimitedAccess, isAnonymousGuest } = useIsGuest();
 
   const { entranceSignal, coverStyle: entranceCoverStyle } = useHomeTabEntrance();
   const [refreshing, setRefreshing] = useState(false);
 
   const dashboard = dashboardQuery.data;
-  const upcoming = dashboard?.upcomingClasses ?? [];
+  const memberUpcoming = dashboard?.upcomingClasses ?? [];
+  const upcoming = useMemo(() => {
+    const schedulePool = scheduleDayQuery.data ?? [];
+    if (isAnonymousGuest) {
+      return resolveHomeHeroClasses(
+        schedulePool.length > 0 ? schedulePool : memberUpcoming,
+        HOME_HERO_CLASS_LIMIT,
+      );
+    }
+    if (memberUpcoming.length > 0) return memberUpcoming;
+    return resolveHomeHeroClasses(schedulePool, HOME_HERO_CLASS_LIMIT);
+  }, [isAnonymousGuest, memberUpcoming, scheduleDayQuery.data]);
 
   const heroClass = upcoming[0] ?? null;
 
@@ -65,11 +79,14 @@ export default function HomeScreen() {
     setRefreshing(true);
     try {
       await syncScheduleMirror(true);
-      await dashboardQuery.refetch();
+      await Promise.all([
+        dashboardQuery.refetch(),
+        isAnonymousGuest ? scheduleDayQuery.refetch() : Promise.resolve(),
+      ]);
     } finally {
       setRefreshing(false);
     }
-  }, [dashboardQuery, syncScheduleMirror]);
+  }, [dashboardQuery, isAnonymousGuest, scheduleDayQuery, syncScheduleMirror]);
 
   const isToday = useMemo(() => {
     if (!heroClass) return false;
@@ -104,9 +121,12 @@ export default function HomeScreen() {
   const hasData =
     upcoming.length > 0 ||
     coachPreview.length > 0 ||
-    dashboard !== undefined;
+    dashboard !== undefined ||
+    (isAnonymousGuest && scheduleDayQuery.data !== undefined);
 
-  const isInitialLoading = !hasData && dashboardQuery.isLoading;
+  const isInitialLoading =
+    !hasData &&
+    (dashboardQuery.isLoading || (isAnonymousGuest && scheduleDayQuery.isLoading));
 
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
@@ -135,7 +155,6 @@ export default function HomeScreen() {
     [contentBottomInset, gap.lg, inset.lg, screenPaddingTop],
   );
 
-  const { hasLimitedAccess } = useIsGuest();
   const eyebrowLabel = hasLimitedAccess ? 'Welcome to the Academy' : (isToday ? 'Tonight at the academy' : 'Next at the academy');
 
   if (isOfflineBlocked) {
@@ -211,15 +230,13 @@ export default function HomeScreen() {
           <HomeScreenHeader eyebrowLabel={eyebrowLabel} />
         </HomeAnimatedSection>
 
-        {upcoming.length > 0 ? (
-          <HomeAnimatedSection index={1} motion="heroCard" {...sectionScrollProps}>
-            <HeroClassCard
-              classes={upcoming}
-              onClassPress={(id) => router.push(`/classes/${id}`)}
-              onOpenSchedule={() => router.push('/(tabs)/schedule')}
-            />
-          </HomeAnimatedSection>
-        ) : null}
+        <HomeAnimatedSection index={1} motion="heroCard" {...sectionScrollProps}>
+          <HeroClassCard
+            classes={upcoming}
+            onClassPress={(id) => router.push(`/classes/${id}`)}
+            onOpenSchedule={() => router.push('/(tabs)/schedule')}
+          />
+        </HomeAnimatedSection>
 
         {!hasLimitedAccess ? (
           <HomeAnimatedSection index={2} {...sectionScrollProps}>

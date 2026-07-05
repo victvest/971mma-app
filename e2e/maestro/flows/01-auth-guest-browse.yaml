@@ -1,0 +1,21 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/launch-app.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+- tapOn:
+    id: "auth-intro-explore"
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 20000
+- assertVisible: "Schedule"
+- assertVisible: "Check-in"
+- tapOn: "Check-in"
+- extendedWaitUntil:
+    visible:
+      text: "Sign in"
+    timeout: 15000
+    optional: true
+- takeScreenshot: guest-checkin-gated

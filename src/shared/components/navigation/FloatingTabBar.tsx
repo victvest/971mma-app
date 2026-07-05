@@ -170,6 +170,7 @@ const FloatingTabButton = memo(function FloatingTabButton({
       accessibilityRole="button"
       accessibilityState={isFocused ? { selected: true } : {}}
       accessibilityLabel={route.label}
+      testID={`tab-${route.name}`}
       onPress={onPress}
       onLongPress={onLongPress}
       style={({ pressed }) => [

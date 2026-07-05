@@ -1,5 +1,5 @@
 import React, { useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, Pressable, Linking, useWindowDimensions, Share } from 'react-native';
+import { StyleSheet, View, Text, Pressable, Linking, Platform, useWindowDimensions, Share } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -141,7 +141,13 @@ export function ClassDetailView({
   const openLocation = () => {
     triggerLightImpact();
     const query = encodeURIComponent('971 MMA Headquarters, Dubai');
-    void Linking.openURL(`https://maps.apple.com/?q=${query}`);
+    // Open the platform's native maps app rather than always Apple Maps
+    // (which falls back to a browser on Android).
+    const url =
+      Platform.OS === 'android'
+        ? `geo:0,0?q=${query}`
+        : `https://maps.apple.com/?q=${query}`;
+    void Linking.openURL(url);
   };
 
   const shareClass = useCallback(async () => {

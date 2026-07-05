@@ -86,15 +86,30 @@ export const MilestoneRow = memo(function MilestoneRow({ item, progressPct }: Pr
         {isEarned ? (
           <View style={[styles.statusBadge, { backgroundColor: colors.status.successSubtle }]}>
             <Ionicons name="checkmark" size={10} color={colors.status.success} />
-            <Text style={[styles.statusBadgeText, { color: colors.status.success }]}>EARNED</Text>
+            <Text
+              style={[styles.statusBadgeText, { color: colors.status.success }]}
+              numberOfLines={1}
+            >
+              EARNED
+            </Text>
           </View>
         ) : isNext ? (
           <View style={[styles.statusBadge, { backgroundColor: colors.accent.subtle }]}>
-            <Text style={[styles.statusBadgeText, { color: colors.accent.default }]}>NEXT</Text>
+            <Text
+              style={[styles.statusBadgeText, { color: colors.accent.default }]}
+              numberOfLines={1}
+            >
+              NEXT
+            </Text>
           </View>
         ) : item.pointsAward > 0 ? (
           <View style={[styles.statusBadge, { backgroundColor: colors.fill.secondary }]}>
-            <Text style={[styles.statusBadgeText, { color: colors.text.secondary }]}>+{item.pointsAward}</Text>
+            <Text
+              style={[styles.statusBadgeText, { color: colors.text.secondary }]}
+              numberOfLines={1}
+            >
+              +{item.pointsAward}
+            </Text>
           </View>
         ) : (
           <Ionicons name="lock-closed" size={16} color={colors.accent.default} style={{ opacity: 0.45 }} />
@@ -153,14 +168,15 @@ const styles = StyleSheet.create({
   },
   statusCol: {
     alignItems: 'flex-end',
+    flexShrink: 0,
     justifyContent: 'center',
     paddingRight: 14,
-    width: 72,
   },
   statusBadge: {
     alignItems: 'center',
     borderRadius: 999,
     flexDirection: 'row',
+    flexShrink: 0,
     gap: 3,
     paddingHorizontal: 8,
     paddingVertical: 5,

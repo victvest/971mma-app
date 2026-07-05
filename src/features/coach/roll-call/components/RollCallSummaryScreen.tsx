@@ -23,6 +23,7 @@ import { initialsFromName } from '@/features/onboarding/services/onboardingValid
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { Button, FlashListScrollComponent } from '@/shared/components/ui';
+import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
@@ -286,6 +287,7 @@ export function RollCallSummaryScreen({ classId }: Props) {
           data={attendedMembers}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSummaryRow)}
           renderScrollComponent={FlashListScrollComponent}
           contentContainerStyle={{
             paddingTop: contentTopInset,

@@ -1,7 +1,6 @@
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { mindbodyLocalDateTimeToIso } from '../_shared/gymTime.ts';
-import { requireUser } from '../_shared/jwt.ts';
 import { cacheGet, cacheSet, mbPaginate } from '../_shared/mindbody.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
@@ -255,7 +254,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    await requireUser(req);
     const body = (await req.json().catch(() => ({}))) as ScheduleRequest;
     const { startDate, endDate } = parseRange(body);
     const force = body.force === true;

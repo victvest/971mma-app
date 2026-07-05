@@ -49,7 +49,7 @@ const STEP_COPY = [
   },
   {
     title: 'Add your photo',
-    subtitle: 'Pick a clear photo so coaches can recognize you at check-in.',
+    subtitle: 'Optional — a clear photo helps coaches recognize you at check-in. You can skip and add it later.',
   },
 ] as const;
 
@@ -203,11 +203,6 @@ export default function OnboardingWizardScreen() {
       return;
     }
 
-    if (!avatarUri) {
-      showError('Add a profile photo to continue.');
-      return;
-    }
-
     if (!user?.id) {
       showError('Session expired. Sign in again.');
       return;
@@ -216,8 +211,9 @@ export default function OnboardingWizardScreen() {
     setLoading(true);
     setUploadError(null);
     try {
+      // Photo is optional — members who skip get an initials avatar everywhere.
       let avatarUrl = uploadedAvatarUrl;
-      if (!avatarUrl) {
+      if (!avatarUrl && avatarUri) {
         try {
           avatarUrl = await uploadAvatarWithRetry(user.id, avatarUri);
           setUploadedAvatarUrl(avatarUrl);
@@ -282,8 +278,8 @@ export default function OnboardingWizardScreen() {
                 : handleFinish
           }
           loading={step === 2 ? loading : false}
-          disabled={step === 2 ? !avatarUri : false}
-          finalLabel={uploadError ? 'Try again' : 'Get started'}
+          disabled={false}
+          finalLabel={uploadError ? 'Try again' : avatarUri ? 'Get started' : 'Skip for now'}
         />
       }
     >

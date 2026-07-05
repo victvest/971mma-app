@@ -156,6 +156,7 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
       <Pressable
         onPress={onOpenProfile}
         accessibilityLabel="Open profile"
+        testID="header-profile"
         hitSlop={8}
         style={styles.hit}
       >
@@ -181,6 +182,7 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
     <GestureDetector gesture={gesture}>
       <View
         style={styles.hit}
+        testID="header-profile"
         accessibilityRole="adjustable"
         accessibilityLabel={`Active profile ${label}`}
         accessibilityHint="Swipe up or down on the avatar to switch family profiles. Tap to open profile."

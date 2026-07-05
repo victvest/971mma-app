@@ -1,6 +1,5 @@
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
-import { requireUser } from '../_shared/jwt.ts';
 import { mbPaginate } from '../_shared/mindbody.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
@@ -59,7 +58,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    await requireUser(req);
     const svc = serviceClient();
 
     // 1. Fetch disciplines reference

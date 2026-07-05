@@ -104,14 +104,15 @@ export function resolveNotificationAction(item: NotificationItem): NotificationA
       titleLower.includes('announcement') ||
       titleLower.includes('new announcement');
 
-    if (postId) {
+    if (channelId) {
       return {
-        href: `/communities/post/${postId}`,
-        label: isAnnouncement ? 'View announcement' : 'View post',
+        href: `/communities/${channelId}`,
+        label: isAnnouncement ? 'View announcement' : 'View group',
       };
     }
-    if (channelId) {
-      return { href: `/communities/${channelId}`, label: 'View group' };
+    // Legacy payloads with no channelId fall back to the thread redirect stub.
+    if (postId) {
+      return { href: `/communities/post/${postId}`, label: 'View post' };
     }
     return { href: '/communities', label: 'View groups' };
   }

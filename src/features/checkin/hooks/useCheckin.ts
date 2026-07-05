@@ -1,8 +1,7 @@
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { getSupabaseClient } from '@/services/supabase/client';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
-import { invalidateAfterMemberCheckin } from '@/lib/queryInvalidation';
 import {
   ATTENDANCE_MIRROR_GC_MS,
   ATTENDANCE_MIRROR_STALE_MS,
@@ -39,51 +38,6 @@ export function useQrPass(passVisible = false) {
     refetchInterval: passVisible ? 60_000 : false,
     refetchIntervalInBackground: false,
     refetchOnWindowFocus: passVisible,
-  });
-}
-
-type CheckInBody = {
-  token?: string;
-  classId?: string;
-  userId?: string;
-  targetUserId?: string;
-  confirmMinorPresent?: boolean;
-};
-
-type CheckInResponse = {
-  success?: boolean;
-  needsConfirmation?: boolean;
-  memberName: string;
-  memberId?: string;
-  message?: string;
-  checkedInAt?: string;
-  checkInId?: string;
-  guardianProxy?: boolean;
-};
-
-export function useCheckin() {
-  const authUserId = useAuthStore((s) => s.user?.id ?? '');
-  const activeMemberId = useActiveMemberId();
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: (input: CheckInBody) => {
-      const payload = { ...input };
-      if (
-        !payload.token &&
-        !payload.userId &&
-        !payload.targetUserId &&
-        activeMemberId &&
-        activeMemberId !== authUserId
-      ) {
-        payload.targetUserId = activeMemberId;
-      }
-      return invokeEdge<CheckInResponse>('mb-checkin', payload);
-    },
-    onSuccess: (_data, variables) => {
-      const memberId = variables.targetUserId ?? activeMemberId ?? authUserId;
-      invalidateAfterMemberCheckin(queryClient, memberId, { classId: variables.classId });
-    },
   });
 }
 

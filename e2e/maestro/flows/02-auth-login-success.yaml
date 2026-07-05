@@ -1,0 +1,27 @@
+appId: host.exp.Exponent
+---
+- runFlow:
+    file: ../subflows/launch-app.yaml
+    env:
+      E2E_APP_ID: ${E2E_APP_ID}
+      E2E_EXPO_URL: ${E2E_EXPO_URL}
+- tapOn:
+    id: "auth-intro-sign-in"
+- extendedWaitUntil:
+    visible: "Welcome back"
+    timeout: 15000
+- tapOn:
+    id: "auth-login-email"
+- inputText: ${MEMBER_EMAIL}
+- tapOn:
+    id: "auth-login-password"
+- inputText: ${MEMBER_PASSWORD}
+- hideKeyboard
+- tapOn:
+    id: "auth-login-submit"
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 45000
+- assertVisible: "Schedule"
+- assertVisible: "Check-in"
+- takeScreenshot: member-login-success

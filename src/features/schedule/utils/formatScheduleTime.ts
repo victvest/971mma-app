@@ -3,18 +3,12 @@ import {
   formatGymWeekdayShort,
   gymHour24,
   isGymToday,
+  isGymTomorrow,
 } from '@/core/time/gymTime';
 
 function todayCardLabel(iso: string, now: Date): string {
   if (new Date(iso).getTime() < now.getTime()) return 'TODAY';
   return gymHour24(iso) >= 17 ? 'TONIGHT' : 'TODAY';
-}
-
-function isGymTomorrow(iso: string, now = new Date()): boolean {
-  const tomorrow = new Date(now.getTime() + 86_400_000);
-  const day = (d: Date) =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dubai' }).format(d);
-  return day(new Date(iso)) === day(tomorrow);
 }
 
 export function formatScheduleCardTime(iso: string, now = new Date()): string {

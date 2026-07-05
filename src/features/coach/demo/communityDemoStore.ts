@@ -1,11 +1,19 @@
-import { DEMO_COACH, DEMO_COMMUNITY_CHANNELS } from '@/features/coach/demo/coachDemoFixtures';
+import {
+  DEMO_COACH,
+  DEMO_COACH_ASSIGNED_DISCIPLINES,
+  DEMO_COMMUNITY_CHANNELS,
+  DEMO_PROMOTION_CANDIDATES,
+} from '@/features/coach/demo/coachDemoFixtures';
 import type {
   CommunityChannelFeed,
   CommunityChannelHeader,
+  CommunityChannelItem,
+  CommunityGroupDiscipline,
+  CommunityGroupMember,
+  CommunityGroupMemberCandidate,
+  CommunityGroupVisibility,
   CommunityPostItem,
   CommunityPostKind,
-  CommunityPostThread,
-  CommunityReplyItem,
 } from '@/types/domain';
 
 const DEMO_SEED_POSTS: Record<string, CommunityPostItem[]> = {
@@ -25,7 +33,6 @@ const DEMO_SEED_POSTS: Record<string, CommunityPostItem[]> = {
       pinnedAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
       publishedAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
       reactionCounts: { '👍': 12, '🔥': 5 },
-      replyCount: 1,
       myReactions: [],
     },
     {
@@ -43,32 +50,18 @@ const DEMO_SEED_POSTS: Record<string, CommunityPostItem[]> = {
       pinnedAt: null,
       publishedAt: new Date(Date.now() - 5 * 24 * 60 * 60_000).toISOString(),
       reactionCounts: { '💪': 8 },
-      replyCount: 0,
       myReactions: [],
-    },
-  ],
-};
-
-const DEMO_SEED_REPLIES: Record<string, CommunityReplyItem[]> = {
-  'demo-community-post-bjj-1': [
-    {
-      id: 'demo-community-post-bjj-1-reply-1',
-      postId: 'demo-community-post-bjj-1',
-      userId: 'demo-member-1',
-      authorName: 'Sara Al Mansoori',
-      authorAvatarUrl: null,
-      body: 'Thanks coach — see you Saturday.',
-      createdAt: new Date(Date.now() - 36 * 60 * 60_000).toISOString(),
     },
   ],
 };
 
 type DemoChannelStore = {
   posts: CommunityPostItem[];
-  repliesByPostId: Record<string, CommunityReplyItem[]>;
 };
 
 const stores = new Map<string, DemoChannelStore>();
+
+const demoGroupMembers = new Map<string, CommunityGroupMember[]>();
 
 function clonePost(post: CommunityPostItem): CommunityPostItem {
   return {
@@ -78,21 +71,12 @@ function clonePost(post: CommunityPostItem): CommunityPostItem {
   };
 }
 
-function cloneReply(reply: CommunityReplyItem): CommunityReplyItem {
-  return { ...reply };
-}
-
 function getChannelStore(channelId: string): DemoChannelStore {
   const existing = stores.get(channelId);
   if (existing) return existing;
 
   const created: DemoChannelStore = {
     posts: (DEMO_SEED_POSTS[channelId] ?? []).map(clonePost),
-    repliesByPostId: Object.fromEntries(
-      Object.entries(DEMO_SEED_REPLIES)
-        .filter(([postId]) => (DEMO_SEED_POSTS[channelId] ?? []).some((post) => post.id === postId))
-        .map(([postId, replies]) => [postId, replies.map(cloneReply)]),
-    ),
   };
   stores.set(channelId, created);
   return created;
@@ -120,13 +104,6 @@ function findPostInStores(postId: string): { channelId: string; post: CommunityP
   return null;
 }
 
-function buildThread(post: CommunityPostItem, store: DemoChannelStore): CommunityPostThread {
-  return {
-    post: clonePost(post),
-    replies: (store.repliesByPostId[post.id] ?? []).map(cloneReply),
-  };
-}
-
 export function getDemoChannelFeed(channelId: string): CommunityChannelFeed {
   const store = getChannelStore(channelId);
   const posts = [...store.posts].sort(
@@ -138,14 +115,6 @@ export function getDemoChannelFeed(channelId: string): CommunityChannelFeed {
     posts: posts.map(clonePost),
     nextCursor: null,
   };
-}
-
-export function getDemoPostThread(postId: string): CommunityPostThread | null {
-  const match = findPostInStores(postId);
-  if (!match) return null;
-
-  const store = getChannelStore(match.channelId);
-  return buildThread(store.posts[match.index]!, store);
 }
 
 export function publishDemoCommunityPost(input: {
@@ -179,16 +148,14 @@ export function publishDemoCommunityPost(input: {
     pinnedAt: input.pinOnPublish ? now : null,
     publishedAt: now,
     reactionCounts: {},
-    replyCount: 0,
     myReactions: [],
   };
 
   store.posts.unshift(post);
-  store.repliesByPostId[post.id] = [];
   return clonePost(post);
 }
 
-export function toggleDemoCommunityReaction(postId: string, emoji: string): CommunityPostThread | null {
+export function toggleDemoCommunityReaction(postId: string, emoji: string): CommunityPostItem | null {
   const match = findPostInStores(postId);
   if (!match) return null;
 
@@ -217,41 +184,189 @@ export function toggleDemoCommunityReaction(postId: string, emoji: string): Comm
     myReactions: mine,
   };
   store.posts[match.index] = updated;
-  return buildThread(updated, store);
-}
-
-export function createDemoCommunityReply(postId: string, body: string): CommunityPostThread | null {
-  const match = findPostInStores(postId);
-  if (!match) return null;
-
-  const store = getChannelStore(match.channelId);
-  const post = store.posts[match.index]!;
-  const reply: CommunityReplyItem = {
-    id: `demo-community-reply-${Date.now()}`,
-    postId,
-    userId: 'demo-member-self',
-    authorName: 'You',
-    authorAvatarUrl: null,
-    body: body.trim(),
-    createdAt: new Date().toISOString(),
-  };
-
-  const replies = store.repliesByPostId[postId] ?? [];
-  store.repliesByPostId[postId] = [...replies, reply];
-
-  const updated: CommunityPostItem = {
-    ...post,
-    replyCount: post.replyCount + 1,
-  };
-  store.posts[match.index] = updated;
-
-  return buildThread(updated, store);
+  return clonePost(updated);
 }
 
 export function getDemoPinnedPost(channelId: string): CommunityPostItem | null {
   const store = getChannelStore(channelId);
   const pinned = store.posts.find((post) => post.isPinned);
   return pinned ? clonePost(pinned) : null;
+}
+
+function buildDemoMember(candidate: (typeof DEMO_PROMOTION_CANDIDATES)[number]): CommunityGroupMember {
+  return {
+    id: candidate.userId,
+    fullName: candidate.fullName,
+    email: candidate.email,
+    avatarUrl: candidate.avatarUrl,
+    membershipStatus: 'active',
+    membershipExpiresAt: null,
+    joinedAt: new Date().toISOString(),
+    isCoach: false,
+  };
+}
+
+function getMembersStore(channelId: string): CommunityGroupMember[] {
+  const existing = demoGroupMembers.get(channelId);
+  if (existing) return existing;
+
+  const seeded: CommunityGroupMember[] = [
+    {
+      id: DEMO_COACH.id,
+      fullName: DEMO_COACH.name,
+      email: null,
+      avatarUrl: DEMO_COACH.photoUrl,
+      membershipStatus: 'active',
+      membershipExpiresAt: null,
+      joinedAt: new Date(Date.now() - 45 * 24 * 60 * 60_000).toISOString(),
+      isCoach: true,
+    },
+    ...DEMO_PROMOTION_CANDIDATES.slice(0, 3).map(buildDemoMember),
+  ];
+
+  demoGroupMembers.set(channelId, seeded);
+  return seeded;
+}
+
+export function getDemoCoachGroupDisciplines(): CommunityGroupDiscipline[] {
+  return DEMO_COACH_ASSIGNED_DISCIPLINES.map((item) => ({
+    id: item.id,
+    name: item.displayName,
+    slug: item.slug,
+  }));
+}
+
+export function joinDemoCommunityGroup(channelId: string): CommunityChannelItem {
+  const channel = DEMO_COMMUNITY_CHANNELS.find((item) => item.id === channelId);
+  if (!channel) throw new Error('Group not found.');
+
+  channel.joinedAt = new Date().toISOString();
+  channel.canJoin = false;
+  channel.memberCount += 1;
+  return { ...channel };
+}
+
+export function leaveDemoCommunityGroup(channelId: string): void {
+  const channel = DEMO_COMMUNITY_CHANNELS.find((item) => item.id === channelId);
+  if (!channel) return;
+
+  channel.joinedAt = null;
+  channel.canJoin = channel.visibility === 'public';
+  channel.memberCount = Math.max(0, channel.memberCount - 1);
+}
+
+export function createDemoCommunityGroup(input: {
+  disciplineId: string;
+  title: string;
+  description?: string | null;
+  visibility?: CommunityGroupVisibility;
+  memberIds?: string[];
+}): CommunityChannelItem {
+  const discipline =
+    DEMO_COACH_ASSIGNED_DISCIPLINES.find((item) => item.id === input.disciplineId) ??
+    DEMO_COACH_ASSIGNED_DISCIPLINES[0]!;
+  const now = new Date().toISOString();
+  const selected = new Set(input.memberIds ?? []);
+  const members = [
+    {
+      id: DEMO_COACH.id,
+      fullName: DEMO_COACH.name,
+      email: null,
+      avatarUrl: DEMO_COACH.photoUrl,
+      membershipStatus: 'active',
+      membershipExpiresAt: null,
+      joinedAt: now,
+      isCoach: true,
+    } satisfies CommunityGroupMember,
+    ...DEMO_PROMOTION_CANDIDATES.filter((candidate) => selected.has(candidate.userId)).map(buildDemoMember),
+  ];
+
+  const channel: CommunityChannelItem = {
+    id: `demo-community-channel-${Date.now()}`,
+    title: input.title.trim(),
+    description: input.description?.trim() || null,
+    visibility: 'private',
+    channelKind: 'group',
+    disciplineId: discipline.id,
+    disciplineName: discipline.displayName,
+    disciplineSlug: discipline.slug,
+    coachId: DEMO_COACH.id,
+    coachName: DEMO_COACH.name,
+    coachAvatarUrl: DEMO_COACH.photoUrl,
+    latestPostAt: null,
+    lastMessageAt: null,
+    lastMessagePreview: null,
+    unreadCount: 0,
+    memberCount: members.length,
+    isCoachOwner: true,
+    joinedAt: now,
+    canJoin: false,
+  };
+
+  DEMO_COMMUNITY_CHANNELS.unshift(channel);
+  demoGroupMembers.set(channel.id, members);
+  stores.set(channel.id, { posts: [] });
+  return { ...channel };
+}
+
+export function archiveDemoCommunityGroup(channelId: string): void {
+  const index = DEMO_COMMUNITY_CHANNELS.findIndex((item) => item.id === channelId);
+  if (index >= 0) {
+    DEMO_COMMUNITY_CHANNELS.splice(index, 1);
+  }
+}
+
+export function getDemoCommunityGroupMembers(channelId: string): CommunityGroupMember[] {
+  return getMembersStore(channelId).map((item) => ({ ...item }));
+}
+
+export function getDemoCommunityGroupMemberCandidates(
+  query: string,
+): CommunityGroupMemberCandidate[] {
+  const normalized = query.trim().toLowerCase();
+  if (normalized.length > 0 && normalized.length < 2) return [];
+
+  return DEMO_PROMOTION_CANDIDATES.filter(
+    (item) =>
+      !normalized ||
+      item.fullName.toLowerCase().includes(normalized) ||
+      item.email.toLowerCase().includes(normalized),
+  ).map((item) => ({
+    id: item.userId,
+    fullName: item.fullName,
+    email: item.email,
+    avatarUrl: item.avatarUrl,
+    membershipStatus: 'active',
+    membershipExpiresAt: null,
+  }));
+}
+
+export function addDemoCommunityGroupMembers(
+  channelId: string,
+  memberIds: string[],
+): CommunityGroupMember[] {
+  const members = getMembersStore(channelId);
+  const existingIds = new Set(members.map((item) => item.id));
+  const nextMembers = DEMO_PROMOTION_CANDIDATES.filter(
+    (candidate) => memberIds.includes(candidate.userId) && !existingIds.has(candidate.userId),
+  ).map(buildDemoMember);
+
+  members.push(...nextMembers);
+  const channel = DEMO_COMMUNITY_CHANNELS.find((item) => item.id === channelId);
+  if (channel) channel.memberCount = members.length;
+  return members.map((item) => ({ ...item }));
+}
+
+export function removeDemoCommunityGroupMember(
+  channelId: string,
+  memberId: string,
+): CommunityGroupMember[] {
+  const members = getMembersStore(channelId);
+  const next = members.filter((item) => item.id !== memberId || item.isCoach);
+  demoGroupMembers.set(channelId, next);
+  const channel = DEMO_COMMUNITY_CHANNELS.find((item) => item.id === channelId);
+  if (channel) channel.memberCount = next.length;
+  return next.map((item) => ({ ...item }));
 }
 
 export function getDemoCommunityChannelHeader(channelId: string): CommunityChannelHeader | null {
@@ -262,13 +377,18 @@ export function getDemoCommunityChannelHeader(channelId: string): CommunityChann
     id: channel.id,
     title: channel.title,
     description: channel.description,
+    visibility: channel.visibility,
+    channelKind: channel.channelKind,
+    disciplineId: channel.disciplineId,
     disciplineName: channel.disciplineName,
     disciplineSlug: channel.disciplineSlug,
-    coachId: DEMO_COACH.id,
+    coachId: channel.coachId,
     coachName: channel.coachName,
     coachAvatarUrl: channel.coachAvatarUrl,
     memberCount: channel.memberCount,
     isCoachOwner: channel.isCoachOwner,
+    joinedAt: channel.joinedAt,
+    canJoin: channel.canJoin,
     pinnedPost: getDemoPinnedPost(channelId),
   };
 }

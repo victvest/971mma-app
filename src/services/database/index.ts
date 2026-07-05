@@ -30,7 +30,6 @@ export {
   getCoachMemberBeltPath,
 } from './belt.repository';
 export { getMemberMemberships, getMembershipSummary } from './membership.repository';
-export { recordCheckIn } from './checkIns.repository';
 export { getPointsAccount, getLedgerPage } from './points.repository';
 export { getCatalog, getMyRedemptions, redeem } from './rewards.repository';
 export { getMyReferrals, getMyReferralCode, applyReferralCode, getMyReferralStatus } from './referrals.repository';

@@ -1,9 +1,9 @@
 import React, { useEffect, useRef } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { enableFreeze } from 'react-native-screens';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { QueryClientProvider } from '@tanstack/react-query';
+import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
 import { useAppFonts } from '@/core/fonts/useAppFonts';
 import { ThemeProvider, useTheme } from '@/shared/theme';
@@ -13,9 +13,11 @@ import { queryClient } from '@/lib/queryClient';
 import { toast, toastConfig } from '@/shared/components/Toast';
 import { DialogProvider } from '@/shared/components/Dialog';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
+import { OfflineBanner } from '@/shared/components/OfflineBanner';
 import { useRollCallOfflineFlush } from '@/features/coach/roll-call/hooks/useRollCallOfflineFlush';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { usePushNotifications } from '@/features/notifications/hooks/usePushNotifications';
 import { StartupBackgroundMonitor } from '@/core/startup/StartupBackgroundMonitor';
 import {
@@ -68,7 +70,9 @@ function FontGate({ children }: { children: React.ReactNode }) {
 
 function AppToastRoot() {
   const insets = useSafeAreaInsets();
-  return <Toast config={toastConfig} topOffset={insets.top + 12} />;
+  const offlineBannerVisible = useOfflineBannerVisible();
+  const topOffset = offlineBannerVisible ? insets.top + 52 : insets.top + 12;
+  return <Toast config={toastConfig} topOffset={topOffset} />;
 }
 
 function OfflineMonitor() {
@@ -99,29 +103,32 @@ function OfflineMonitor() {
   return null;
 }
 
-function OfflineBanner() {
+function OfflineReconnectMonitor() {
+  const offlineBannerVisible = useOfflineBannerVisible();
   const { isOnline } = useNetworkStatus();
-  const { colors, typography } = useTheme();
-  const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
+  const prevOnlineRef = useRef<boolean | null>(null);
 
-  if (isOnline) return null;
+  useEffect(() => {
+    if (!offlineBannerVisible) {
+      prevOnlineRef.current = isOnline;
+      return;
+    }
 
-  return (
-    <View
-      style={{
-        backgroundColor: colors.status.error,
-        paddingTop: insets.top > 0 ? insets.top : 8,
-        paddingBottom: 8,
-        paddingHorizontal: 16,
-        alignItems: 'center',
-        justifyContent: 'center',
-      }}
-    >
-      <Text style={[typography.textPresets.bodyStrong, { color: colors.text.inverse, textAlign: 'center' }]}>
-        You are offline. Some features may be unavailable.
-      </Text>
-    </View>
-  );
+    if (AppState.currentState !== 'active') {
+      prevOnlineRef.current = isOnline;
+      return;
+    }
+
+    const wasOffline = prevOnlineRef.current === false;
+    if (wasOffline && isOnline) {
+      void queryClient.invalidateQueries();
+    }
+
+    prevOnlineRef.current = isOnline;
+  }, [offlineBannerVisible, isOnline, queryClient]);
+
+  return null;
 }
 
 function ThemedAppShell({ children }: { children: React.ReactNode }) {
@@ -131,12 +138,14 @@ function ThemedAppShell({ children }: { children: React.ReactNode }) {
     <View style={{ flex: 1, backgroundColor: colors.background.primary }}>
       <AppStatusBar />
       <OfflineBanner />
-      <AuthProvider>
-        <ActiveMemberProvider>
-          {children}
-          <StartupBackgroundMonitor />
-        </ActiveMemberProvider>
-      </AuthProvider>
+      <View style={{ flex: 1 }}>
+        <AuthProvider>
+          <ActiveMemberProvider>
+            {children}
+            <StartupBackgroundMonitor />
+          </ActiveMemberProvider>
+        </AuthProvider>
+      </View>
     </View>
   );
 }
@@ -155,6 +164,7 @@ export function AppProviders({ children }: { children: React.ReactNode }) {
               <DialogProvider />
 
               <OfflineMonitor />
+              <OfflineReconnectMonitor />
 
               <AppToastRoot />
             </QueryClientProvider>

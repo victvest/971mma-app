@@ -5,6 +5,7 @@ import {
   getDisciplineScore,
   getGymWeekActivity,
   getGym8WeeksActivity,
+  getMemberPercentileRank,
 } from '@/services/database/discipline.repository';
 import { getHomeDashboardSummary } from '@/services/database/homeDashboard.repository';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
@@ -15,6 +16,7 @@ import { homeDashboardKey } from './homeDashboardKeys';
 import type { BeltPathSummary } from '@/types/domain';
 
 export const disciplineKey = (userId: string) => ['discipline-score', userId] as const;
+export const memberPercentileKey = (userId: string) => ['member-percentile-rank', userId] as const;
 export const weekActivityKey = (userId: string) => ['week-activity', userId] as const;
 export const gym8WeeksActivityKey = (userId: string) => ['gym-8weeks-activity', userId] as const;
 export { homeDashboardKey } from './homeDashboardKeys';
@@ -54,7 +56,6 @@ export function useHomeDashboardSummary() {
 
   useFocusEffect(
     useCallback(() => {
-      if (!activeMemberId) return;
       void queryClient.refetchQueries({
         queryKey: homeDashboardKey(activeMemberId),
         type: 'active',
@@ -72,6 +73,17 @@ export function useDisciplineScore() {
   return useQuery({
     queryKey: disciplineKey(activeMemberId),
     queryFn: () => getDisciplineScore(activeMemberId),
+    enabled: Boolean(activeMemberId),
+    staleTime: MEMBER_DASHBOARD_STALE_MS,
+  });
+}
+
+export function useMemberPercentileRank() {
+  const activeMemberId = useActiveMemberId();
+
+  return useQuery({
+    queryKey: memberPercentileKey(activeMemberId),
+    queryFn: () => getMemberPercentileRank(activeMemberId),
     enabled: Boolean(activeMemberId),
     staleTime: MEMBER_DASHBOARD_STALE_MS,
   });
