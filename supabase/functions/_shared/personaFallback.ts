@@ -13,17 +13,78 @@ function findCoachByName(context: PersonaAssistantContext, query: string) {
 function findFaqMatch(message: string) {
   const normalized = message.toLowerCase();
   return contextFaqEntries().find((item) =>
-    item.question.toLowerCase().split(/\s+/).some((word) => word.length > 4 && normalized.includes(word)),
+    item.question
+      .toLowerCase()
+      .split(/\s+/)
+      .some((word) => word.length > 4 && normalized.includes(word)),
   );
 }
 
 function contextFaqEntries() {
   return [
-    { question: 'check in qr scan', answer: 'Open Check-in → Scan entrance and point at the door QR. You can also show My pass for roll call.' },
-    { question: 'belt progression', answer: 'Attendance updates from check-ins. Coaches mark skill requirements. See Belt Path for your checklist.' },
-    { question: 'rewards points', answer: 'Earn points from check-ins, milestones, streaks, and referrals. Redeem items in the Rewards tab.' },
-    { question: 'freeze membership', answer: 'Contact the front desk at info@971mma.com or +971 54 332 3980 for membership changes.' },
+    {
+      question: 'check in qr scan',
+      answer:
+        'Open Check-in and show your member QR pass to the gate reader. Coaches can scan the same pass for roll call if needed.',
+    },
+    {
+      question: 'belt progression',
+      answer:
+        'Attendance updates from check-ins. Coaches mark skill requirements. See Belt Path for your checklist.',
+    },
+    {
+      question: 'rewards points',
+      answer:
+        'Earn points from check-ins, milestones, streaks, and referrals. Redeem items in the Rewards tab.',
+    },
+    {
+      question: 'freeze membership',
+      answer:
+        'Contact the front desk at info@971mma.com or +971 54 332 3980 for membership changes.',
+    },
   ];
+}
+
+function normalizeComparable(value: string | null | undefined): string {
+  return (value ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '');
+}
+
+function isDuplicateLabel(value: string | null | undefined, existing: string[]): boolean {
+  const normalized = normalizeComparable(value);
+  if (!normalized) return true;
+
+  return existing.some((candidate) => {
+    const current = normalizeComparable(candidate);
+    return Boolean(current) && (current.includes(normalized) || normalized.includes(current));
+  });
+}
+
+function cleanOptionalText(value: string | null | undefined): string | null {
+  const trimmed = value?.trim();
+  if (!trimmed || /^[-–—\s]+$/.test(trimmed) || /^(n\/a|na|null|undefined)$/i.test(trimmed)) {
+    return null;
+  }
+  return trimmed;
+}
+
+function cleanCoachName(value: string | null | undefined): string | null {
+  const cleaned = cleanOptionalText(value);
+  if (!cleaned || /^(coach|tba|tbd)$/i.test(cleaned)) return null;
+  return cleaned;
+}
+
+function formatClassSummary(
+  item: PersonaAssistantContext['schedule']['upcomingClasses'][number],
+): string {
+  const parts = [cleanOptionalText(item.title) ?? 'Class'];
+  const level = cleanOptionalText(item.level);
+  const discipline = cleanOptionalText(item.discipline);
+  const coachName = cleanCoachName(item.coachName);
+
+  if (level && !isDuplicateLabel(level, parts)) parts.push(level);
+  if (discipline && !isDuplicateLabel(discipline, parts)) parts.push(discipline);
+
+  return `• ${item.startsAtLocal} — ${parts.join(' · ')}${coachName ? ` · ${coachName}` : ''}`;
 }
 
 export function buildPersonaFallbackReply(
@@ -43,9 +104,7 @@ export function buildPersonaFallbackReply(
       };
     }
 
-    const lines = classes.map(
-      (item) => `• ${item.startsAtLocal} — ${item.title} (${item.discipline}) with ${item.coachName}`,
-    );
+    const lines = classes.map(formatClassSummary);
     const firstClass = classes[0];
     if (firstClass?.id) {
       actions.push({ label: 'View class', route: `class:${firstClass.id}` });
@@ -59,15 +118,17 @@ export function buildPersonaFallbackReply(
   }
 
   if (/coach|instructor|sensei|professor/.test(text)) {
-    const coachMatch = context.coaches.find((coach) => text.includes(coach.name.split(' ')[0]?.toLowerCase() ?? ''))
-      ?? findCoachByName(context, text.replace(/coach|classes|class|about|who is/g, '').trim());
+    const coachMatch =
+      context.coaches.find((coach) =>
+        text.includes(coach.name.split(' ')[0]?.toLowerCase() ?? ''),
+      ) ?? findCoachByName(context, text.replace(/coach|classes|class|about|who is/g, '').trim());
 
     if (coachMatch) {
       const coachClasses = context.schedule.upcomingClasses
         .filter((item) => item.coachId === coachMatch.id)
         .slice(0, 3);
       const classLine = coachClasses.length
-        ? `\n\nUpcoming classes:\n${coachClasses.map((item) => `• ${item.startsAtLocal} — ${item.title}`).join('\n')}`
+        ? `\n\nUpcoming classes:\n${coachClasses.map(formatClassSummary).join('\n')}`
         : '\n\nNo upcoming classes listed for them this week — check Schedule for updates.';
 
       return {
@@ -79,7 +140,10 @@ export function buildPersonaFallbackReply(
       };
     }
 
-    const list = context.coaches.slice(0, 6).map((coach) => `• ${coach.name}${coach.specialty ? ` — ${coach.specialty}` : ''}`).join('\n');
+    const list = context.coaches
+      .slice(0, 6)
+      .map((coach) => `• ${coach.name}${coach.specialty ? ` — ${coach.specialty}` : ''}`)
+      .join('\n');
     return {
       reply: `Our coaching team includes:\n\n${list}\n\nAsk me about a coach by name to see their upcoming classes.`,
       actions: sanitizePersonaActions([{ label: 'Browse coaches', route: 'coaches' }]),
@@ -106,7 +170,9 @@ export function buildPersonaFallbackReply(
   }
 
   if (/point|reward|redeem|milestone|tier/.test(text)) {
-    const affordable = context.rewards.catalog.filter((item) => item.costPoints <= context.engagement.pointsBalance).slice(0, 3);
+    const affordable = context.rewards.catalog
+      .filter((item) => item.costPoints <= context.engagement.pointsBalance)
+      .slice(0, 3);
     const milestoneLine = context.rewards.nextMilestones.find((item) => item.status === 'next');
 
     let reply = `You have ${context.engagement.pointsBalance.toLocaleString('en-US')} points (${context.engagement.pointsTier} tier). Lifetime: ${context.engagement.lifetimePoints.toLocaleString('en-US')}.`;
@@ -136,8 +202,8 @@ export function buildPersonaFallbackReply(
   if (/check.?in|qr|pass|scan/.test(text)) {
     return {
       reply: context.member.checkedInToday
-        ? `You're checked in for today, ${name}. Open Check-in anytime to scan the entrance QR or show your member pass.`
-        : `Hi ${name} — open Check-in and tap Scan entrance at the door, or switch to My pass for roll call. Location is verified at the academy.`,
+        ? `You're checked in for today, ${name}. Open Check-in anytime to show your member pass.`
+        : `Hi ${name} — open Check-in and show your member QR pass to the gate reader. Coaches can scan it for roll call if needed.`,
       actions: sanitizePersonaActions([{ label: 'Open Check-in', route: 'checkin' }]),
     };
   }
@@ -147,20 +213,27 @@ export function buildPersonaFallbackReply(
     const plan = context.member.membershipName ?? 'your plan';
     return {
       reply: `Your membership (${plan}) is ${status}.${context.member.membershipExpiresAt ? ` Expires: ${context.member.membershipExpiresAt.slice(0, 10)}.` : ''} For billing or freeze requests, contact info@971mma.com or +971 54 332 3980.`,
-      actions: sanitizePersonaActions([{ label: 'View Profile', route: 'profile' }, { label: 'Get help', route: 'help' }]),
+      actions: sanitizePersonaActions([
+        { label: 'View Profile', route: 'profile' },
+        { label: 'Get help', route: 'help' },
+      ]),
     };
   }
 
   if (/refer/.test(text)) {
     return {
-      reply: 'Share your referral code from the Rewards tab. When a friend activates their account, you both earn bonus points.',
+      reply:
+        'Share your referral code from the Rewards tab. When a friend activates their account, you both earn bonus points.',
       actions: sanitizePersonaActions([{ label: 'Referrals', route: 'referrals' }]),
     };
   }
 
   const faq = findFaqMatch(text);
   if (faq) {
-    return { reply: faq.answer, actions: sanitizePersonaActions([{ label: 'Help & Support', route: 'help' }]) };
+    return {
+      reply: faq.answer,
+      actions: sanitizePersonaActions([{ label: 'Help & Support', route: 'help' }]),
+    };
   }
 
   return {

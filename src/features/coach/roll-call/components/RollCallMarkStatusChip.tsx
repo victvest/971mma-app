@@ -53,7 +53,9 @@ export const RollCallMarkStatusChip = memo(function RollCallMarkStatusChip({ mar
       accessibilityLabel={label}
     >
       <View style={[styles.accentDot, { backgroundColor: accentColor }]} />
-      <Text style={[typography.textPresets.captionMedium, styles.label, { color: colors.text.primary }]}>
+      <Text
+        style={[typography.textPresets.captionMedium, styles.label, { color: colors.text.primary }]}
+      >
         {label}
       </Text>
     </View>

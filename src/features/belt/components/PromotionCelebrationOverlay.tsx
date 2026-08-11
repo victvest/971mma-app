@@ -1,19 +1,28 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Modal, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import {
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
-  withSpring,
+  withTiming,
   withDelay,
   withRepeat,
-  withTiming,
   Easing,
   runOnJS,
 } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useUnseenPromotion, useMarkPromotionCelebrationSeen } from '../hooks/useBeltPath';
 import { useTheme } from '@/shared/theme';
+import { duration, easingCurves } from '@/shared/theme/animations';
 import { triggerSuccessNotification } from '@/shared/haptics';
+import type { PromotionItem } from '@/types/domain';
 
 const CONFETTI_COUNT = 20;
 const CONFETTI_COLORS = ['#FFD700', '#FF4500', '#1E90FF', '#32CD32', '#FF69B4', '#8A2BE2'];
@@ -93,31 +102,41 @@ function ConfettiPiece({ index, layout, screenHeight }: ConfettiPieceProps) {
   return <Animated.View style={[styles.confetti, animatedStyle]} />;
 }
 
+const ENTRANCE = {
+  duration: duration.fast,
+  easing: easingCurves.decelerate,
+};
+
+const EXIT = {
+  duration: duration.instant,
+  easing: easingCurves.standard,
+};
+
 export function PromotionCelebrationOverlay() {
-  const { colors, typography, radius, inset, gap } = useTheme();
+  const { colors, typography, radius, inset, gap, layout, surfaceShadow } = useTheme();
   const { width: screenWidth, height: screenHeight } = useWindowDimensions();
   const { data: promotion, isLoading } = useUnseenPromotion();
   const { mutate: markSeen } = useMarkPromotionCelebrationSeen();
-  const [visible, setVisible] = useState(false);
+  const [activePromotion, setActivePromotion] = useState<PromotionItem | null>(null);
 
   const confettiLayouts = useMemo(
-    () => (visible ? createConfettiLayout(screenWidth) : []),
-    [screenWidth, visible],
+    () => (activePromotion ? createConfettiLayout(screenWidth) : []),
+    [activePromotion, screenWidth],
   );
 
-  const scaleVal = useSharedValue(0.3);
+  const scaleVal = useSharedValue(0.96);
   const opacityVal = useSharedValue(0);
 
   useEffect(() => {
-    if (promotion) {
-      setVisible(true);
-      triggerSuccessNotification();
-      scaleVal.value = withSpring(1, { damping: 12, stiffness: 90 });
-      opacityVal.value = withTiming(1, { duration: 400 });
-    } else {
-      setVisible(false);
-    }
-  }, [opacityVal, promotion, scaleVal]);
+    if (!promotion || activePromotion) return;
+
+    setActivePromotion(promotion);
+    triggerSuccessNotification();
+    scaleVal.value = 0.96;
+    opacityVal.value = 0;
+    scaleVal.value = withTiming(1, ENTRANCE);
+    opacityVal.value = withTiming(1, ENTRANCE);
+  }, [activePromotion, opacityVal, promotion, scaleVal]);
 
   const cardAnimatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scaleVal.value }],
@@ -128,29 +147,30 @@ export function PromotionCelebrationOverlay() {
     opacity: opacityVal.value,
   }));
 
-  if (isLoading || !promotion || !visible) return null;
+  if (isLoading || !activePromotion) return null;
 
-  const isWrestling = promotion.discipline === 'wrestling';
-  const toStripe = promotion.toStripe ?? 0;
+  const isWrestling = activePromotion.discipline === 'wrestling';
+  const toStripe = activePromotion.toStripe ?? 0;
 
   const handleDismiss = () => {
-    scaleVal.value = withTiming(0.5, { duration: 250 });
-    opacityVal.value = withTiming(0, { duration: 250 }, (finished) => {
+    markSeen(activePromotion.id);
+
+    scaleVal.value = withTiming(0.98, EXIT);
+    opacityVal.value = withTiming(0, EXIT, (finished) => {
       if (finished) {
-        runOnJS(setVisible)(false);
-        runOnJS(markSeen)(promotion.id);
+        runOnJS(setActivePromotion)(null);
       }
     });
   };
 
   return (
-    <Modal transparent visible={visible} animationType="none" onRequestClose={handleDismiss}>
+    <Modal transparent visible animationType="none" onRequestClose={handleDismiss}>
       <View style={styles.container}>
         <Animated.View style={[styles.backdrop, backgroundAnimatedStyle]} />
 
         {confettiLayouts.map((layout, index) => (
           <ConfettiPiece
-            key={`${promotion.id}-${index}`}
+            key={`${activePromotion.id}-${index}`}
             index={index}
             layout={layout}
             screenHeight={screenHeight}
@@ -160,9 +180,12 @@ export function PromotionCelebrationOverlay() {
         <Animated.View
           style={[
             styles.card,
+            surfaceShadow('card'),
             cardAnimatedStyle,
             {
               backgroundColor: colors.surface.primary,
+              borderColor: colors.border.subtle,
+              borderWidth: layout.borderWidth,
               borderRadius: radius.modal,
               padding: inset.xl,
               gap: gap.lg,
@@ -177,7 +200,12 @@ export function PromotionCelebrationOverlay() {
           </View>
 
           <View style={[styles.textContainer, { gap: gap.xs }]}>
-            <Text style={[typography.textPresets.heading, { color: colors.text.primary, textAlign: 'center' }]}>
+            <Text
+              style={[
+                typography.textPresets.heading,
+                { color: colors.text.primary, textAlign: 'center' },
+              ]}
+            >
               Rank Promotion!
             </Text>
             <Text
@@ -208,10 +236,12 @@ export function PromotionCelebrationOverlay() {
             {isWrestling ? (
               <View style={styles.wrestlingBadge}>
                 <Text style={[typography.textPresets.subtitle, { color: colors.accent.default }]}>
-                  {promotion.toRankName}
+                  {activePromotion.toRankName}
                 </Text>
                 {toStripe > 0 && (
-                  <Text style={[typography.textPresets.bodyStrong, { color: colors.text.secondary }]}>
+                  <Text
+                    style={[typography.textPresets.bodyStrong, { color: colors.text.secondary }]}
+                  >
                     {toStripe} Stripe{toStripe > 1 ? 's' : ''}
                   </Text>
                 )}
@@ -223,15 +253,15 @@ export function PromotionCelebrationOverlay() {
                     styles.beltBar,
                     {
                       backgroundColor:
-                        promotion.toRankName?.toLowerCase() === 'blue'
+                        activePromotion.toRankName?.toLowerCase() === 'blue'
                           ? '#1E90FF'
-                          : promotion.toRankName?.toLowerCase() === 'purple'
-                          ? '#800080'
-                          : promotion.toRankName?.toLowerCase() === 'brown'
-                          ? '#8B4513'
-                          : promotion.toRankName?.toLowerCase() === 'black'
-                          ? '#000000'
-                          : '#FFFFFF',
+                          : activePromotion.toRankName?.toLowerCase() === 'purple'
+                            ? '#800080'
+                            : activePromotion.toRankName?.toLowerCase() === 'brown'
+                              ? '#8B4513'
+                              : activePromotion.toRankName?.toLowerCase() === 'black'
+                                ? '#000000'
+                                : '#FFFFFF',
                       borderColor: '#000000',
                       borderWidth: 1,
                       borderRadius: radius.tag,
@@ -244,8 +274,14 @@ export function PromotionCelebrationOverlay() {
                     ))}
                   </View>
                 </View>
-                <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary, marginTop: 4 }]}>
-                  {promotion.toRankName} Belt {toStripe > 0 ? `(${toStripe} Stripe${toStripe > 1 ? 's' : ''})` : ''}
+                <Text
+                  style={[
+                    typography.textPresets.bodyStrong,
+                    { color: colors.text.primary, marginTop: 4 },
+                  ]}
+                >
+                  {activePromotion.toRankName} Belt{' '}
+                  {toStripe > 0 ? `(${toStripe} Stripe${toStripe > 1 ? 's' : ''})` : ''}
                 </Text>
               </View>
             )}
@@ -263,9 +299,7 @@ export function PromotionCelebrationOverlay() {
               },
             ]}
           >
-            <Text style={[typography.textPresets.bodyStrong, { color: '#FFFFFF' }]}>
-              Let's Go!
-            </Text>
+            <Text style={[typography.textPresets.bodyStrong, { color: '#FFFFFF' }]}>Let's Go!</Text>
           </TouchableOpacity>
         </Animated.View>
       </View>
@@ -286,14 +320,17 @@ const styles = StyleSheet.create({
   },
   card: {
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
     width: '100%',
     maxWidth: 340,
     zIndex: 10,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 10 },
+        shadowOpacity: 0.3,
+        shadowRadius: 20,
+      },
+    }),
   },
   iconContainer: {
     alignItems: 'center',

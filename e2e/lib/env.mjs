@@ -26,6 +26,8 @@ export function loadE2EEnv() {
     ? JSON.parse(readFileSync(personasPath, 'utf8'))
     : {};
 
+  // Single source of truth: 971mma-app/.env
+  // supabase/.env.local is a symlink to the same file (kept for CLI compatibility).
   return {
     ...parseEnvFile(resolve(appRoot, '.env')),
     ...parseEnvFile(resolve(appRoot, 'supabase/.env.local')),

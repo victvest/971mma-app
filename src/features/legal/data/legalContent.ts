@@ -16,18 +16,19 @@ const CONTACT_LINE = 'For any questions, contact us at info@971mma.com or +971 5
 export const PRIVACY_DOCUMENT: LegalDocument = {
   eyebrow: 'Privacy policy',
   title: 'Your privacy at 971 MMA',
-  lastUpdated: 'June 2026',
+  lastUpdated: 'July 2026',
   intro:
-    'This Privacy Policy explains what information the 971 MMA app collects, how we use it, and the choices you have. By using the app you agree to the practices described here.',
+    'This Privacy Policy explains what information the 971 MMA mobile app collects, how we use it, and the choices you have. By using the app you agree to the practices described here. The public copy of this policy is also published at https://971mma.com/app-privacy/.',
   sections: [
     {
       heading: '1. Information we collect',
       paragraphs: [
-        'Account information: your email address and the password you set when registering. Passwords are managed securely by our authentication provider and are never stored in plain text.',
+        'Account information: your email address and the password you set when registering, or identifiers from Sign in with Apple / Google if you choose those options. Passwords are managed securely by our authentication provider and are never stored in plain text.',
         'Profile information: your name, date of birth, phone number, and profile photo that you provide during sign-up or when editing your profile.',
         'Training activity: class check-ins, attendance history, points, milestones, and belt progression generated as you train at the academy.',
-        'Membership information: your membership plan and status, synced from the academy’s management system.',
-        'Technical information: basic device and app information needed to keep the app secure and working correctly.',
+        'Membership information: your membership plan and status, synced from the academy’s management system (Mindbody).',
+        'Device permissions you grant: camera (coach QR scanning only), photo library (optional profile picture via the system picker), and notifications (optional class reminders).',
+        'Technical information: basic device and app information needed to keep the app secure and working correctly. We do not use advertising identifiers or third-party ad trackers.',
       ],
     },
     {
@@ -35,20 +36,21 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
       paragraphs: [
         'We use your information to operate the app: to authenticate you, show your schedule, record check-ins, track rewards and belt progress, and display your membership status.',
         'We use the message you submit through Help & Support to respond to your request and improve the academy experience.',
-        'We do not sell your personal information to third parties.',
+        'We do not sell your personal information to third parties, and we do not use your data for cross-app advertising.',
       ],
     },
     {
       heading: '3. Third-party services',
       paragraphs: [
-        'Mindbody: the academy uses Mindbody to manage memberships, schedules, and attendance. Relevant data is synced between Mindbody and the app so your information stays consistent.',
+        'Mindbody: the academy uses Mindbody to manage memberships, schedules, and attendance. Relevant data is synced between Mindbody and the app so your information stays consistent. Mindbody credentials are never embedded in the mobile app.',
         'Supabase: we use Supabase to securely host your account, profile, and training data. Access is protected by row-level security so members can only read their own records.',
+        'Apple / Google: if you sign in with Apple or Google, those providers authenticate you according to their own privacy policies.',
       ],
     },
     {
       heading: '4. Data storage and security',
       paragraphs: [
-        'Your authentication session is stored securely on your device using the platform’s encrypted storage. Sensitive academy credentials are never stored in the app.',
+        'Your authentication session is stored securely on your device using the platform’s encrypted storage (SecureStore). Sensitive academy credentials are never stored in the app.',
         'We apply industry-standard safeguards to protect your data, but no method of transmission or storage is completely secure. Please keep your login details private.',
       ],
     },
@@ -63,8 +65,9 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
       heading: '6. Your rights and choices',
       paragraphs: [
         'You can review and update your name, phone number, and profile photo at any time from the Edit Profile screen.',
-        'You can request deletion of your account from the Profile screen. Staff review each request before permanently removing your app account. Your account stays active until that review is complete. Gym membership and billing are handled separately at the front desk.',
-        'You may also contact us to ask what information we hold about you.',
+        'You can permanently delete your app account from Profile → Delete Account. Deletion removes your app account and associated personal data from our systems immediately. Gym membership and billing remain with the academy front desk and are not cancelled automatically by deleting the app account.',
+        'If you cannot open the app, you may also request deletion at https://971mma.com/app-account-deletion/ or by emailing info@971mma.com.',
+        'You may contact us to ask what information we hold about you or to withdraw consent where applicable.',
       ],
     },
     {
@@ -80,7 +83,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
 export const TERMS_DOCUMENT: LegalDocument = {
   eyebrow: 'Terms & conditions',
   title: 'Terms of use',
-  lastUpdated: 'June 2026',
+  lastUpdated: 'July 2026',
   intro:
     'These Terms govern your use of the 971 MMA app. By creating an account or using the app, you agree to these Terms. If you do not agree, please do not use the app.',
   sections: [

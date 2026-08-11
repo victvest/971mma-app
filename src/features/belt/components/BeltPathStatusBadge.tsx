@@ -2,12 +2,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { useTheme } from '@/shared/theme';
 
-export type BeltPathBadgeStatus =
-  | 'in_progress'
-  | 'done'
-  | 'locked'
-  | 'joined'
-  | 'completed';
+export type BeltPathBadgeStatus = 'in_progress' | 'done' | 'locked' | 'joined' | 'completed';
 
 type Props = {
   status: BeltPathBadgeStatus;
@@ -43,8 +38,7 @@ export function BeltPathStatusBadge({ status }: Props) {
         ? colors.status.success
         : colors.fill.secondary;
 
-  const textColor =
-    isActive ? colors.text.onAccent : colors.text.tertiary;
+  const textColor = isActive ? colors.text.onAccent : colors.text.tertiary;
 
   return (
     <View style={[styles.badge, { backgroundColor }]}>

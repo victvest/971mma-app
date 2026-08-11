@@ -12,7 +12,6 @@ const PRIVILEGED = [
   ['admin_search_users', { p_query: '', p_limit: 1, p_offset: 0 }],
   ['admin_system_health', {}],
   ['admin_reports_summary', {}],
-  ['admin_get_gate_settings', {}],
 ];
 
 suite('Admin / access control', () => {

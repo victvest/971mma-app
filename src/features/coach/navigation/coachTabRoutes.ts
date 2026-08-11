@@ -4,7 +4,7 @@ import type { Href } from 'expo-router';
 
 type IoniconName = ComponentProps<typeof Ionicons>['name'];
 
-export type CoachTabRouteName = 'index' | 'classes' | 'promotions';
+export type CoachTabRouteName = 'index' | 'classes' | 'feed' | 'promotions';
 
 export type CoachTabRoute = {
   name: CoachTabRouteName;
@@ -28,6 +28,13 @@ export const COACH_TAB_ROUTES = [
     label: 'Classes',
     icon: 'calendar-outline',
     activeIcon: 'calendar',
+  },
+  {
+    name: 'feed',
+    href: '/(coach)/(main)/feed',
+    label: 'Feed',
+    icon: 'newspaper-outline',
+    activeIcon: 'newspaper',
   },
   {
     name: 'promotions',

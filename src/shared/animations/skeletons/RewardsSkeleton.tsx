@@ -63,10 +63,7 @@ export function RewardsMilestonesSkeleton() {
     <View style={{ gap: gap.md }}>
       <SkeletonRect width="52%" height={18} borderRadius={radii.sm} />
       {Array.from({ length: 3 }).map((_, i) => (
-        <View
-          key={i}
-          style={[styles.milestoneRow, { borderRadius: radius.card, gap: gap.md }]}
-        >
+        <View key={i} style={[styles.milestoneRow, { borderRadius: radius.card, gap: gap.md }]}>
           <SkeletonRect width={40} height={40} borderRadius={radii.md} />
           <View style={{ flex: 1, gap: gap.sm }}>
             <SkeletonRect width="70%" height={16} borderRadius={radii.sm} />

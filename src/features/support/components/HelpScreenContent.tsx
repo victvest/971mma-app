@@ -11,11 +11,7 @@ import {
   View,
   type LayoutChangeEvent,
 } from 'react-native';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 
 import { RevealOnMount } from '@/shared/animations';
@@ -109,7 +105,10 @@ const ContactRow = memo(function ContactRow({ action }: { action: ContactAction 
           <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
             {action.label}
           </Text>
-          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={1}>
+          <Text
+            style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+            numberOfLines={1}
+          >
             {action.value}
           </Text>
         </View>
@@ -177,7 +176,11 @@ const FaqAccordionItem = memo(function FaqAccordionItem({
         style={[styles.faqHeader, { padding: inset.md }]}
       >
         <Text
-          style={[typography.textPresets.bodyStrong, styles.faqQuestion, { color: colors.text.primary }]}
+          style={[
+            typography.textPresets.bodyStrong,
+            styles.faqQuestion,
+            { color: colors.text.primary },
+          ]}
         >
           {item.question}
         </Text>
@@ -315,204 +318,209 @@ export function HelpScreenContent() {
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 96 : 0}
     >
-    <AppScrollView
-      style={styles.flex}
-      contentContainerStyle={{
-        paddingHorizontal: inset.lg,
-        paddingTop: 8,
-        paddingBottom: inset.xl,
-        gap: gap.xl,
-      }}
-      showsVerticalScrollIndicator={false}
-    >
-      {/* Intro */}
-      <RevealOnMount delay={0}>
-        <ScreenSectionHeader kicker="HELP & SUPPORT" />
-        <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, marginTop: gap.xs }]}>
-          We’re here to help
-        </Text>
-        <Text
-          style={[
-            typography.textPresets.body,
-            styles.introBody,
-            { color: colors.text.secondary, marginTop: gap.xs },
-          ]}
-        >
-          Browse common questions, reach the academy directly, or send us a message and we’ll reply by email.
-        </Text>
-      </RevealOnMount>
-
-      {/* Contact actions */}
-      <RevealOnMount delay={80} style={{ gap: gap.sm }}>
-        {CONTACT_ACTIONS.map((action) => (
-          <ContactRow key={action.id} action={action} />
-        ))}
-      </RevealOnMount>
-
-      {/* Send a message */}
-      <RevealOnMount delay={160} style={{ gap: gap.md }}>
-        <ScreenSectionHeader kicker="SEND A MESSAGE" />
-
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={[styles.chipRow, { gap: gap.xs }]}
-        >
-          {SUPPORT_CATEGORIES.map((opt) => (
-            <CategoryChip
-              key={opt.id}
-              label={opt.label}
-              selected={category === opt.id}
-              onPress={() => {
-                triggerLightImpact();
-                setCategory(opt.id);
-              }}
-            />
-          ))}
-        </ScrollView>
-
-        {isAnonymousGuest ? (
-          <>
-            <View style={{ gap: gap.xs }}>
-              <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
-                Full name
-              </Text>
-              <View
-                style={[
-                  styles.inputField,
-                  {
-                    backgroundColor: colors.surface.secondary,
-                    borderRadius: radius.input,
-                    paddingHorizontal: inset.md,
-                  },
-                ]}
-              >
-                <TextInput
-                  value={fullName}
-                  onChangeText={setFullName}
-                  placeholder="Your full name"
-                  placeholderTextColor={colors.text.tertiary}
-                  maxLength={120}
-                  autoCapitalize="words"
-                  returnKeyType="next"
-                  style={[styles.inputText, { color: colors.text.primary }]}
-                />
-              </View>
-            </View>
-
-            <View style={{ gap: gap.xs }}>
-              <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>Email</Text>
-              <View
-                style={[
-                  styles.inputField,
-                  {
-                    backgroundColor: colors.surface.secondary,
-                    borderRadius: radius.input,
-                    paddingHorizontal: inset.md,
-                  },
-                ]}
-              >
-                <TextInput
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="you@example.com"
-                  placeholderTextColor={colors.text.tertiary}
-                  maxLength={120}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  returnKeyType="next"
-                  style={[styles.inputText, { color: colors.text.primary }]}
-                />
-              </View>
-            </View>
-          </>
-        ) : null}
-
-        <Card
-          padded={false}
-          style={[styles.messageCard, { borderRadius: radius.cardLarge }]}
-        >
-          <TextInput
-            value={subject}
-            onChangeText={setSubject}
-            placeholder="What's this about?"
-            placeholderTextColor={colors.text.tertiary}
-            maxLength={120}
-            returnKeyType="next"
+      <AppScrollView
+        style={styles.flex}
+        contentContainerStyle={{
+          paddingHorizontal: inset.lg,
+          paddingTop: 8,
+          paddingBottom: inset.xl,
+          gap: gap.xl,
+        }}
+        showsVerticalScrollIndicator={false}
+      >
+        {/* Intro */}
+        <RevealOnMount delay={0}>
+          <ScreenSectionHeader kicker="HELP & SUPPORT" />
+          <Text
             style={[
-              styles.subjectInput,
-              typography.textPresets.body,
-              {
-                color: colors.text.primary,
-                borderBottomColor: colors.border.subtle,
-                paddingHorizontal: inset.md,
-              },
+              typography.textPresets.homeHero,
+              { color: colors.text.primary, marginTop: gap.xs },
             ]}
-          />
-          <View style={[styles.messageArea, { padding: inset.md }]}>
-            <TextInput
-              value={message}
-              onChangeText={setMessage}
-              placeholder="Tell us how we can help…"
-              placeholderTextColor={colors.text.tertiary}
-              maxLength={MAX_MESSAGE}
-              multiline
-              textAlignVertical="top"
-              style={[
-                styles.messageInput,
-                typography.textPresets.body,
-                { color: colors.text.primary },
-              ]}
-            />
-            <Text
-              style={[
-                typography.textPresets.caption,
-                styles.counterInCard,
-                { color: colors.text.tertiary },
-              ]}
-            >
-              {message.length}/{MAX_MESSAGE}
-            </Text>
-          </View>
-        </Card>
+          >
+            We’re here to help
+          </Text>
+          <Text
+            style={[
+              typography.textPresets.body,
+              styles.introBody,
+              { color: colors.text.secondary, marginTop: gap.xs },
+            ]}
+          >
+            Browse common questions, reach the academy directly, or send us a message and we’ll
+            reply by email.
+          </Text>
+        </RevealOnMount>
 
-        <Button
-          label="Send message"
-          icon="paper-plane-outline"
-          onPress={handleSubmit}
-          loading={submitMutation.isPending}
-          disabled={!canSubmit}
-        />
-      </RevealOnMount>
-
-      {/* FAQ */}
-      <RevealOnMount delay={240} style={{ gap: gap.md }}>
-        <ScreenSectionHeader kicker="FREQUENTLY ASKED" />
-        <View style={{ gap: gap.sm }}>
-          {FAQ_ITEMS.map((item) => (
-            <FaqAccordionItem
-              key={item.id}
-              item={item}
-              expanded={expandedId === item.id}
-              onToggle={toggleFaq}
-            />
+        {/* Contact actions */}
+        <RevealOnMount delay={80} style={{ gap: gap.sm }}>
+          {CONTACT_ACTIONS.map((action) => (
+            <ContactRow key={action.id} action={action} />
           ))}
-        </View>
-      </RevealOnMount>
+        </RevealOnMount>
 
-      {/* Footnote */}
-      <RevealOnMount delay={320}>
-        <Text
-          style={[
-            typography.textPresets.caption,
-            { color: colors.text.tertiary, textAlign: 'center' },
-          ]}
-        >
-          {ACADEMY_CONTACT.location} · {ACADEMY_CONTACT.instagram}
-        </Text>
-      </RevealOnMount>
-    </AppScrollView>
+        {/* Send a message */}
+        <RevealOnMount delay={160} style={{ gap: gap.md }}>
+          <ScreenSectionHeader kicker="SEND A MESSAGE" />
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={[styles.chipRow, { gap: gap.xs }]}
+          >
+            {SUPPORT_CATEGORIES.map((opt) => (
+              <CategoryChip
+                key={opt.id}
+                label={opt.label}
+                selected={category === opt.id}
+                onPress={() => {
+                  triggerLightImpact();
+                  setCategory(opt.id);
+                }}
+              />
+            ))}
+          </ScrollView>
+
+          {isAnonymousGuest ? (
+            <>
+              <View style={{ gap: gap.xs }}>
+                <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+                  Full name
+                </Text>
+                <View
+                  style={[
+                    styles.inputField,
+                    {
+                      backgroundColor: colors.surface.secondary,
+                      borderRadius: radius.input,
+                      paddingHorizontal: inset.md,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={fullName}
+                    onChangeText={setFullName}
+                    placeholder="Your full name"
+                    placeholderTextColor={colors.text.tertiary}
+                    maxLength={120}
+                    autoCapitalize="words"
+                    returnKeyType="next"
+                    style={[styles.inputText, { color: colors.text.primary }]}
+                  />
+                </View>
+              </View>
+
+              <View style={{ gap: gap.xs }}>
+                <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+                  Email
+                </Text>
+                <View
+                  style={[
+                    styles.inputField,
+                    {
+                      backgroundColor: colors.surface.secondary,
+                      borderRadius: radius.input,
+                      paddingHorizontal: inset.md,
+                    },
+                  ]}
+                >
+                  <TextInput
+                    value={email}
+                    onChangeText={setEmail}
+                    placeholder="you@example.com"
+                    placeholderTextColor={colors.text.tertiary}
+                    maxLength={120}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    returnKeyType="next"
+                    style={[styles.inputText, { color: colors.text.primary }]}
+                  />
+                </View>
+              </View>
+            </>
+          ) : null}
+
+          <Card padded={false} style={[styles.messageCard, { borderRadius: radius.cardLarge }]}>
+            <TextInput
+              value={subject}
+              onChangeText={setSubject}
+              placeholder="What's this about?"
+              placeholderTextColor={colors.text.tertiary}
+              maxLength={120}
+              returnKeyType="next"
+              style={[
+                styles.subjectInput,
+                typography.textPresets.body,
+                {
+                  color: colors.text.primary,
+                  borderBottomColor: colors.border.subtle,
+                  paddingHorizontal: inset.md,
+                },
+              ]}
+            />
+            <View style={[styles.messageArea, { padding: inset.md }]}>
+              <TextInput
+                value={message}
+                onChangeText={setMessage}
+                placeholder="Tell us how we can help…"
+                placeholderTextColor={colors.text.tertiary}
+                maxLength={MAX_MESSAGE}
+                multiline
+                textAlignVertical="top"
+                style={[
+                  styles.messageInput,
+                  typography.textPresets.body,
+                  { color: colors.text.primary },
+                ]}
+              />
+              <Text
+                style={[
+                  typography.textPresets.caption,
+                  styles.counterInCard,
+                  { color: colors.text.tertiary },
+                ]}
+              >
+                {message.length}/{MAX_MESSAGE}
+              </Text>
+            </View>
+          </Card>
+
+          <Button
+            label="Send message"
+            icon="paper-plane-outline"
+            onPress={handleSubmit}
+            loading={submitMutation.isPending}
+            disabled={!canSubmit}
+          />
+        </RevealOnMount>
+
+        {/* FAQ */}
+        <RevealOnMount delay={240} style={{ gap: gap.md }}>
+          <ScreenSectionHeader kicker="FREQUENTLY ASKED" />
+          <View style={{ gap: gap.sm }}>
+            {FAQ_ITEMS.map((item) => (
+              <FaqAccordionItem
+                key={item.id}
+                item={item}
+                expanded={expandedId === item.id}
+                onToggle={toggleFaq}
+              />
+            ))}
+          </View>
+        </RevealOnMount>
+
+        {/* Footnote */}
+        <RevealOnMount delay={320}>
+          <Text
+            style={[
+              typography.textPresets.caption,
+              { color: colors.text.tertiary, textAlign: 'center' },
+            ]}
+          >
+            {ACADEMY_CONTACT.location} · {ACADEMY_CONTACT.instagram}
+          </Text>
+        </RevealOnMount>
+      </AppScrollView>
     </KeyboardAvoidingView>
   );
 }

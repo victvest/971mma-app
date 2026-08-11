@@ -7,8 +7,7 @@ import Animated, {
   useSharedValue,
   withSpring,
 } from 'react-native-reanimated';
-import { BlurView } from 'expo-blur';
-import { FLOATING_CHROME_ELEVATION } from '@/features/home/components/navigation/floatingChromeElevation';
+import { LiquidGlassSurface } from '@/shared/components/ui/LiquidGlassSurface';
 import { triggerLightImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { PERSONA_ASSISTANT_NAME } from '../constants';
@@ -44,7 +43,7 @@ export const PersonaFloatingBubble = memo(function PersonaFloatingBubble({
   onPositionChange,
   bounds,
 }: Props) {
-  const { mode, animations } = useTheme();
+  const { animations, chromeElevation } = useTheme();
   const translateX = useSharedValue(position.x);
   const translateY = useSharedValue(position.y);
   const dragOriginX = useSharedValue(position.x);
@@ -99,22 +98,15 @@ export const PersonaFloatingBubble = memo(function PersonaFloatingBubble({
         .onEnd(() => {
           const midpoint = (bounds.minX + bounds.maxX) / 2;
           const snappedX = translateX.value <= midpoint ? bounds.minX : bounds.maxX;
-          const snappedY = Math.min(
-            Math.max(translateY.value, bounds.minY),
-            bounds.maxY,
-          );
+          const snappedY = Math.min(Math.max(translateY.value, bounds.minY), bounds.maxY);
 
           scale.value = withSpring(1, animations.motion.tabBar.iconFocus);
           translateX.value = withSpring(snappedX, animations.motion.tabBar.capsule);
-          translateY.value = withSpring(
-            snappedY,
-            animations.motion.tabBar.capsule,
-            (finished) => {
-              if (finished) {
-                runOnJS(commitPosition)({ x: snappedX, y: snappedY });
-              }
-            },
-          );
+          translateY.value = withSpring(snappedY, animations.motion.tabBar.capsule, (finished) => {
+            if (finished) {
+              runOnJS(commitPosition)({ x: snappedX, y: snappedY });
+            }
+          });
         }),
     [
       animations.motion.tabBar.capsule,
@@ -155,8 +147,6 @@ export const PersonaFloatingBubble = memo(function PersonaFloatingBubble({
   }));
 
   const portraitSize = PERSONA_BUBBLE_SIZE - PORTRAIT_INSET * 2;
-  const ringBackground = mode === 'dark' ? 'rgba(25, 25, 22, 0.55)' : 'rgba(255, 255, 255, 0.65)';
-  const ringBorder = mode === 'dark' ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)';
 
   return (
     <GestureDetector gesture={gesture}>
@@ -167,7 +157,7 @@ export const PersonaFloatingBubble = memo(function PersonaFloatingBubble({
         accessibilityHint="Drag to reposition. Tap to open chat."
         style={[
           styles.shell,
-          FLOATING_CHROME_ELEVATION,
+          chromeElevation(),
           {
             width: PERSONA_BUBBLE_SIZE,
             height: PERSONA_BUBBLE_SIZE,
@@ -176,26 +166,15 @@ export const PersonaFloatingBubble = memo(function PersonaFloatingBubble({
           animatedStyle,
         ]}
       >
-        <View
-          style={[
-            styles.ring,
-            {
-              borderRadius: PERSONA_BUBBLE_SIZE / 2,
-              borderColor: ringBorder,
-              backgroundColor: ringBackground,
-            },
-          ]}
+        <LiquidGlassSurface
+          variant="chrome"
+          borderRadius={PERSONA_BUBBLE_SIZE / 2}
+          style={StyleSheet.absoluteFill}
+          contentStyle={styles.portraitWrap}
         >
-          <BlurView
-            intensity={mode === 'dark' ? 50 : 62}
-            tint={mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight'}
-            style={[StyleSheet.absoluteFill, { borderRadius: PERSONA_BUBBLE_SIZE / 2 }]}
-          />
-          <View style={styles.portraitWrap}>
-            <PersonaAvatar size={portraitSize} />
-          </View>
+          <PersonaAvatar size={portraitSize} />
           <View style={styles.onlineDot} />
-        </View>
+        </LiquidGlassSurface>
       </Animated.View>
     </GestureDetector>
   );

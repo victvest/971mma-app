@@ -5,6 +5,7 @@ import { AppScrollView } from '@/shared/components/ui';
 import { RevealOnMount } from '@/shared/animations';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import { animations } from '@/shared/theme/animations';
 import { useLineage } from '@/features/lineage/hooks/useLineage';
 import { LineageFeaturedCard } from '@/features/lineage/components/LineageFeaturedCard';
@@ -39,22 +40,22 @@ export function LineageScreenContent() {
   const hasError = !!lineageQuery.error;
   const data = lineageQuery.data ?? [];
   const hasData = data.length > 0;
-  const listErrorMessage =
-    lineageQuery.error instanceof Error
-      ? lineageQuery.error.message
-      : 'Please check your connection.';
+  const listErrorMessage = toUserFacingErrorMessage(lineageQuery.error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
 
   return (
-    <AppScrollView
-      contentContainerStyle={contentPadding}
-      showsVerticalScrollIndicator={false}
-    >
+    <AppScrollView contentContainerStyle={contentPadding} showsVerticalScrollIndicator={false}>
       <RevealOnMount replayKey={entranceReplayKey} delay={entranceDelay(0)}>
         <LineageHero />
       </RevealOnMount>
 
       {hasError && hasData ? (
-        <RevealOnMount replayKey={entranceReplayKey} delay={entranceDelay(1)} style={styles.inlineState}>
+        <RevealOnMount
+          replayKey={entranceReplayKey}
+          delay={entranceDelay(1)}
+          style={styles.inlineState}
+        >
           <StateBlock
             kind="error"
             title="Sync issue"

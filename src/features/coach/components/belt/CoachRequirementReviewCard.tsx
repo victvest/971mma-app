@@ -12,16 +12,10 @@ type Props = {
   onMarkDone: (requirementId: string) => void;
 };
 
-export function CoachRequirementReviewCard({
-  item,
-  trainingDays,
-  isUpdating,
-  onMarkDone,
-}: Props) {
+export function CoachRequirementReviewCard({ item, trainingDays, isUpdating, onMarkDone }: Props) {
   const { colors, typography, gap } = useTheme();
 
-  const canMarkDone =
-    item.type !== 'attendance' && item.status === 'now' && !isUpdating;
+  const canMarkDone = item.type !== 'attendance' && item.status === 'now' && !isUpdating;
 
   const handleMarkDone = useCallback(() => {
     onMarkDone(item.id);

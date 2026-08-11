@@ -12,9 +12,14 @@ import {
 } from '@/features/auth/components/AuthExperience';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
-import { formatAuthError, validateEmail, validateOtpCode } from '@/features/auth/services/authValidation';
+import {
+  formatAuthError,
+  validateEmail,
+  validateOtpCode,
+} from '@/features/auth/services/authValidation';
 import { useOtpResendCooldown } from '@/features/auth/hooks/useOtpResendCooldown';
 import { useTheme } from '@/shared/theme';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 export default function ResetVerifyOtpScreen() {
   const router = useRouter();
@@ -36,7 +41,7 @@ export default function ResetVerifyOtpScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 
@@ -110,7 +115,12 @@ export default function ResetVerifyOtpScreen() {
         }}
       />
 
-      <Text style={[typography.textPresets.footnote, { color: colors.text.tertiary, textAlign: 'center' }]}>
+      <Text
+        style={[
+          typography.textPresets.footnote,
+          { color: colors.text.tertiary, textAlign: 'center' },
+        ]}
+      >
         Didn&apos;t get it? Check spam or request a new code.
       </Text>
 
@@ -133,13 +143,7 @@ export default function ResetVerifyOtpScreen() {
       />
 
       <AuthSubmitButton
-        label={
-          resending
-            ? 'Sending…'
-            : canResend
-              ? 'Resend code'
-              : `Resend in ${cooldownSec}s`
-        }
+        label={resending ? 'Sending…' : canResend ? 'Resend code' : `Resend in ${cooldownSec}s`}
         onPress={handleResend}
         loading={resending}
         disabled={Boolean(configError) || loading || !canResend}

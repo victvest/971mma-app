@@ -5,7 +5,7 @@ export const QR_VERSION = 'v1';
 
 export type QrSource = 'supabase' | 'mindbody';
 
-export type ParsedQrToken = MemberRef & { exp?: number };
+export type ParsedQrToken = MemberRef & { exp?: number; jti?: string };
 
 export function buildMemberQrToken(memberId: string, source: QrSource = 'supabase'): string {
   return `${QR_PREFIX}:${QR_VERSION}:${source}:${memberId}`;
@@ -25,11 +25,11 @@ export function parseMemberQrToken(raw: string): ParsedQrToken | null {
     return { memberId, source };
   }
 
-  // v2 signed pass — client extracts memberId only; signature verified server-side in mb-checkin.
+  // v2 signed pass — client extracts memberId / jti; signature verified server-side at the gate.
   // Format: 971mma:v2:supabase:<userId>:<expEpoch>:<jti>:<HMAC>
   if (version === 'v2') {
     if (parts.length !== 7) return null;
-    const [, , source, memberId, expStr] = parts;
+    const [, , source, memberId, expStr, jti] = parts;
     if (source !== 'supabase' && source !== 'mindbody') return null;
     if (!memberId || !expStr) return null;
     const exp = parseInt(expStr, 10);
@@ -37,6 +37,7 @@ export function parseMemberQrToken(raw: string): ParsedQrToken | null {
       memberId,
       source,
       exp: Number.isFinite(exp) ? exp : undefined,
+      jti: jti || undefined,
     };
   }
 

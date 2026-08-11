@@ -12,11 +12,16 @@ import {
   AuthSubmitButton,
 } from '@/features/auth/components/AuthExperience';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
-import { formatAuthError, validateEmail, validateOtpCode } from '@/features/auth/services/authValidation';
+import {
+  formatAuthError,
+  validateEmail,
+  validateOtpCode,
+} from '@/features/auth/services/authValidation';
 import { completeSignupActivation } from '@/features/auth/services/postSignupActivation';
 import { useOtpResendCooldown } from '@/features/auth/hooks/useOtpResendCooldown';
 import { useTheme } from '@/shared/theme';
 import { useAuthStore } from '@/stores/useAuthStore';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 export default function VerifyEmailScreen() {
   const router = useRouter();
@@ -38,7 +43,7 @@ export default function VerifyEmailScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 
@@ -102,7 +107,9 @@ export default function VerifyEmailScreen() {
     <AuthScreen
       title="Verify your email"
       subtitle={`Enter the 6-digit code we sent to ${email}.`}
-      footer={<AuthBackLink href={authRoutes.register} label="Back to sign up" navigate="replace" />}
+      footer={
+        <AuthBackLink href={authRoutes.register} label="Back to sign up" navigate="replace" />
+      }
     >
       <AuthOtpInput
         ref={otpRef}
@@ -114,7 +121,12 @@ export default function VerifyEmailScreen() {
         }}
       />
 
-      <Text style={[typography.textPresets.footnote, { color: colors.text.tertiary, textAlign: 'center' }]}>
+      <Text
+        style={[
+          typography.textPresets.footnote,
+          { color: colors.text.tertiary, textAlign: 'center' },
+        ]}
+      >
         Didn&apos;t get it? Check spam or request a new code.
       </Text>
 
@@ -137,13 +149,7 @@ export default function VerifyEmailScreen() {
       />
 
       <AuthSubmitButton
-        label={
-          resending
-            ? 'Sending…'
-            : canResend
-              ? 'Resend code'
-              : `Resend in ${cooldownSec}s`
-        }
+        label={resending ? 'Sending…' : canResend ? 'Resend code' : `Resend in ${cooldownSec}s`}
         onPress={handleResend}
         loading={resending}
         disabled={Boolean(configError) || loading || !canResend}

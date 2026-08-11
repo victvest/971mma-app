@@ -59,19 +59,15 @@ type StatCardProps = {
   footnote?: string;
 };
 
-function StatCard({
-  label,
-  accentColor,
-  iconBg,
-  icon,
-  loading,
-  value,
-  footnote,
-}: StatCardProps) {
+function StatCard({ label, accentColor, iconBg, icon, loading, value, footnote }: StatCardProps) {
   const { colors, typography, radius, inset } = useTheme();
 
   return (
-    <HomeElevatedCard padded={false} style={styles.card} contentStyle={[styles.cardInner, { padding: inset.md }]}>
+    <HomeElevatedCard
+      padded={false}
+      style={styles.card}
+      contentStyle={[styles.cardInner, { padding: inset.md }]}
+    >
       <LinearGradient
         colors={['rgba(255,255,255,0.92)', 'rgba(255,255,255,0)']}
         style={[
@@ -169,9 +165,7 @@ export const CheckInStatCards = memo(function CheckInStatCards({
                 ? colors.status.error
                 : colors.text.tertiary
           }
-          iconBg={
-            membership?.status === 'active' ? colors.accent.subtle : colors.surface.secondary
-          }
+          iconBg={membership?.status === 'active' ? colors.accent.subtle : colors.surface.secondary}
           icon={
             <BadgeCheck
               size={16}

@@ -1,10 +1,6 @@
 import React from 'react';
 import { StyleSheet, View } from 'react-native';
-import {
-  AcademyEyebrow,
-  TabHeroTitle,
-  type TabHeroSegment,
-} from '@/shared/components/brand';
+import { AcademyEyebrow, TabHeroTitle, type TabHeroSegment } from '@/shared/components/brand';
 import { useTheme } from '@/shared/theme';
 
 const DEFAULT_TITLE_LINES: TabHeroSegment[][] = [

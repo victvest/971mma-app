@@ -1,13 +1,7 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  Platform,
-  StatusBar,
-} from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, Platform, StatusBar } from 'react-native';
 import { darkColors } from '@/shared/theme/colors';
+import { captureBugEvent } from '@/services/bug-reporting';
 
 const c = darkColors;
 
@@ -16,7 +10,7 @@ type FallbackProps = {
   onReset: () => void;
 };
 
-function ErrorFallback({ error, onReset }: FallbackProps) {
+function ErrorFallback({ onReset }: FallbackProps) {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
@@ -27,9 +21,7 @@ function ErrorFallback({ error, onReset }: FallbackProps) {
 
       <Text style={styles.title}>Something went wrong</Text>
       <Text style={styles.message}>
-        {__DEV__ && error?.message
-          ? error.message
-          : 'An unexpected error occurred.\nPlease reload the app.'}
+        An unexpected error occurred.{'\n'}Please try again, or talk to the front desk for help.
       </Text>
 
       <TouchableOpacity style={styles.button} onPress={onReset} activeOpacity={0.8}>
@@ -58,6 +50,14 @@ export class ErrorBoundary extends React.Component<Props, State> {
   }
 
   componentDidCatch(error: Error, info: React.ErrorInfo) {
+    captureBugEvent({
+      source: 'react_error_boundary',
+      severity: 'fatal',
+      error,
+      context: {
+        componentStack: info.componentStack,
+      },
+    });
 
     if (__DEV__) {
       console.error('[ErrorBoundary] Uncaught error:', error, info);
@@ -84,7 +84,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: 32,
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight ?? 24 : 0,
+    paddingTop: Platform.OS === 'android' ? (StatusBar.currentHeight ?? 24) : 0,
   },
   iconWrap: {
     width: 72,

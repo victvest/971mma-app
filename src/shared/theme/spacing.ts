@@ -1,3 +1,5 @@
+import { Platform } from 'react-native';
+
 export const spacing = {
   0: 0,
   0.5: 2,
@@ -60,7 +62,10 @@ export const layout = {
 
   safeBottom: spacing[8],
 
-  headerHeight: 56,
+  headerHeight: Platform.OS === 'android' ? 68 : 56,
+
+  /** Extra padding below app bar content on Android (back button breathing room). */
+  appBarBottomInset: Platform.OS === 'android' ? 10 : 0,
 
   tabBarHeight: 80,
 

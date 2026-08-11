@@ -8,10 +8,10 @@ type Props = {
 };
 
 export function BeltPathSurfaceCard({ children, style }: Props) {
-  const { colors, radius, shadows, inset } = useTheme();
+  const { colors, radius, surfaceShadow, inset } = useTheme();
 
   return (
-    <View style={[shadows.card, { borderRadius: radius.cardLarge }]}>
+    <View style={[surfaceShadow('card'), { borderRadius: radius.cardLarge }]}>
       <View
         style={[
           styles.card,

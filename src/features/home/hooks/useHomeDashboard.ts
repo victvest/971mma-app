@@ -9,17 +9,25 @@ import {
 } from '@/services/database/discipline.repository';
 import { getHomeDashboardSummary } from '@/services/database/homeDashboard.repository';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
-import { beltPathKey } from '@/features/belt/hooks/useBeltPath';
-import { pointsKey } from '@/features/rewards/hooks/useRewards';
+import { beltPathKey } from '@/features/belt/hooks/beltPathKeys';
+import { pointsKey } from '@/features/rewards/hooks/rewardsKeys';
 import { MEMBER_DASHBOARD_STALE_MS } from '@/lib/queryCachePolicy';
 import { homeDashboardKey } from './homeDashboardKeys';
+import {
+  disciplineKey,
+  gym8WeeksActivityKey,
+  memberPercentileKey,
+  weekActivityKey,
+} from './homeActivityKeys';
 import type { BeltPathSummary } from '@/types/domain';
 
-export const disciplineKey = (userId: string) => ['discipline-score', userId] as const;
-export const memberPercentileKey = (userId: string) => ['member-percentile-rank', userId] as const;
-export const weekActivityKey = (userId: string) => ['week-activity', userId] as const;
-export const gym8WeeksActivityKey = (userId: string) => ['gym-8weeks-activity', userId] as const;
 export { homeDashboardKey } from './homeDashboardKeys';
+export {
+  disciplineKey,
+  gym8WeeksActivityKey,
+  memberPercentileKey,
+  weekActivityKey,
+} from './homeActivityKeys';
 
 export function useHomeDashboardSummary() {
   const activeMemberId = useActiveMemberId();
@@ -28,7 +36,7 @@ export function useHomeDashboardSummary() {
   const query = useQuery({
     queryKey: homeDashboardKey(activeMemberId),
     queryFn: () => getHomeDashboardSummary(activeMemberId),
-    enabled: true,
+    enabled: Boolean(activeMemberId),
     staleTime: MEMBER_DASHBOARD_STALE_MS,
   });
 

@@ -95,13 +95,13 @@ async function getHomeDashboardViaRpc(userId: string): Promise<HomeDashboardSumm
 async function getHomeDashboardFallback(userId: string): Promise<HomeDashboardSummary> {
   const [upcomingClasses, coaches, points, rankEligibility, disciplineScore, weekActivity] =
     await Promise.all([
-    fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId),
-    getCoaches(),
-    getPointsAccount(userId),
-    getRankEligibility(userId),
-    getDisciplineScore(userId),
-    getGymWeekActivity(userId),
-  ]);
+      fetchUpcomingHeroClasses(HOME_SCHEDULE_LIMIT, userId),
+      getCoaches(),
+      getPointsAccount(userId),
+      getRankEligibility(userId),
+      getDisciplineScore(userId),
+      getGymWeekActivity(userId),
+    ]);
 
   const beltPath = rankEligibility.eligible
     ? await getBeltPathSummary(userId, rankEligibility.disciplineSlug ?? 'bjj')

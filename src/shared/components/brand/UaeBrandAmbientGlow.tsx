@@ -44,12 +44,18 @@ const RED_STOPS: Record<UaeBrandAmbientGlowVariant, GlowStop[]> = {
   ],
 };
 
-const GREEN_POSITION: Record<UaeBrandAmbientGlowVariant, { cx: string; cy: string; rx: string; ry: string }> = {
+const GREEN_POSITION: Record<
+  UaeBrandAmbientGlowVariant,
+  { cx: string; cy: string; rx: string; ry: string }
+> = {
   'photo-hero': { cx: '50%', cy: '0%', rx: '82%', ry: '72%' },
   'photo-card': { cx: '50%', cy: '0%', rx: '78%', ry: '64%' },
 };
 
-const RED_POSITION: Record<UaeBrandAmbientGlowVariant, { cx: string; cy: string; rx: string; ry: string }> = {
+const RED_POSITION: Record<
+  UaeBrandAmbientGlowVariant,
+  { cx: string; cy: string; rx: string; ry: string }
+> = {
   'photo-hero': { cx: '92%', cy: '88%', rx: '52%', ry: '42%' },
   'photo-card': { cx: '90%', cy: '92%', rx: '46%', ry: '36%' },
 };

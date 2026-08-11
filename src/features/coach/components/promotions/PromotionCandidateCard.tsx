@@ -69,7 +69,11 @@ const MemberPhoto = memo(function MemberPhoto({ item }: MemberPhotoProps) {
 
   return (
     <View
-      style={[StyleSheet.absoluteFill, styles.initialsSurface, { backgroundColor: colors.accent.subtle }]}
+      style={[
+        StyleSheet.absoluteFill,
+        styles.initialsSurface,
+        { backgroundColor: colors.accent.subtle },
+      ]}
       accessibilityLabel={`${item.fullName} initials`}
     >
       <Text style={[typography.textPresets.coachDisplayCompact, { color: colors.accent.default }]}>

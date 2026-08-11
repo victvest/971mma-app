@@ -5,26 +5,28 @@ import { Button } from '@/shared/components/ui';
 import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
-import { REFERRAL_BONUS_POINTS } from '@/services/database/referrals.repository';
+import { REFERRAL_BONUS_POINTS_DEFAULT } from '@/services/database/referrals.repository';
 
 type Props = {
   referralCode: string | null;
   isLoadingCode?: boolean;
   /** Hide inner promo hero when the screen already shows a title. */
   compact?: boolean;
+  bonusPoints?: number;
 };
 
 export const ReferralProgramCard = memo(function ReferralProgramCard({
   referralCode,
   isLoadingCode = false,
   compact = false,
+  bonusPoints = REFERRAL_BONUS_POINTS_DEFAULT,
 }: Props) {
-  const { colors, typography, radius, gap, layout, shadows } = useTheme();
+  const { colors, typography, radius, gap, layout, surfaceShadow } = useTheme();
 
   const shareMessage = useMemo(() => {
     if (!referralCode) return '';
-    return `Join me at 971 MMA! Use my referral code ${referralCode} when you sign up. We both earn ${REFERRAL_BONUS_POINTS} points after your account is activated.`;
-  }, [referralCode]);
+    return `Join me at 971 MMA! Use my referral code ${referralCode} when you sign up. We both earn ${bonusPoints} points after your account is activated.`;
+  }, [referralCode, bonusPoints]);
 
   const handleShare = useCallback(async () => {
     if (!referralCode) return;
@@ -52,7 +54,7 @@ export const ReferralProgramCard = memo(function ReferralProgramCard({
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -64,34 +66,56 @@ export const ReferralProgramCard = memo(function ReferralProgramCard({
       ]}
     >
       {!compact ? (
-        <View style={[styles.hero, { backgroundColor: colors.surface.promo, borderRadius: radius.card }]}>
+        <View
+          style={[
+            styles.hero,
+            { backgroundColor: colors.surface.promo, borderRadius: radius.card },
+          ]}
+        >
           <View style={styles.heroHeader}>
             <Ionicons name="people-outline" size={18} color={colors.accent.default} />
-            <Text style={[styles.heroKicker, { color: colors.text.onPromoMuted }]}>REFER A FRIEND</Text>
+            <Text style={[styles.heroKicker, { color: colors.text.onPromoMuted }]}>
+              REFER A FRIEND
+            </Text>
           </View>
           <Text style={[typography.textPresets.title, { color: colors.text.onPromo }]}>
-            You both earn {REFERRAL_BONUS_POINTS.toLocaleString('en-US')} points
+            You both earn {bonusPoints.toLocaleString('en-US')} points
           </Text>
           <Text style={[typography.textPresets.footnote, { color: colors.text.onPromoMuted }]}>
-            Share your code with a friend who is not on 971 MMA yet. When they activate their account, you both get the bonus.
+            Share your code with a friend who is not on 971 MMA yet. When they activate their
+            account, you both get the bonus.
           </Text>
         </View>
       ) : (
         <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-          Share your code with a friend who is not on 971 MMA yet. When they activate their account, you both earn{' '}
-          {REFERRAL_BONUS_POINTS.toLocaleString('en-US')} points.
+          Share your code with a friend who is not on 971 MMA yet. When they activate their account,
+          you both earn {bonusPoints.toLocaleString('en-US')} points.
         </Text>
       )}
 
-      <View style={[styles.codeCard, { backgroundColor: colors.fill.secondary, borderRadius: radius.card }]}>
-        <Text style={[typography.textPresets.label, { color: colors.text.secondary }]}>YOUR CODE</Text>
-        <Text style={[typography.textPresets.hero, { color: colors.text.primary, letterSpacing: 4 }]}>
-          {isLoadingCode ? '••••••' : referralCode ?? '------'}
+      <View
+        style={[
+          styles.codeCard,
+          { backgroundColor: colors.fill.secondary, borderRadius: radius.card },
+        ]}
+      >
+        <Text style={[typography.textPresets.label, { color: colors.text.secondary }]}>
+          YOUR CODE
+        </Text>
+        <Text
+          style={[typography.textPresets.hero, { color: colors.text.primary, letterSpacing: 4 }]}
+        >
+          {isLoadingCode ? '••••••' : (referralCode ?? '------')}
         </Text>
       </View>
 
       <View style={{ gap: gap.sm }}>
-        <Button label="Share code" onPress={handleShare} disabled={!referralCode || isLoadingCode} full />
+        <Button
+          label="Share code"
+          onPress={handleShare}
+          disabled={!referralCode || isLoadingCode}
+          full
+        />
         <Button
           label="Copy code"
           variant="outline"

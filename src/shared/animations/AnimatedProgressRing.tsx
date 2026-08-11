@@ -1,10 +1,6 @@
 import React, { useEffect } from 'react';
 import { StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
-import Animated, {
-  useAnimatedProps,
-  useSharedValue,
-  withTiming,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedProps, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { animations } from '@/shared/theme/animations';
 
@@ -37,9 +33,7 @@ export function AnimatedProgressRing({
   const progress = useSharedValue(animate ? 0 : clamped);
 
   useEffect(() => {
-    progress.value = animate
-      ? withTiming(clamped, animations.motion.progress)
-      : clamped;
+    progress.value = animate ? withTiming(clamped, animations.motion.progress) : clamped;
   }, [animate, clamped, progress]);
 
   const animatedProps = useAnimatedProps(() => ({

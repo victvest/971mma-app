@@ -1,10 +1,11 @@
 import { Platform } from 'react-native';
 import Constants from 'expo-constants';
-import { getSupabaseClient } from '@/services/supabase/client';
 import {
-  getNotificationsModule,
-  isPushNotificationsAvailable,
-} from './notificationsNativeModule';
+  toUserFacingErrorMessage,
+  USER_FACING_CONFIG_ERROR,
+} from '@/lib/userFacingError';
+import { getSupabaseClient } from '@/services/supabase/client';
+import { getNotificationsModule, isPushNotificationsAvailable } from './notificationsNativeModule';
 
 type NotificationsModule = typeof import('expo-notifications');
 type NotificationPermissionsStatus = Awaited<
@@ -119,7 +120,7 @@ export async function registerForPushNotifications(
       return {
         token: null,
         status: 'unavailable',
-        message: 'EAS project ID is missing from the app config.',
+        message: USER_FACING_CONFIG_ERROR,
       };
     }
 
@@ -134,13 +135,17 @@ export async function registerForPushNotifications(
       return {
         token: null,
         status: 'unavailable',
-        message: error.message,
+        message: toUserFacingErrorMessage(error, {
+          fallback: 'Push registration failed.',
+        }),
       };
     }
 
     return { token, status: 'registered' };
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Push registration failed.';
+    const message = toUserFacingErrorMessage(error, {
+      fallback: 'Push registration failed.',
+    });
     return { token: null, status: 'unavailable', message };
   }
 }

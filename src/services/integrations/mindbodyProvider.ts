@@ -1,10 +1,5 @@
 import { parseMemberQrToken } from '@/services/qr/token';
-import type {
-  MemberProfile,
-  MemberRef,
-  Membership,
-  ProfilePatch,
-} from '@/types/domain';
+import type { MemberProfile, MemberRef, Membership, ProfilePatch } from '@/types/domain';
 import type { IntegrationProvider, ProviderSource } from './types';
 
 const NOT_CONFIGURED =
@@ -52,7 +47,9 @@ export class MindbodyProvider implements IntegrationProvider {
     throw new Error(NOT_CONFIGURED);
   }
 
-  async refreshCoaches(_options?: { force?: boolean }): Promise<{ refreshed: boolean; count?: number }> {
+  async refreshCoaches(_options?: {
+    force?: boolean;
+  }): Promise<{ refreshed: boolean; count?: number }> {
     await this.ensureAuth();
     throw new Error(NOT_CONFIGURED);
   }

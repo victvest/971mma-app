@@ -13,6 +13,7 @@ import { triggerLightImpact } from '@/shared/haptics';
 import { useActiveProfileLabel, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
 import { useMindbodyClientInfo } from '@/features/profile/hooks/useMindbodyClientInfo';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 
 type InfoFieldProps = {
   label: string;
@@ -22,7 +23,13 @@ type InfoFieldProps = {
   replayKey: number;
 };
 
-const InfoField = memo(function InfoField({ label, value, icon, delay, replayKey }: InfoFieldProps) {
+const InfoField = memo(function InfoField({
+  label,
+  value,
+  icon,
+  delay,
+  replayKey,
+}: InfoFieldProps) {
   const { colors, typography, radius, gap } = useTheme();
 
   return (
@@ -40,7 +47,9 @@ const InfoField = memo(function InfoField({ label, value, icon, delay, replayKey
           >
             <Ionicons name={icon} size={18} color={colors.accent.default} />
           </View>
-          <Text style={[typography.textPresets.label, { color: colors.text.secondary }]}>{label}</Text>
+          <Text style={[typography.textPresets.label, { color: colors.text.secondary }]}>
+            {label}
+          </Text>
         </View>
         <Text
           selectable
@@ -152,8 +161,9 @@ export function MindbodyInfoScreenContent() {
     [gap.xl, inset.lg, inset.xl],
   );
 
-  const errorMessage =
-    error instanceof Error ? error.message : 'Please check your connection and try again.';
+  const errorMessage = toUserFacingErrorMessage(error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
 
   const isNotLinked =
     error &&
@@ -202,7 +212,11 @@ export function MindbodyInfoScreenContent() {
             <MemberBarcodeCard value={data.barcode} delay={80} replayKey={replayKey} />
           ) : (
             <RevealOnMount replayKey={replayKey} delay={80}>
-              <StateBlock kind="empty" title="No barcode assigned" message="Ask the front desk to set up your member barcode in Mindbody." />
+              <StateBlock
+                kind="empty"
+                title="No barcode assigned"
+                message="Ask the front desk to set up your member barcode in Mindbody."
+              />
             </RevealOnMount>
           )}
           <InfoField

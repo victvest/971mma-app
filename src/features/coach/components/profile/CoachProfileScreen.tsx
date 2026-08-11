@@ -1,10 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import Animated from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,12 +15,13 @@ import {
 
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
 import { useAuth } from '@/features/auth/context/AuthContext';
-import { getCoachRankLabel, getCoachRoleLabel, getCoachSpecialtyLabel } from '@/features/coaches/components/CoachVisuals';
-import { useCoachDashboardStats } from '@/features/coach/hooks/useCoachMode';
 import {
-  useMyCoachClasses,
-  useMyCoachRecord,
-} from '@/features/coach/hooks/useMyCoachRecord';
+  getCoachRankLabel,
+  getCoachRoleLabel,
+  getCoachSpecialtyLabel,
+} from '@/features/coaches/components/CoachVisuals';
+import { useCoachDashboardStats } from '@/features/coach/hooks/useCoachMode';
+import { useMyCoachClasses, useMyCoachRecord } from '@/features/coach/hooks/useMyCoachRecord';
 import {
   ProfileActionTile,
   ProfileGlassHeader,
@@ -43,11 +39,7 @@ import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { UaeFlagMark } from '@/shared/components/brand';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import {
-  isOfflineWithoutCache,
-  OFFLINE_MESSAGE,
-  OFFLINE_TITLE,
-} from '@/lib/offlineState';
+import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
 import { type BrandedIconTone } from '@/shared/components/ui';
 import { useDialog } from '@/shared/components/Dialog';
 import { useTheme } from '@/shared/theme';
@@ -104,23 +96,16 @@ export function CoachProfileScreen() {
     triggerLightImpact();
     setRefreshing(true);
     try {
-      await Promise.all([
-        profileQuery.refetch(),
-        classesQuery.refetch(),
-        statsQuery.refetch(),
-      ]);
+      await Promise.all([profileQuery.refetch(), classesQuery.refetch(), statsQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
   }, [classesQuery, profileQuery, statsQuery]);
 
   const handleSignOut = useCallback(() => {
-    showConfirm(
-      'Sign out?',
-      'You will need to sign in again to access your account.',
-      signOut,
-      { confirmLabel: 'Sign out' },
-    );
+    showConfirm('Sign out?', 'You will need to sign in again to access your account.', signOut, {
+      confirmLabel: 'Sign out',
+    });
   }, [showConfirm, signOut]);
 
   const handleRequestDeletion = useCallback(() => {
@@ -160,7 +145,7 @@ export function CoachProfileScreen() {
         icon: Trash2,
         iconTone: 'neutral',
         title: 'Delete Account',
-        subtitle: 'Request account deletion',
+        subtitle: 'Permanently delete your app account',
         onPress: handleRequestDeletion,
       },
       {
@@ -231,7 +216,12 @@ export function CoachProfileScreen() {
       ) : null}
 
       {showSkeletonOnly ? (
-        <View style={[profileScreenStyles.skeletonWrap, { paddingTop: safeInsets.top + appBarHeight + 16 }]}>
+        <View
+          style={[
+            profileScreenStyles.skeletonWrap,
+            { paddingTop: safeInsets.top + appBarHeight + 16 },
+          ]}
+        >
           <ProfileSkeleton />
         </View>
       ) : null}
@@ -311,7 +301,9 @@ export function CoachProfileScreen() {
             </View>
           ) : null}
 
-          <Animated.View style={[profileLayoutStyles.sectionContainer, statsEntrance, { marginBottom: 8 }]}>
+          <Animated.View
+            style={[profileLayoutStyles.sectionContainer, statsEntrance, { marginBottom: 8 }]}
+          >
             <View style={[profileLayoutStyles.perfCardsGrid, { gap: 12 }]}>
               <View style={profileLayoutStyles.perfCardsRow}>
                 <ProfilePerfMetricCard
@@ -354,7 +346,9 @@ export function CoachProfileScreen() {
             </View>
           </Animated.View>
 
-          <Animated.View style={[profileLayoutStyles.sectionContainer, credentialsEntrance, { marginBottom: 8 }]}>
+          <Animated.View
+            style={[profileLayoutStyles.sectionContainer, credentialsEntrance, { marginBottom: 8 }]}
+          >
             <SpringPressable>
               <View
                 style={[
@@ -367,12 +361,22 @@ export function CoachProfileScreen() {
                   },
                 ]}
               >
-                <View style={[profileScreenStyles.accentBar, { backgroundColor: colors.accent.default }]} />
+                <View
+                  style={[
+                    profileScreenStyles.accentBar,
+                    { backgroundColor: colors.accent.default },
+                  ]}
+                />
                 <View style={profileScreenStyles.promoCardBody}>
                   <View style={profileScreenStyles.promoInfoCol}>
                     <View style={profileScreenStyles.promoKickerRow}>
                       <UaeFlagMark />
-                      <Text style={[profileScreenStyles.promoKicker, { color: colors.text.onPromoMuted }]}>
+                      <Text
+                        style={[
+                          profileScreenStyles.promoKicker,
+                          { color: colors.text.onPromoMuted },
+                        ]}
+                      >
                         Coach credentials
                       </Text>
                     </View>
@@ -382,7 +386,12 @@ export function CoachProfileScreen() {
                     >
                       {coach ? getCoachRankLabel(coach) : 'Staff profile pending'}
                     </Text>
-                    <Text style={[profileScreenStyles.promoSubtitle, { color: colors.text.onPromoMuted }]}>
+                    <Text
+                      style={[
+                        profileScreenStyles.promoSubtitle,
+                        { color: colors.text.onPromoMuted },
+                      ]}
+                    >
                       {coach?.specialty
                         ? `${getCoachSpecialtyLabel(coach)} · ${weekClassCount} classes this week`
                         : 'Match your staff profile to unlock full coach details.'}
@@ -393,7 +402,9 @@ export function CoachProfileScreen() {
             </SpringPressable>
           </Animated.View>
 
-          <Animated.View style={[profileLayoutStyles.sectionContainer, actionsEntrance, { marginBottom: 8 }]}>
+          <Animated.View
+            style={[profileLayoutStyles.sectionContainer, actionsEntrance, { marginBottom: 8 }]}
+          >
             <View
               style={[
                 profileLayoutStyles.actionGroup,

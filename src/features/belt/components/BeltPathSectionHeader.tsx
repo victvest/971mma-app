@@ -11,10 +11,7 @@ export function BeltPathSectionHeader() {
       <AcademyEyebrow label="Belt path" accent showFlag={false} />
       <TabHeroTitle
         collapseOnWide
-        lines={[
-          [{ text: 'Earn your ' }],
-          [{ text: 'level.', accent: true }],
-        ]}
+        lines={[[{ text: 'Earn your ' }], [{ text: 'level.', accent: true }]]}
       />
     </View>
   );

@@ -1,0 +1,14 @@
+# Android certificate fingerprints for com.victvest.ninemma
+# Paste into Google Cloud Console → Android OAuth client
+
+## Debug (local emulator / expo run:android)
+	 SHA1: 9D:BC:9F:B8:05:21:5B:BB:40:D7:2C:00:14:3A:07:C3:4A:52:F4:7D
+	 SHA256: 8C:A2:6C:70:B4:CD:91:20:A8:19:BD:84:B5:F5:DE:33:E5:B4:2B:08:E5:AE:6F:74:48:00:63:81:D7:B5:9E:6E
+
+## Release / Upload (EAS production AAB → Play Store)
+	 SHA1: 99:73:4F:FB:70:62:D1:5A:8D:23:48:48:31:B1:23:86:49:30:57:A9
+	 SHA256: A1:0E:A8:79:4C:1F:27:CB:8F:37:12:17:DB:D6:70:3B:03:CC:8F:C5:07:8D:2B:6D:BE:8B:07:E7:2C:4F:EB:0F
+
+Package: com.victvest.ninemma
+Keystore: store/android-upload.keystore (gitignored)
+Generated: 2026-07-26T23:25:35Z

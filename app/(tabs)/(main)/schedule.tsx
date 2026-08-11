@@ -1,15 +1,12 @@
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  RefreshControl,
-  StyleSheet,
-  View,
-} from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { FlashListScrollComponent } from '@/shared/components/ui';
 import { useRouter } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -43,7 +40,10 @@ import {
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import {
+  FLASH_LIST_ESTIMATES,
+  flashListOverrideItemLayout,
+} from '@/shared/constants/flashListEstimates';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import {
   isOfflineWithoutCache,
@@ -53,30 +53,22 @@ import {
 } from '@/lib/offlineState';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import type { ClassItem } from '@/types/domain';
-import { useMemberDisciplines } from '@/features/auth/hooks/useMemberDisciplines';
-
 // ─── Row props ────────────────────────────────────────────────────────────────
 type ClassRowProps = {
   item: ClassItem;
   index: number;
   entranceSignal: SharedValue<number>;
   onPressId: (id: string) => void;
-  isEnrolled?: boolean;
 };
 
-const ClassRow = memo(function ClassRow({
-  item,
-  index,
-  entranceSignal,
-  onPressId,
-  isEnrolled = false,
-}: ClassRowProps) {
+const ClassRow = memo(function ClassRow({ item, index, entranceSignal, onPressId }: ClassRowProps) {
   const handlePress = useCallback(() => onPressId(item.id), [item.id, onPressId]);
   return (
     <ScrollRevealCard itemId={item.id} index={index} entranceSignal={entranceSignal}>
       <ScheduleListRow accessibilityLabel={item.title} onPress={handlePress}>
-        <ScheduleClassCard item={item} embedded isEnrolled={isEnrolled} />
+        <ScheduleClassCard item={item} embedded />
       </ScheduleListRow>
     </ScrollRevealCard>
   );
@@ -85,25 +77,36 @@ const ClassRow = memo(function ClassRow({
 type ScheduleHeaderMotionProps = {
   children: React.ReactNode;
   index: number;
-  replayKey: number;
+  entranceSignal: SharedValue<number>;
   motion?: 'title' | 'filters';
 };
 
-function ScheduleHeaderMotion({
-  children,
-  index,
-  replayKey,
-}: ScheduleHeaderMotionProps) {
+function ScheduleHeaderMotion({ children, index, entranceSignal }: ScheduleHeaderMotionProps) {
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(38);
 
-  useEffect(() => {
+  const runAnimation = useCallback(() => {
+    'worklet';
     const delay = Math.min(index, 4) * animations.stagger.base;
     opacity.value = 0;
     translateY.value = 42;
     opacity.value = withDelay(delay, withTiming(1, animations.timing.fade));
     translateY.value = withDelay(delay, withSpring(0, animations.spring.gentle));
-  }, [index, opacity, replayKey, translateY]);
+  }, [index, opacity, translateY]);
+
+  useEffect(() => {
+    runAnimation();
+  }, [runAnimation]);
+
+  useAnimatedReaction(
+    () => entranceSignal.value,
+    (current, previous) => {
+      if (previous !== null && current !== previous) {
+        runAnimation();
+      }
+    },
+    [entranceSignal, runAnimation],
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -126,7 +129,7 @@ export default function ScheduleScreen() {
   const todayRange = gymTodayTomorrowRange();
   const rangeIso = gymRangeIso();
 
-  const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
+  const { entranceSignal } = useTabEntrance();
 
   // ── Data hooks ──────────────────────────────────────────────────────────
   const categoriesQuery = useScheduleCategories();
@@ -172,7 +175,11 @@ export default function ScheduleScreen() {
     setPullRefreshing(true);
     try {
       await syncScheduleMirror(true);
-      await Promise.all([refreshQuery.refetch(), scheduleQuery.refetch(), categoriesQuery.refetch()]);
+      await Promise.all([
+        refreshQuery.refetch(),
+        scheduleQuery.refetch(),
+        categoriesQuery.refetch(),
+      ]);
     } finally {
       setPullRefreshing(false);
     }
@@ -193,14 +200,12 @@ export default function ScheduleScreen() {
     return scheduleQuery.data?.pages.flat() ?? [];
   }, [scheduleQuery.data?.pages]);
 
-  const handleClassPress = useCallback((id: string) => {
-    router.push(`/classes/${id}?origin=schedule`);
-  }, [router]);
-
-  const { data: memberDisciplines } = useMemberDisciplines();
-  const enrolledDisciplineIds = useMemo(() => {
-    return new Set(memberDisciplines?.map((md) => md.disciplineId) ?? []);
-  }, [memberDisciplines]);
+  const handleClassPress = useCallback(
+    (id: string) => {
+      router.push(`/classes/${id}?origin=schedule`);
+    },
+    [router],
+  );
 
   // ── Layout ──────────────────────────────────────────────────────────────
   const topInset = useAppTopInset();
@@ -208,19 +213,15 @@ export default function ScheduleScreen() {
   const screenPaddingTop = headerBottom + 12;
 
   const renderItem = useCallback(
-    ({ item, index }: { item: ClassItem; index: number }) => {
-      const isEnrolled = item.disciplineId ? enrolledDisciplineIds.has(item.disciplineId) : false;
-      return (
-        <ClassRow
-          item={item}
-          index={index}
-          entranceSignal={entranceSignal}
-          onPressId={handleClassPress}
-          isEnrolled={isEnrolled}
-        />
-      );
-    },
-    [entranceSignal, handleClassPress, enrolledDisciplineIds],
+    ({ item, index }: { item: ClassItem; index: number }) => (
+      <ClassRow
+        item={item}
+        index={index}
+        entranceSignal={entranceSignal}
+        onPressId={handleClassPress}
+      />
+    ),
+    [entranceSignal, handleClassPress],
   );
 
   const screenPadding = useMemo(
@@ -234,10 +235,15 @@ export default function ScheduleScreen() {
 
   const isInitialLoading =
     !scheduleQuery.data &&
-    isQueryActivelyLoading(scheduleQuery.isLoading, scheduleQuery.isFetching || refreshQuery.isFetching);
-  const errorMessage = refreshQuery.error instanceof Error ? refreshQuery.error.message : null;
+    isQueryActivelyLoading(
+      scheduleQuery.isLoading,
+      scheduleQuery.isFetching || refreshQuery.isFetching,
+    );
+  const errorMessage = refreshQuery.error
+    ? toUserFacingErrorMessage(refreshQuery.error, { fallback: USER_FACING_LOAD_ERROR })
+    : null;
   const hasError = !!refreshQuery.error;
-  const hasData = classes.length > 0;
+  const hasData = scheduleQuery.data !== undefined;
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
     isOnline,
@@ -256,10 +262,10 @@ export default function ScheduleScreen() {
   const listHeaderInner = useMemo(
     () => (
       <>
-        <ScheduleHeaderMotion index={0} replayKey={entranceReplayKey} motion="title">
+        <ScheduleHeaderMotion index={0} entranceSignal={entranceSignal} motion="title">
           <ScheduleSectionHeader />
         </ScheduleHeaderMotion>
-        <ScheduleHeaderMotion index={1} replayKey={entranceReplayKey}>
+        <ScheduleHeaderMotion index={1} entranceSignal={entranceSignal}>
           <ScheduleFilterBar
             options={filterOptions}
             selected={category}
@@ -286,7 +292,7 @@ export default function ScheduleScreen() {
         ) : null}
       </>
     ),
-    [filterOptions, category, entranceReplayKey, errorMessage, hasData, handleRetry],
+    [filterOptions, category, entranceSignal, errorMessage, hasData, handleRetry],
   );
 
   const listHeader = useMemo(
@@ -294,15 +300,14 @@ export default function ScheduleScreen() {
     [listHeaderInner],
   );
 
-  const listEmptyComponent = useMemo(
-    () =>
-      hasError ? null : (
-        <ScheduleEmptyState
-          loading={scheduleQuery.isFetching && classes.length === 0}
-        />
-      ),
-    [hasError, scheduleQuery.isFetching, classes.length],
-  );
+  const listEmptyComponent = useMemo(() => {
+    if (isInitialLoading) {
+      return <ScheduleSkeleton />;
+    }
+    return hasError ? null : (
+      <ScheduleEmptyState loading={scheduleQuery.isFetching && classes.length === 0} />
+    );
+  }, [isInitialLoading, hasError, scheduleQuery.isFetching, classes.length]);
 
   const listFooterComponent = useMemo(
     () =>
@@ -363,27 +368,17 @@ export default function ScheduleScreen() {
         </View>
       ) : hasError && !hasData && !isInitialLoading ? (
         <View style={[styles.centered, screenPadding]}>
-            <StateBlock
-              kind="error"
-              title="Schedule unavailable"
-              message={errorMessage ?? 'Please check your connection.'}
-              actionLabel="Retry"
-              onAction={handleRetry}
-              offlineAwareRetry
-            />
+          <StateBlock
+            kind="error"
+            title="Schedule unavailable"
+            message={errorMessage ?? 'Please check your connection.'}
+            actionLabel="Retry"
+            onAction={handleRetry}
+            offlineAwareRetry
+          />
         </View>
       ) : (
-        <LoadingCrossfade
-          isLoaded={!isInitialLoading}
-          skeleton={
-            <View style={screenPadding}>
-              {listHeader}
-              <ScheduleSkeleton />
-            </View>
-          }
-        >
-          {scheduleList}
-        </LoadingCrossfade>
+        scheduleList
       )}
     </View>
   );

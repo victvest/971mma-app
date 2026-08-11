@@ -20,8 +20,15 @@ export function BeltPathPendingCard({ icon, title, message }: Props) {
           <Ionicons name={icon} size={22} color={colors.accent.default} />
         </View>
         <View style={[styles.copy, { gap: gap.xs, paddingRight: inset.xs }]}>
-          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>{title}</Text>
-          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary, lineHeight: 18 }]}>
+          <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+            {title}
+          </Text>
+          <Text
+            style={[
+              typography.textPresets.footnote,
+              { color: colors.text.secondary, lineHeight: 18 },
+            ]}
+          >
             {message}
           </Text>
         </View>

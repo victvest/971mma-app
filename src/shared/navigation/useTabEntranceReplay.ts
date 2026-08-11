@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useRef } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 
@@ -22,7 +22,6 @@ export type TabEntrance = {
  * Do NOT pass `replayKey` through FlashList `extraData` — that forces a full recycle.
  */
 export function useTabEntrance(): TabEntrance {
-  const [entranceReplayKey, setEntranceReplayKey] = useState(0);
   const entranceSignal = useSharedValue(0);
   const pendingReplayRef = useRef(false);
 
@@ -30,8 +29,10 @@ export function useTabEntrance(): TabEntrance {
     useCallback(() => {
       if (pendingReplayRef.current) {
         pendingReplayRef.current = false;
-        setEntranceReplayKey((current) => current + 1);
-        entranceSignal.value += 1;
+        // Trigger on UI thread in next frame so tab switch is completely uninterrupted
+        requestAnimationFrame(() => {
+          entranceSignal.value += 1;
+        });
       }
 
       return () => {
@@ -40,7 +41,7 @@ export function useTabEntrance(): TabEntrance {
     }, [entranceSignal]),
   );
 
-  return { replayKey: entranceReplayKey, entranceSignal };
+  return { replayKey: 1, entranceSignal };
 }
 
 /** @deprecated Prefer `useTabEntrance().replayKey` for headers only. */

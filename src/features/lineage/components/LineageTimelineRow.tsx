@@ -35,9 +35,7 @@ export const LineageTimelineRow = memo(function LineageTimelineRow({
                 },
           ]}
         />
-        {!isLast ? (
-          <View style={[styles.line, { backgroundColor: colors.border.subtle }]} />
-        ) : null}
+        {!isLast ? <View style={[styles.line, { backgroundColor: colors.border.subtle }]} /> : null}
       </View>
 
       <View style={[styles.content, { gap: gap.xs }]}>

@@ -1,16 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
+  RefreshControl,
   StyleSheet,
+  Text,
   View,
   type StyleProp,
   type ViewStyle,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
   withSpring,
   withTiming,
+  type SharedValue,
 } from 'react-native-reanimated';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
@@ -20,13 +25,13 @@ import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { useFocusEffect } from 'expo-router';
 import { useQueryClient } from '@tanstack/react-query';
 import { refetchQueryGroup } from '@/lib/queryRefresh';
-import { useTabEntranceReplay } from '@/shared/navigation/useTabEntranceReplay';
+import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
 import { CheckInSectionHeader } from '@/features/checkin/components/CheckInSectionHeader';
 import { CheckInEntranceSection } from '@/features/checkin/components/CheckInEntranceSection';
 import { CheckInStatCards } from '@/features/checkin/components/CheckInStatCards';
 import { RecentAttendanceSection } from '@/features/checkin/components/RecentAttendanceSection';
-import type { CheckInMode } from '@/features/checkin/components/CheckInModeToggle';
 import { formatMembershipExpiry } from '@/features/checkin/utils/memberDisplay';
+import { formatAttendanceSubtitle } from '@/features/checkin/utils/formatAttendance';
 import {
   attendanceKey,
   attendanceRefreshKey,
@@ -35,10 +40,16 @@ import {
   useQrPass,
 } from '@/features/checkin/hooks/useCheckin';
 import { useDisciplineScore } from '@/features/home/hooks/useHomeDashboard';
-import { useMembership, membershipKey, membershipRefreshKey, useMembershipRefresh } from '@/features/profile/hooks/useMembership';
+import {
+  useMembership,
+  membershipKey,
+  useMembershipRefresh,
+  syncMembershipFromMindbody,
+} from '@/features/profile/hooks/useMembership';
 import { profileKey } from '@/features/profile/hooks/useProfile';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { isGymToday } from '@/core/time/gymTime';
+import { findLatestFacilityArrivalToday, findTodaysArrival } from '@/features/attendance/utils/classifyCheckIn';
+import type { MembershipSummary } from '@/types/domain';
 import {
   useActiveMemberId,
   useActiveProfileLabel,
@@ -51,11 +62,7 @@ import { animations } from '@/shared/theme/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import {
-  isOfflineWithoutCache,
-  OFFLINE_MESSAGE,
-  OFFLINE_TITLE,
-} from '@/lib/offlineState';
+import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 
 const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
@@ -63,7 +70,7 @@ const AnimatedAppScrollView = Animated.createAnimatedComponent(AppScrollView);
 type CheckInAnimatedSectionProps = {
   children: ReactNode;
   index: number;
-  replayKey: number;
+  entranceSignal: SharedValue<number>;
   motion?: 'default' | 'title' | 'qr' | 'content';
   style?: StyleProp<ViewStyle>;
 };
@@ -71,30 +78,183 @@ type CheckInAnimatedSectionProps = {
 function CheckInAnimatedSection({
   children,
   index,
-  replayKey,
+  entranceSignal,
   motion = 'default',
   style,
 }: CheckInAnimatedSectionProps) {
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(42);
 
-  useEffect(() => {
+  const runAnimation = useCallback(() => {
+    'worklet';
     const delay = Math.min(index, 7) * animations.stagger.base;
     opacity.value = 0;
     translateY.value = motion === 'qr' ? 52 : 42;
     opacity.value = withDelay(delay, withTiming(1, animations.timing.fade));
     translateY.value = withDelay(delay, withSpring(0, animations.spring.gentle));
-  }, [index, motion, opacity, replayKey, translateY]);
+  }, [index, motion, opacity, translateY]);
+
+  useEffect(() => {
+    runAnimation();
+  }, [runAnimation]);
+
+  useAnimatedReaction(
+    () => entranceSignal.value,
+    (current, previous) => {
+      if (previous !== null && current !== previous) {
+        runAnimation();
+      }
+    },
+    [entranceSignal, runAnimation],
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
     transform: [{ translateY: translateY.value }],
   }));
 
+  return <Animated.View style={[style, animatedStyle]}>{children}</Animated.View>;
+}
+
+type ChildCheckInStatusCardProps = {
+  checkedInToday: boolean;
+  checkedInAt: string | null;
+  memberName: string;
+  membership: MembershipSummary | undefined;
+  expiryDate: string | null;
+  membershipLoading: boolean;
+};
+
+function ChildCheckInStatusCard({
+  checkedInToday,
+  checkedInAt,
+  memberName,
+  membership,
+  expiryDate,
+  membershipLoading,
+}: ChildCheckInStatusCardProps) {
+  const { colors, typography, inset, radius, gap, layout } = useTheme();
+
+  if (checkedInToday) {
+    const timeLabel = checkedInAt ? formatAttendanceSubtitle(checkedInAt) : null;
+    const title = 'Arrived today';
+    const message = timeLabel
+      ? `${memberName} checked in at ${timeLabel}.`
+      : `${memberName} has checked in today.`;
+
+    return (
+      <View
+        accessibilityRole="summary"
+        accessibilityLabel={message}
+        style={[
+          styles.childStatusCard,
+          {
+            backgroundColor: colors.surface.primary,
+            borderColor: colors.accent.default,
+            borderRadius: radius.cardLarge,
+            borderWidth: layout.borderWidth + 0.5,
+            gap: gap.md,
+            padding: inset.lg,
+          },
+        ]}
+      >
+        <View
+          style={[
+            styles.childStatusIcon,
+            {
+              backgroundColor: colors.accent.subtle,
+              borderRadius: radius.pill,
+            },
+          ]}
+        >
+          <Ionicons name="checkmark-circle" size={26} color={colors.accent.default} />
+        </View>
+        <View style={{ gap: gap.xs }}>
+          <Text style={[typography.textPresets.title, { color: colors.text.primary }]}>
+            {title}
+          </Text>
+          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+            {message}
+          </Text>
+        </View>
+      </View>
+    );
+  }
+
+  // Not checked in today - show membership information
+  const status = membership?.status ?? 'none';
+  const isActive = status === 'active';
+  const isPaused = status === 'paused';
+  const isExpired = status === 'expired';
+
+  let title = 'No active membership';
+  if (isActive && membership?.planName) {
+    title = membership.planName;
+  } else if (isPaused) {
+    title = 'Membership paused';
+  } else if (isExpired && membership?.planName) {
+    title = `${membership.planName} (Expired)`;
+  }
+
+  let statusText = 'Inactive';
+  let statusColor = colors.status.error;
+  let iconName: React.ComponentProps<typeof Ionicons>['name'] = 'alert-circle-outline';
+  let iconBg = colors.status.errorSubtle;
+
+  if (isActive) {
+    statusText = 'Active';
+    statusColor = colors.accent.default;
+    iconName = 'checkmark-circle';
+    iconBg = colors.accent.subtle;
+  } else if (isPaused) {
+    statusText = 'Paused';
+    statusColor = colors.status.warning;
+    iconName = 'pause-circle-outline';
+    iconBg = colors.status.warningSubtle;
+  }
+
+  const expiryText = expiryDate ? `Expires ${expiryDate}` : 'No expiration date';
+  const displayTitle = membershipLoading ? 'Loading membership...' : title;
+  const displaySubtitle = membershipLoading
+    ? 'Checking active status...'
+    : `Status: ${statusText} • ${expiryText}`;
+
   return (
-    <Animated.View style={[style, animatedStyle]}>
-      {children}
-    </Animated.View>
+    <View
+      accessibilityRole="summary"
+      accessibilityLabel={`${displayTitle}. ${displaySubtitle}`}
+      style={[
+        styles.childStatusCard,
+        {
+          backgroundColor: colors.surface.primary,
+          borderColor: isActive ? colors.accent.default : colors.border.subtle,
+          borderRadius: radius.cardLarge,
+          borderWidth: layout.borderWidth,
+          gap: gap.md,
+          padding: inset.lg,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.childStatusIcon,
+          {
+            backgroundColor: iconBg,
+            borderRadius: radius.pill,
+          },
+        ]}
+      >
+        <Ionicons name={iconName} size={26} color={statusColor} />
+      </View>
+      <View style={{ gap: gap.xs }}>
+        <Text style={[typography.textPresets.title, { color: colors.text.primary }]}>
+          {displayTitle}
+        </Text>
+        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+          {displaySubtitle}
+        </Text>
+      </View>
+    </View>
   );
 }
 
@@ -109,8 +269,8 @@ export default function CheckInScreen() {
   const viewingChild = useIsViewingChildProfile();
 
   const [tabFocused, setTabFocused] = useState(false);
-  const [entranceMode, setEntranceMode] = useState<CheckInMode>('pass');
-  const entranceReplayKey = useTabEntranceReplay();
+  const [refreshing, setRefreshing] = useState(false);
+  const { entranceSignal } = useTabEntrance();
 
   useFocusEffect(
     useCallback(() => {
@@ -119,11 +279,12 @@ export default function CheckInScreen() {
     }, []),
   );
 
-  const { isAnonymousGuest, hasLimitedAccess } = useIsGuest();
+  const { hasLimitedAccess } = useIsGuest();
   const userStore = useAuthStore((s) => s.user);
   const { prompt, sheet } = useAccountActionSheet();
 
-  const qrPassEnabled = tabFocused && canShowChildQr && entranceMode === 'pass' && !hasLimitedAccess;
+  const showQrPass = !viewingChild || canShowChildQr;
+  const qrPassEnabled = tabFocused && showQrPass && canShowChildQr && !hasLimitedAccess;
   const qrPassQuery = useQrPass(qrPassEnabled);
   const attendanceRefresh = useAttendanceRefresh(tabFocused);
   const attendanceQuery = useAttendance();
@@ -153,12 +314,10 @@ export default function CheckInScreen() {
 
   const topInset = useAppTopInset();
 
-  const memberName = isAnonymousGuest
-    ? 'Guest preview'
-    : (profileQuery.data?.fullName?.trim() || activeProfileLabel);
+  const memberName = profileQuery.data?.fullName?.trim() || activeProfileLabel;
 
   const expiryDate = useMemo(() => {
-    if (hasLimitedAccess || viewingChild) return null;
+    if (hasLimitedAccess) return null;
     const raw =
       membershipQuery.data?.expiresAt ??
       profileQuery.data?.membershipExpiresAt ??
@@ -169,38 +328,45 @@ export default function CheckInScreen() {
     membershipQuery.data?.expiresAt,
     membershipRefresh.data?.summary?.expiresAt,
     profileQuery.data?.membershipExpiresAt,
-    viewingChild,
     hasLimitedAccess,
   ]);
 
-  const checkedInToday = useMemo(
-    () => hasLimitedAccess ? false : checkIns.some((row) => isGymToday(row.checked_in_at)),
+  const todaysArrival = useMemo(
+    () => (hasLimitedAccess ? undefined : findTodaysArrival(checkIns)),
     [checkIns, hasLimitedAccess],
   );
-  const todayCheckInAt = useMemo(
-    () => hasLimitedAccess ? null : (checkIns.find((row) => isGymToday(row.checked_in_at))?.checked_in_at ?? null),
+  const latestFacilityArrival = useMemo(
+    () => (hasLimitedAccess ? undefined : findLatestFacilityArrivalToday(checkIns)),
     [checkIns, hasLimitedAccess],
   );
+  const checkedInToday = Boolean(todaysArrival);
+  const todayCheckInAt =
+    latestFacilityArrival?.checked_in_at ?? todaysArrival?.checked_in_at ?? null;
   const totalHint = attendanceQuery.hasNextPage ? undefined : checkIns.length;
 
-  const onRefresh = useCallback(() => {
+  const authUserId = useAuthStore((s) => s.user?.id ?? '');
+
+  const onRefresh = useCallback(async () => {
     triggerLightImpact();
-    void qrPassQuery.refetch();
-    void attendanceQuery.refetch();
-    void profileQuery.refetch();
-    void disciplineQuery.refetch();
-    void membershipQuery.refetch();
-    void refetchQueryGroup(
-      queryClient,
-      [
-        attendanceRefreshKey(activeMemberId),
-        membershipRefreshKey(activeMemberId),
-      ],
-      { force: true },
-    );
+    setRefreshing(true);
+    try {
+      // Sync Mindbody first, then refetch UI so membership status is not stale.
+      await syncMembershipFromMindbody(queryClient, { activeMemberId, authUserId });
+      await Promise.all([
+        qrPassQuery.refetch(),
+        attendanceQuery.refetch(),
+        profileQuery.refetch(),
+        disciplineQuery.refetch(),
+        membershipQuery.refetch(),
+        refetchQueryGroup(queryClient, [attendanceRefreshKey(activeMemberId)], { force: true }),
+      ]);
+    } finally {
+      setRefreshing(false);
+    }
   }, [
     activeMemberId,
     attendanceQuery,
+    authUserId,
     disciplineQuery,
     membershipQuery,
     profileQuery,
@@ -209,13 +375,12 @@ export default function CheckInScreen() {
   ]);
 
   const hasError =
-    !hasLimitedAccess && (
-      qrPassQuery.isError ||
+    !hasLimitedAccess &&
+    (qrPassQuery.isError ||
       attendanceQuery.isError ||
       profileQuery.isError ||
       disciplineQuery.isError ||
-      membershipQuery.isError
-    );
+      membershipQuery.isError);
 
   const hasData =
     hasLimitedAccess ||
@@ -277,6 +442,14 @@ export default function CheckInScreen() {
         <AnimatedAppScrollView
           contentContainerStyle={screenPadding}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              progressViewOffset={headerBottom}
+              tintColor={colors.accent.default}
+            />
+          }
         >
           {hasError && hasData ? (
             <StateBlock
@@ -288,56 +461,72 @@ export default function CheckInScreen() {
               offlineAwareRetry
             />
           ) : null}
-          <CheckInAnimatedSection index={0} replayKey={entranceReplayKey} motion="title">
-            <CheckInSectionHeader />
+          <CheckInAnimatedSection index={0} entranceSignal={entranceSignal} motion="title">
+            <CheckInSectionHeader mode={showQrPass ? 'member-card' : 'child-status'} />
           </CheckInAnimatedSection>
 
-          <CheckInAnimatedSection index={1} replayKey={entranceReplayKey} motion="qr">
-            <CheckInEntranceSection
-              tabFocused={tabFocused}
-              checkedInToday={checkedInToday}
-              checkedInAt={todayCheckInAt}
-              token={hasLimitedAccess ? null : qrPassQuery.data?.token}
-              passLoading={
-                !hasLimitedAccess &&
-                qrPassEnabled &&
-                !qrPassQuery.data?.token &&
-                (qrPassQuery.isLoading || qrPassQuery.isFetching)
-              }
-              memberName={memberName}
-              canShowActiveQr={hasLimitedAccess ? true : canShowChildQr}
-              expiryDate={expiryDate}
-              expiryLoading={
-                !hasLimitedAccess &&
-                !viewingChild &&
-                !expiryDate &&
-                (membershipQuery.isLoading ||
-                  membershipQuery.isFetching ||
-                  membershipRefresh.isLoading ||
-                  membershipRefresh.isFetching)
-              }
-              onModeChange={setEntranceMode}
-              isGuest={hasLimitedAccess}
-              requiresAccount={hasLimitedAccess}
-              isRegistered={userStore !== null}
-              onRequireAccount={() => prompt('check-in')}
-            />
+          <CheckInAnimatedSection index={1} entranceSignal={entranceSignal} motion="qr">
+            {showQrPass ? (
+              <CheckInEntranceSection
+                tabFocused={tabFocused}
+                checkedInToday={checkedInToday}
+                checkedInAt={todayCheckInAt}
+                token={hasLimitedAccess ? null : qrPassQuery.data?.token}
+                expiresAt={hasLimitedAccess ? null : qrPassQuery.data?.expiresAt}
+                memberId={hasLimitedAccess ? null : activeMemberId}
+                passLoading={
+                  !hasLimitedAccess &&
+                  qrPassEnabled &&
+                  !qrPassQuery.data?.token &&
+                  (qrPassQuery.isLoading || qrPassQuery.isFetching)
+                }
+                memberName={memberName}
+                canShowActiveQr={hasLimitedAccess ? true : canShowChildQr}
+                expiryDate={expiryDate}
+                expiryLoading={
+                  !hasLimitedAccess &&
+                  !viewingChild &&
+                  !expiryDate &&
+                  (membershipQuery.isLoading ||
+                    membershipQuery.isFetching ||
+                    membershipRefresh.isLoading ||
+                    membershipRefresh.isFetching)
+                }
+                isGuest={hasLimitedAccess}
+                requiresAccount={hasLimitedAccess}
+                isRegistered={userStore !== null}
+                onRequireAccount={() => prompt('check-in')}
+              />
+            ) : (
+              <ChildCheckInStatusCard
+                checkedInToday={checkedInToday}
+                checkedInAt={todayCheckInAt}
+                memberName={memberName}
+                membership={membershipQuery.data}
+                expiryDate={expiryDate}
+                membershipLoading={membershipQuery.isLoading}
+              />
+            )}
           </CheckInAnimatedSection>
 
           {!hasLimitedAccess ? (
-            <CheckInAnimatedSection index={2} replayKey={entranceReplayKey} motion="content">
+            <CheckInAnimatedSection index={2} entranceSignal={entranceSignal} motion="content">
               <CheckInStatCards
                 score={disciplineQuery.data}
                 membership={membershipQuery.data}
                 scoreLoading={disciplineQuery.isLoading}
-                membershipLoading={membershipQuery.isLoading}
+                membershipLoading={
+                  membershipQuery.isLoading ||
+                  membershipQuery.isFetching ||
+                  membershipRefresh.isFetching
+                }
                 hideMembership={viewingChild}
               />
             </CheckInAnimatedSection>
           ) : null}
 
           {!hasLimitedAccess ? (
-            <CheckInAnimatedSection index={3} replayKey={entranceReplayKey} motion="content">
+            <CheckInAnimatedSection index={3} entranceSignal={entranceSignal} motion="content">
               <RecentAttendanceSection
                 items={checkIns}
                 loading={attendanceQuery.isLoading}
@@ -357,4 +546,13 @@ export default function CheckInScreen() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
+  childStatusCard: {
+    overflow: 'hidden',
+  },
+  childStatusIcon: {
+    alignItems: 'center',
+    height: 52,
+    justifyContent: 'center',
+    width: 52,
+  },
 });

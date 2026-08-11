@@ -6,19 +6,15 @@ export type RankDiscipline = {
   active: boolean;
 };
 
-export function disciplinesToRecomputeOnCheckIn(
-  disciplines: RankDiscipline[],
-): string[] {
-  return disciplines
-    .filter((row) => row.active && row.hasRankProgression)
-    .map((row) => row.slug);
+export function disciplinesToRecomputeOnCheckIn(disciplines: RankDiscipline[]): string[] {
+  return disciplines.filter((row) => row.active && row.hasRankProgression).map((row) => row.slug);
 }
 
 export function checkInTriggersBeltRecompute(params: {
   checkInInserted: boolean;
   mindbodyWriteFailed: boolean;
 }): boolean {
-  // entry-checkin throws before insert when Mindbody write-back fails.
+  // Gate access and class check-in flows record attendance only after Mindbody accepts the arrival.
   if (params.mindbodyWriteFailed) return false;
   return params.checkInInserted;
 }
@@ -28,8 +24,5 @@ export function beltProgressStaleWhenCheckInBlocked(params: {
   checkInRecorded: boolean;
   expectedTrainingDays: number;
 }): boolean {
-  return (
-    !params.checkInRecorded &&
-    params.expectedTrainingDays > params.previousTrainingDays
-  );
+  return !params.checkInRecorded && params.expectedTrainingDays > params.previousTrainingDays;
 }

@@ -4,7 +4,7 @@ import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { MotiPressable } from '@/shared/animations';
 import { useTheme, radii } from '@/shared/theme';
-import { isLegendaryReward, resolveRewardImage } from '@/features/rewards/utils/rewardImages';
+import { isLegendaryReward, resolveRewardImageUrl } from '@/features/rewards/utils/rewardImages';
 import type { PointsTier, RewardItem } from '@/types/domain';
 
 type Props = {
@@ -12,7 +12,9 @@ type Props = {
   balance: number;
   tier: PointsTier;
   pendingRewardId: string | null;
+  awaitingPickup?: boolean;
   readOnly?: boolean;
+  showPrice?: boolean;
   onRedeem: (rewardId: string) => void;
 };
 
@@ -36,11 +38,13 @@ export const RewardCatalogCard = memo(function RewardCatalogCard({
   balance,
   tier,
   pendingRewardId,
+  awaitingPickup = false,
   readOnly = false,
+  showPrice = true,
   onRedeem,
 }: Props) {
-  const { colors, typography, radius, gap, shadows, layout } = useTheme();
-  const imageSource = resolveRewardImage(item);
+  const { colors, typography, radius, gap, surfaceShadow, layout } = useTheme();
+  const imageUrl = resolveRewardImageUrl(item);
   const legendary = isLegendaryReward(item);
   const requiredTier = rewardRequiredTier(item);
   const lockedByTier = requiredTier ? tierRank(tier) < tierRank(requiredTier) : false;
@@ -48,13 +52,21 @@ export const RewardCatalogCard = memo(function RewardCatalogCard({
   const unaffordable = balance < item.costPoints;
   const pendingConfig = rewardHasPendingConfig(item);
   const disabled =
-    lockedByTier || outOfStock || unaffordable || pendingRewardId !== null || readOnly || pendingConfig;
+    lockedByTier ||
+    outOfStock ||
+    unaffordable ||
+    pendingRewardId !== null ||
+    awaitingPickup ||
+    readOnly ||
+    pendingConfig;
   const pointsShortfall = Math.max(0, item.costPoints - balance);
   const isPending = pendingRewardId === item.id;
 
   let buttonLabel = 'REDEEM';
   if (isPending) {
-    buttonLabel = '...';
+    buttonLabel = 'PROCESSING...';
+  } else if (awaitingPickup) {
+    buttonLabel = 'AT FRONT DESK';
   } else if (pendingConfig) {
     buttonLabel = 'SOON';
   } else if (lockedByTier) {
@@ -69,7 +81,7 @@ export const RewardCatalogCard = memo(function RewardCatalogCard({
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -87,19 +99,36 @@ export const RewardCatalogCard = memo(function RewardCatalogCard({
           </View>
         ) : null}
 
-        <Image
-          source={imageSource}
-          style={[
-            styles.image,
-            {
-              borderTopLeftRadius: radius.cardLarge - layout.borderWidth,
-              borderTopRightRadius: radius.cardLarge - layout.borderWidth,
-            },
-          ]}
-          contentFit="contain"
-          transition={200}
-          accessibilityLabel={item.name}
-        />
+        {imageUrl ? (
+          <Image
+            source={{ uri: imageUrl }}
+            style={[
+              styles.image,
+              {
+                borderTopLeftRadius: radius.cardLarge - layout.borderWidth,
+                borderTopRightRadius: radius.cardLarge - layout.borderWidth,
+              },
+            ]}
+            contentFit="cover"
+            cachePolicy="memory-disk"
+            recyclingKey={item.id}
+            transition={200}
+            accessibilityLabel={item.name}
+          />
+        ) : (
+          <View
+            style={[
+              styles.image,
+              styles.imagePlaceholder,
+              {
+                backgroundColor: colors.fill.secondary,
+                borderTopLeftRadius: radius.cardLarge - layout.borderWidth,
+                borderTopRightRadius: radius.cardLarge - layout.borderWidth,
+              },
+            ]}
+            accessibilityLabel={item.name}
+          />
+        )}
       </View>
 
       <View style={{ gap: 2.8, flex: 1, paddingHorizontal: gap.md }}>
@@ -112,6 +141,11 @@ export const RewardCatalogCard = memo(function RewardCatalogCard({
         <Text style={[styles.pointsCost, { color: colors.status.error }]}>
           {item.costPoints.toLocaleString('en-US')} Points
         </Text>
+        {showPrice ? (
+          <Text style={[styles.priceAed, { color: colors.text.secondary }]}>
+            {item.priceAed.toLocaleString('en-US')} AED
+          </Text>
+        ) : null}
       </View>
 
       <MotiPressable
@@ -156,6 +190,10 @@ const styles = StyleSheet.create({
     height: '100%',
     width: '100%',
   },
+  imagePlaceholder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   legendaryBadge: {
     alignItems: 'center',
     borderRadius: radii.full,
@@ -179,6 +217,10 @@ const styles = StyleSheet.create({
   pointsCost: {
     fontSize: 14,
     fontWeight: '800',
+  },
+  priceAed: {
+    fontSize: 12,
+    fontWeight: '600',
   },
   actionButton: {
     alignItems: 'center',

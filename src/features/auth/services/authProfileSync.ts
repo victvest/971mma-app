@@ -3,7 +3,14 @@ import { getSupabaseClient } from '@/services/supabase/client';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { clearGuestMode, isGuestModePersisted } from '@/features/auth/services/guestModeStorage';
+import {
+  getAuthProfileSyncEpoch,
+  invalidateAuthProfileSync,
+  nextAuthProfileSyncEpoch,
+} from './authProfileSyncEpoch';
 import type { UserRole } from '../types';
+
+export { getAuthProfileSyncEpoch, invalidateAuthProfileSync } from './authProfileSyncEpoch';
 
 export type ProfileAuthInfo = {
   full_name: string | null;
@@ -17,19 +24,15 @@ type ProfileAuthReadResult = {
   readFailed: boolean;
 };
 
-let profileSyncEpoch = 0;
-
-export function invalidateAuthProfileSync(): void {
-  profileSyncEpoch += 1;
-}
-
-export function getAuthProfileSyncEpoch(): number {
-  return profileSyncEpoch;
-}
-
 function normalizeRole(role: unknown): UserRole {
-  if (role === 'coach' || role === 'admin' || role === 'gate') return role;
+  if (role === 'coach' || role === 'admin') return role;
   return 'member';
+}
+
+function readDemoFlag(value: unknown): boolean {
+  if (value === true) return true;
+  if (typeof value === 'string') return value.toLowerCase() === 'true';
+  return false;
 }
 
 export async function readProfileAuthInfo(userId: string): Promise<ProfileAuthReadResult> {
@@ -57,7 +60,7 @@ export function deriveNeedsOnboarding(
 }
 
 export async function syncAuthProfileFromSession(session: Session | null): Promise<void> {
-  const epoch = ++profileSyncEpoch;
+  const epoch = nextAuthProfileSyncEpoch();
   const { login, logout, setNeedsOnboarding } = useAuthStore.getState();
 
   if (!session?.user) {
@@ -76,9 +79,10 @@ export async function syncAuthProfileFromSession(session: Session | null): Promi
   await clearGuestMode();
 
   const { id, email, user_metadata } = session.user;
+  const appMetadata = session.user.app_metadata ?? {};
   const { profile, readFailed } = await readProfileAuthInfo(id);
 
-  if (epoch !== profileSyncEpoch) return;
+  if (epoch !== getAuthProfileSyncEpoch()) return;
 
   login({
     id,
@@ -86,9 +90,10 @@ export async function syncAuthProfileFromSession(session: Session | null): Promi
     fullName: profile?.full_name ?? (user_metadata?.full_name as string | undefined) ?? '',
     role: normalizeRole(profile?.role),
     accountStatus: profile?.account_status ?? 'registered',
+    demo: readDemoFlag(appMetadata.demo) || readDemoFlag(user_metadata?.demo),
   });
 
-  if (epoch !== profileSyncEpoch) return;
+  if (epoch !== getAuthProfileSyncEpoch()) return;
 
   setNeedsOnboarding(
     deriveNeedsOnboarding(profile, readFailed, useAuthStore.getState().needsOnboarding),
@@ -97,10 +102,10 @@ export async function syncAuthProfileFromSession(session: Session | null): Promi
 
 export async function applyProfileAuthInfo(userId: string, email: string): Promise<boolean> {
   invalidateAuthProfileSync();
-  const epoch = profileSyncEpoch;
+  const epoch = getAuthProfileSyncEpoch();
 
   const { profile, readFailed } = await readProfileAuthInfo(userId);
-  if (epoch !== profileSyncEpoch) return false;
+  if (epoch !== getAuthProfileSyncEpoch()) return false;
   if (readFailed || !profile) return false;
 
   const { login, setNeedsOnboarding } = useAuthStore.getState();
@@ -112,7 +117,7 @@ export async function applyProfileAuthInfo(userId: string, email: string): Promi
     accountStatus: profile.account_status ?? 'registered',
   });
 
-  if (epoch !== profileSyncEpoch) return false;
+  if (epoch !== getAuthProfileSyncEpoch()) return false;
 
   setNeedsOnboarding(!profile.onboarding_completed_at);
   return true;

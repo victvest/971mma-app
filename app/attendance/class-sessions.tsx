@@ -1,122 +1,13 @@
-import React, { useCallback } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
-import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
-import { FlashList } from '@shopify/flash-list';
+import React, { useEffect } from 'react';
 import { useRouter } from 'expo-router';
-import { ClassSessionAttendanceRow } from '@/features/attendance/components/ClassSessionAttendanceRow';
-import { useClassSessionAttendance } from '@/features/attendance/hooks/useClassSessionAttendance';
-import { AppBar, FlashListScrollComponent } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
-import { useTheme } from '@/shared/theme';
-import type { ClassSessionAttendanceRow as ClassSessionRow } from '@/services/database/classAttendance.repository';
 
 export default function ClassSessionAttendanceScreen() {
-  const { colors, inset, typography } = useTheme();
   const router = useRouter();
-  const attendanceQuery = useClassSessionAttendance();
-  const rows = attendanceQuery.data?.pages.flat() ?? [];
 
-  const renderItem = useCallback(
-    ({ item }: { item: ClassSessionRow }) => <ClassSessionAttendanceRow item={item} />,
-    [],
-  );
+  useEffect(() => {
+    router.replace('/attendance?tab=classes');
+  }, [router]);
 
-  const hasError = !!attendanceQuery.error;
-  const hasData = rows.length > 0;
-  const errorMessage =
-    attendanceQuery.error instanceof Error
-      ? attendanceQuery.error.message
-      : 'Please check your connection.';
-
-  const listHeader = (
-    <View style={[styles.headerBlock, { marginBottom: inset.md, gap: inset.sm }]}>
-      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-        Present, absent, or late — as marked by your coach during each class session.
-      </Text>
-      {hasError && hasData ? (
-        <StateBlock
-          kind="error"
-          title="Sync issue"
-          message="Could not refresh class attendance."
-          actionLabel="Retry"
-          onAction={() => attendanceQuery.refetch()}
-        />
-      ) : null}
-      <Pressable
-        onPress={() => router.push('/attendance')}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
-      >
-        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-          Gym visits
-        </Text>
-        <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.default }]}>
-          View all
-        </Text>
-      </Pressable>
-    </View>
-  );
-
-  return (
-    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
-      <AppBar title="Class roll call" />
-
-      {attendanceQuery.isLoading ? (
-        <StateBlock kind="loading" title="Loading class attendance" />
-      ) : hasError && !hasData ? (
-        <StateBlock
-          kind="error"
-          title="Could not load class attendance"
-          message={errorMessage}
-          actionLabel="Retry"
-          onAction={() => attendanceQuery.refetch()}
-        />
-      ) : !hasError && rows.length === 0 ? (
-        <StateBlock
-          kind="empty"
-          title="No roll call records yet"
-          message="When a coach marks you present, absent, or late during class, it appears here. For gym check-in visits, see Gym visits."
-        />
-      ) : (
-        <FlashList
-          renderScrollComponent={FlashListScrollComponent}
-          data={rows}
-          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.classSessionRow)}
-          keyExtractor={(item) => item.id}
-          renderItem={renderItem}
-          ListHeaderComponent={listHeader}
-          contentContainerStyle={{ padding: inset.lg, paddingTop: 12 }}
-          ItemSeparatorComponent={ClassSessionSeparator}
-          onEndReached={() => {
-            if (attendanceQuery.hasNextPage && !attendanceQuery.isFetchingNextPage) {
-              void attendanceQuery.fetchNextPage();
-            }
-          }}
-          onEndReachedThreshold={0.35}
-          ListFooterComponent={
-            attendanceQuery.isFetchingNextPage ? (
-              <ActivityIndicator style={styles.footerLoader} color={colors.accent.default} />
-            ) : null
-          }
-        />
-      )}
-    </AppSafeAreaView>
-  );
+  return <StateBlock kind="loading" title="Loading attendance history..." />;
 }
-
-function ClassSessionSeparator() {
-  return <View style={styles.separator} />;
-}
-
-const styles = StyleSheet.create({
-  safe: { flex: 1 },
-  headerBlock: {},
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  footerLoader: { marginVertical: 20 },
-  separator: { height: 10 },
-});

@@ -15,9 +15,33 @@ function allowedOrigins(): string[] {
   return [...DEFAULT_ALLOWED_ORIGINS, ...extra];
 }
 
+function matchesAllowedOrigin(origin: string, allowed: string): boolean {
+  if (origin === allowed) return true;
+
+  if (!allowed.includes('*')) return false;
+
+  try {
+    const requestUrl = new URL(origin);
+    const allowedUrl = new URL(allowed);
+    if (requestUrl.protocol !== allowedUrl.protocol) return false;
+
+    const allowedHost = allowedUrl.hostname;
+    if (!allowedHost.startsWith('*.')) return false;
+
+    const suffix = allowedHost.slice(1);
+    return requestUrl.hostname.endsWith(suffix);
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedOrigin(origin: string): boolean {
+  return allowedOrigins().some((allowed) => matchesAllowedOrigin(origin, allowed));
+}
+
 function resolveCorsOrigin(req?: Request): string {
   const origin = req?.headers.get('origin');
-  if (origin && allowedOrigins().includes(origin)) return origin;
+  if (origin && isAllowedOrigin(origin)) return origin;
   // Disallowed browser origins get a mismatch (blocked by the browser).
   // Native app / server-to-server callers ignore this header entirely.
   return allowedOrigins()[0];

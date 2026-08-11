@@ -1,3 +1,4 @@
+import { enqueueMembershipRefreshJob } from '../_shared/accessControl.ts';
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { mindbodyLocalDateTimeToIso } from '../_shared/gymTime.ts';
 import { sendPushToUsers } from '../_shared/push.ts';
@@ -332,7 +333,9 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
   const clientId = readString(client, ['Id', 'id', 'ClientId', 'clientId']);
   if (!clientId) return;
 
-  const { data: link } = await serviceClient()
+  const svc = serviceClient();
+
+  const { data: link } = await svc
     .from('mindbody_links')
     .select('user_id')
     .eq('mindbody_client_id', clientId)
@@ -340,7 +343,7 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
 
   if (!link?.user_id) return;
 
-  const { data: existingProfile } = await serviceClient()
+  const { data: existingProfile } = await svc
     .from('profiles')
     .select('avatar_url')
     .eq('id', link.user_id)
@@ -361,7 +364,8 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
   const hasUserUploadedAvatar = currentAvatar.includes('/storage/v1/object/public/avatars/');
   if (avatarUrl && !hasUserUploadedAvatar) patch.avatar_url = avatarUrl;
 
-  await serviceClient().from('profiles').update(patch).eq('id', link.user_id);
+  await svc.from('profiles').update(patch).eq('id', link.user_id);
+  await enqueueMembershipRefreshJob(svc, link.user_id, `webhook:${eventType}`);
 }
 
 async function processKnownEvent(payload: WebhookPayload): Promise<void> {

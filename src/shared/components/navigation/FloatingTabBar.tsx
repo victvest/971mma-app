@@ -1,14 +1,10 @@
 import React, { memo, useCallback, useEffect, useRef, useState } from 'react';
-import { LayoutChangeEvent, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import type { LayoutChangeEvent } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import type { Href } from 'expo-router';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { LiquidGlassSurface } from '@/shared/components/ui/LiquidGlassSurface';
-import { FLOATING_CHROME_ELEVATION } from '@/features/home/components/navigation/floatingChromeElevation';
 import {
   glassChromeTint,
   glassIconHalo,
@@ -30,7 +26,7 @@ export type TabRouteConfig = {
   activeIcon: IoniconName;
 };
 
-export type AppTabRouteName = 'index' | 'schedule' | 'checkin' | 'belt-path' | 'coaches';
+export type AppTabRouteName = 'index' | 'schedule' | 'feed' | 'checkin' | 'belt-path' | 'coaches';
 
 export type AppTabRoute = TabRouteConfig & {
   name: AppTabRouteName;
@@ -47,9 +43,16 @@ export const APP_TAB_ROUTES = [
   {
     name: 'schedule',
     href: '/(tabs)/schedule',
-    label: 'Schedule',
+    label: 'Classes',
     icon: 'calendar-outline',
     activeIcon: 'calendar',
+  },
+  {
+    name: 'feed',
+    href: '/(tabs)/feed',
+    label: 'Feed',
+    icon: 'newspaper-outline',
+    activeIcon: 'newspaper',
   },
   {
     name: 'checkin',
@@ -103,14 +106,7 @@ const FloatingTabActiveCapsule = memo(function FloatingTabActiveCapsule({
     }
 
     translateX.value = withSpring(targetX, animations.motion.tabBar.capsule);
-  }, [
-    activeIndex,
-    animations.motion.tabBar.capsule,
-    capsuleInset,
-    rowWidth,
-    tabWidth,
-    translateX,
-  ]);
+  }, [activeIndex, animations.motion.tabBar.capsule, capsuleInset, rowWidth, tabWidth, translateX]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateX: translateX.value }],
@@ -155,10 +151,7 @@ const FloatingTabButton = memo(function FloatingTabButton({
   const focusScale = useSharedValue(isFocused ? 1.06 : 1);
 
   useEffect(() => {
-    focusScale.value = withSpring(
-      isFocused ? 1.06 : 1,
-      animations.motion.tabBar.iconFocus,
-    );
+    focusScale.value = withSpring(isFocused ? 1.06 : 1, animations.motion.tabBar.iconFocus);
   }, [animations.motion.tabBar.iconFocus, focusScale, isFocused]);
 
   const iconAnimatedStyle = useAnimatedStyle(() => ({
@@ -221,7 +214,7 @@ export function FloatingTabBar({
   onRouteLongPress,
   hideWhenInactive = true,
 }: FloatingTabBarProps) {
-  const { mode } = useTheme();
+  const { mode, chromeElevation } = useTheme();
   const { tabBar } = useResponsiveLayout();
   const [rowWidth, setRowWidth] = useState(0);
   const activeIndex = routes.findIndex((route) => route.name === activeRouteName);
@@ -250,7 +243,7 @@ export function FloatingTabBar({
     <View
       style={[
         styles.tabBarContainer,
-        FLOATING_CHROME_ELEVATION,
+        chromeElevation(),
         {
           bottom: tabBar.bottom,
           height: tabBar.height,

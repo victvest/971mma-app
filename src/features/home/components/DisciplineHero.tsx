@@ -85,7 +85,7 @@ const DisciplineDayPip = memo(function DisciplineDayPip({ label, state }: DayPip
 });
 
 export function DisciplineHero({ score, weekActivity }: DisciplineHeroProps) {
-  const { colors, inset, gap, typography, radius, shadows, layout } = useTheme();
+  const { colors, inset, gap, typography, radius, surfaceShadow, layout } = useTheme();
 
   const calendarWeek = useMemo(() => {
     const now = new Date();
@@ -127,7 +127,10 @@ export function DisciplineHero({ score, weekActivity }: DisciplineHeroProps) {
 
   const currentMonthCount = score?.trainingDays30d ?? 0;
   const monthlyGoal = 20;
-  const goalPercent = Math.min(Math.round((currentMonthCount / monthlyGoal) * 100), 100);
+  const goalPercent =
+    score?.monthlyGoalPct != null
+      ? Math.round(Math.min(1, Math.max(0, score.monthlyGoalPct)) * 100)
+      : Math.min(Math.round((currentMonthCount / monthlyGoal) * 100), 100);
 
   const weeklySessionsCount = useMemo(() => {
     let count = 0;
@@ -153,7 +156,7 @@ export function DisciplineHero({ score, weekActivity }: DisciplineHeroProps) {
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,

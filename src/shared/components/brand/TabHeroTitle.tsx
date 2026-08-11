@@ -19,11 +19,7 @@ type Props = {
  * Shared tab hero headline — always uses typography.textPresets.homeHero so Home,
  * Schedule, Check-in, and Coaches titles match exactly.
  */
-export function TabHeroTitle({
-  lines,
-  collapseOnWide = false,
-  compactBreakpoint = 360,
-}: Props) {
+export function TabHeroTitle({ lines, collapseOnWide = false, compactBreakpoint = 360 }: Props) {
   const { colors, typography } = useTheme();
   const { width } = useWindowDimensions();
 
@@ -44,10 +40,7 @@ export function TabHeroTitle({
       {resolvedLines.map((segments, lineIndex) => (
         <Text
           key={lineIndex}
-          style={[
-            typography.textPresets.homeHero,
-            { color: colors.text.primary, lineHeight: 42 },
-          ]}
+          style={[typography.textPresets.homeHero, { color: colors.text.primary, lineHeight: 42 }]}
         >
           {segments.map((segment, segmentIndex) => (
             <Text

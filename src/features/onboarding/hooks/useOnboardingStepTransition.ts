@@ -1,8 +1,5 @@
 import { useCallback, useRef } from 'react';
-import {
-  FadeIn,
-  FadeOut,
-} from 'react-native-reanimated';
+import { FadeIn, FadeOut } from 'react-native-reanimated';
 import { useTheme } from '@/shared/theme';
 
 export function useOnboardingStepTransition() {

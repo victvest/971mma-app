@@ -1,14 +1,15 @@
 /** Conservative FlashList item size hints — profiled from row components. */
 export const FLASH_LIST_ESTIMATES = {
   attendanceRow: 92,
+  attendanceMonthHeader: 36,
   classSessionRow: 92,
   scheduleClassCard: 141,
-  communityInboxRow: 88,
-  communityFeedMessage: 120,
   rollCallRosterRow: 76,
-  rollCallSummaryRow: 68,
+  rollCallMemberRow: 96,
+  rollCallSummaryRow: 96,
   rollCallSearchRow: 72,
   coachMemberSearchRow: 88,
+  feedPostCard: 300,
 } as const;
 
 type FlashListLayout = { span?: number; size?: number };

@@ -123,9 +123,7 @@ export function Button({
               style={styles.iconLeft}
             />
           )}
-          <Text style={[styles.label, { color: resolved.fg, fontSize: s.fontSize }]}>
-            {label}
-          </Text>
+          <Text style={[styles.label, { color: resolved.fg, fontSize: s.fontSize }]}>{label}</Text>
           {icon && iconPosition === 'right' && (
             <Ionicons
               name={icon}

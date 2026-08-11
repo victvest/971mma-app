@@ -65,14 +65,7 @@ export function Chip({ label, active = false, onPress, tone = 'accent' }: Props)
         },
       ]}
     >
-      <Text
-        style={[
-          styles.label,
-          { color: active ? activeFg : idleFg },
-        ]}
-      >
-        {label}
-      </Text>
+      <Text style={[styles.label, { color: active ? activeFg : idleFg }]}>{label}</Text>
     </MotiPressable>
   );
 }

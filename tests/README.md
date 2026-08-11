@@ -21,14 +21,12 @@ tests/
   mobile-app/
     auth/                # real auth-sign-in path: happy, bad creds, admin-blocked
     attendance-qr/       # member pass QR + coach scanning it (class check-in)
-    gate-entry/          # gate tablet QR display + member self check-in + geofence/dup/forgery
     roll-call/           # coach roll call → present marks → facility check-in + points
     points-rewards/      # points engine: exact credit, ledger, streak, double-credit guard
     redemption/          # redeem → pending → fulfil/cancel + insufficient/out-of-stock/tier-lock
     mindbody/            # account linking (mocked client id) + manual-link contract + mb-health
     referrals/           # code issuance, submission, application (2nd actor), bad-code reject
     guardians/           # child-link request + unapproved link grants no proxy authority
-    communities/         # channel listing + membership-gated visibility
     belt-progression/    # belt/rank recompute + member read access
     schedule/            # home dashboard + class subscribe/unsubscribe
     profile-support/     # notification prefs round-trip + support ticket + account-deletion request
@@ -40,11 +38,9 @@ tests/
     broadcasts/          # send broadcast → announcement persisted
     coaches/             # edit coach profile
     content/             # toggle rewards-catalog content
-    gate-settings/       # set + validate gate exit PIN
     account-deletions/   # advance deletion request (non-destructive)
     support/             # resolve a member support message
     health-reports/      # system health + reports summary dashboards
-    community-moderation/# moderation listing (admin-gated)
 ```
 
 Why admin tests live in the app repo: the admin panel is a thin Next.js client over
@@ -73,7 +69,7 @@ Reports are written to `tests/output/REPORT.md` (human) and `tests/output/latest
   `TEST_USER_EMAIL` / `TEST_USER_PASSWORD` (`supabase/.env.local`), plus the linked
   `supabase` CLI for admin SQL. No extra setup beyond what the repo already needs.
 - The shared `TEST_USER` is an **admin** account; the runner flips its role
-  (member ↔ coach ↔ gate ↔ admin) per scenario and restores it at the end. Because
+  (member ↔ coach ↔ admin) per scenario and restores it at the end. Because
   one session is shared, tests run **sequentially**.
 - Multi-actor scenarios (coach scans a *different* member; referral applied by a
   friend; admin acts on a member) create **ephemeral throwaway users** via the

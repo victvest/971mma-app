@@ -2,11 +2,13 @@
  * Mobile app — Member pass QR + coach scanning it (class check-in).
  *
  * Real flow:
- *   - A member opens their pass: the app calls `qr-issue` to mint a short-lived
- *     signed v2 token encoding their member id.
- *   - A coach scans that pass. The scanner parses the member id and the coach's
- *     `mb-checkin` records a `qr_scan` class check-in. The token is single-use
- *     (replay protected) and only coaches/admins may consume it.
+ *   - Member opens Check-in → `qr-issue` mints a short-lived signed v2 token.
+ *   - Facility entry: member shows that QR to the SALTO/Gantner scanner (not us).
+ *   - Class attendance: coach opens Run Class → Scan QR → `record_roll_call_mark`
+ *     (method `qr_scan` on the roll-call mark). That path does not burn the gate pass.
+ *
+ * Legacy `mb-checkin` with a bare token (facility via coach phone) is retired —
+ * it raced SALTO by writing `qr_scan` facility rows and consuming the same jti.
  */
 import { suite, test, assert, assertEqual } from '../../lib/framework.mjs';
 import { simulateCoachScannerParse } from '../../lib/harness.mjs';
@@ -39,31 +41,26 @@ suite('Member pass / issue', () => {
   }, { role: 'member' });
 });
 
-suite('Member pass / coach class scan (mb-checkin)', () => {
-  test('coach consumes a member pass once; replay is blocked; members cannot consume', async (ctx) => {
+suite('Member pass / legacy mb-checkin facility path retired', () => {
+  test('bare token check-in is rejected (facility is SALTO-only)', async (ctx) => {
     await ctx.setRole('member');
-    ctx.h.clearTodayCheckIns();
     const pass = await ctx.h.issueMemberQr();
     const token = pass.token;
 
     await ctx.setRole('coach');
     const first = await ctx.invokeEdge('mb-checkin', { token });
 
-    // mb-checkin writes back to Mindbody; if the test member is not linked or the
-    // MB sandbox blocks arrivals, the token path is unavailable — record as skip.
-    if (!first.ok && ['NOT_LINKED', 'UPSTREAM_ERROR'].includes(first.body?.error?.code)) {
-      return ctx.skip(`mb-checkin unavailable for test member: ${first.body?.error?.code}`);
-    }
-    assert(first.ok && first.body?.success, `mb-checkin failed: ${JSON.stringify(first.body)}`);
-
-    const row = ctx.h.getLatestCheckIn();
-    assertEqual(row?.method, 'qr_scan', 'coach scan must record qr_scan method');
-
-    const replay = await ctx.invokeEdge('mb-checkin', { token });
-    assertEqual(replay.body?.error?.code, 'TOKEN_REPLAYED', 'single-use token must block replay');
+    assertEqual(
+      first.body?.error?.code,
+      'BAD_REQUEST',
+      `legacy facility mb-checkin must be rejected, got: ${JSON.stringify(first.body)}`,
+    );
 
     await ctx.setRole('member');
     const asMember = await ctx.invokeEdge('mb-checkin', { token });
-    assertEqual(asMember.body?.error?.code, 'FORBIDDEN', 'a member must not consume a scan token');
+    assert(
+      asMember.body?.error?.code === 'FORBIDDEN' || asMember.body?.error?.code === 'BAD_REQUEST',
+      'a member must not consume a scan token',
+    );
   }, { role: 'member', multiRole: true });
 });

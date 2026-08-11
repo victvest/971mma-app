@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from 'react';
 import type { ApiError } from '@/lib/apiError';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useHomeDashboardSummary } from '@/features/home/hooks/useHomeDashboard';
@@ -10,7 +11,7 @@ import type { PersonaMessage } from '../types';
 const WELCOME_MESSAGE: PersonaMessage = {
   id: 'welcome',
   role: 'assistant',
-  text: `Hi — I'm your ${PERSONA_ASSISTANT_NAME}. Ask me about classes, coaches, belt progress, check-in, points, or rewards. I answer from your membership and academy data.`,
+  text: `Hi — I'm your ${PERSONA_ASSISTANT_NAME}.\n\nAsk me about:\n• Classes and coaches\n• Belt progress and check-in\n• Points, rewards, and membership`,
   createdAt: Date.now(),
 };
 
@@ -28,12 +29,16 @@ function createId(prefix: string): string {
 function formatAssistantError(error: unknown): string {
   const apiError = error as ApiError;
   if (apiError?.rawCode === 'RATE_LIMITED') {
-    return apiError.message;
+    return toUserFacingErrorMessage(error, {
+      fallback: 'Too many attempts. Wait a minute and try again.',
+    });
   }
   if (apiError?.code === 'UNAUTHORIZED') {
     return 'Please sign in again to use the assistant.';
   }
-  return 'Something went wrong. Please try again in a moment.';
+  return toUserFacingErrorMessage(error, {
+    fallback: 'Something went wrong. Please try again in a moment.',
+  });
 }
 
 export function usePersonaSuggestions(): readonly string[] {

@@ -1,9 +1,7 @@
 import type { ClassRosterResponse } from '@/types/domain';
-import type {
-  RollCallDeckMember,
-  RollCallMemberMark,
-} from '@/features/coach/roll-call/types';
+import type { RollCallDeckMember, RollCallMemberMark } from '@/features/coach/roll-call/types';
 import { buildRollCallDeckKey } from '@/features/coach/roll-call/types';
+import { isGymToday } from '@/core/time/gymTime';
 
 export interface RollCallProfileSlice {
   fullName: string | null;
@@ -40,7 +38,7 @@ function visitorToDeckMember(
   return {
     deckKey,
     displayName: profile?.fullName?.trim() || visitor.name,
-    avatarUrl: profile?.avatarUrl ?? null,
+    avatarUrl: profile?.avatarUrl ?? visitor.photoUrl ?? null,
     beltRank: profile?.beltRank ?? null,
     beltStripes: profile?.beltStripes ?? 0,
     userId: visitor.userId,
@@ -103,18 +101,20 @@ function applyFacilityOverlay(
   };
 }
 
-/** Marked members always show; unmarked roster rows require a gym-day door check-in. */
+/** Marked members and booked roster rows always show on the swipe deck. */
 export function isEligibleForRollCallDeck(member: RollCallDeckMember): boolean {
   if (member.mark) return true;
+  if (member.isBookedOnRoster) return true;
+  if (member.addedAt && isGymToday(member.addedAt)) return true;
   return member.hasFacilityCheckInToday;
 }
 
 /**
  * Merge Mindbody roster rows with session marks and linked profile avatars/belts.
  *
- * **Deck eligibility:** unmarked roster rows appear only when the member has a gym-day
- * door check-in (`hasFacilityCheckInToday`). No door check-in = absent unless the coach
- * marks them later (e.g. QR scan). Marked members always remain visible.
+ * **Deck eligibility:** all Mindbody roster bookings appear for present/absent swipes.
+ * Walk-ins added during roll call remain visible once marked. Facility check-in still
+ * powers the "checked in at gate" overlay but no longer hides booked members.
  *
  * **Deck order (frozen for UI phases 5–18):**
  * 1. Roster members **without a mark** first, sorted A→Z by display name.

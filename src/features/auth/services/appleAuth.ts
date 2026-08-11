@@ -12,8 +12,8 @@ function buildAppleFullName(
 ): string | null {
   if (!fullName) return null;
 
-  const parts = [fullName.givenName, fullName.familyName].filter(
-    (part): part is string => Boolean(part?.trim()),
+  const parts = [fullName.givenName, fullName.familyName].filter((part): part is string =>
+    Boolean(part?.trim()),
   );
 
   return parts.length > 0 ? parts.join(' ') : null;
@@ -21,10 +21,7 @@ function buildAppleFullName(
 
 async function createAppleNonce(): Promise<{ rawNonce: string; hashedNonce: string }> {
   const rawNonce = Crypto.randomUUID();
-  const hashedNonce = await Crypto.digestStringAsync(
-    Crypto.CryptoDigestAlgorithm.SHA256,
-    rawNonce,
-  );
+  const hashedNonce = await Crypto.digestStringAsync(Crypto.CryptoDigestAlgorithm.SHA256, rawNonce);
 
   return { rawNonce, hashedNonce };
 }

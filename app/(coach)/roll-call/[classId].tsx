@@ -1,25 +1,31 @@
-import React, { useCallback, useEffect, useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { BackHandler, StyleSheet, View, useWindowDimensions } from 'react-native';
-import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { RollCallDeck } from '@/features/coach/roll-call/components/RollCallDeck';
 import { useRollCallDeckMarking } from '@/features/coach/roll-call/hooks/useRollCallDeckMarking';
+import {
+  useRemoveRollCallClassMember,
+} from '@/features/coach/roll-call/hooks/useRollCall';
 import { useRollCallSession } from '@/features/coach/roll-call/hooks/useRollCallSession';
 import { DEFAULT_ROLL_CALL_CONFIG } from '@/features/coach/roll-call/types';
+import type { RollCallDeckMember } from '@/features/coach/roll-call/types';
 import {
-  COACH_HOME_PATH,
-  rollCallSummaryPath,
+  exitCompletedRollCall,
+  leaveRollCallDeck,
+  openRollCallScanner,
+  replaceWithRollCallSummary,
 } from '@/features/coach/roll-call/utils/rollCallNavigation';
+import { buildRollCallSwipeQueue } from '@/features/coach/roll-call/utils/buildRollCallSwipeQueue';
 import { useCoachClass } from '@/features/coach/hooks/useCoachMode';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import { isQueryActivelyLoading } from '@/lib/offlineState';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_NETWORK_ERROR } from '@/lib/userFacingError';
 import { PerfMark, usePerfRouteMount } from '@/shared/performance';
 
 export default function RollCallScreen() {
-  const router = useRouter();
   usePerfRouteMount(PerfMark.routeRollCallMount);
   const { classId, review } = useLocalSearchParams<{ classId: string; review?: string }>();
   const resolvedClassId = classId ?? '';
@@ -36,8 +42,7 @@ export default function RollCallScreen() {
     deck,
     isCompleted,
     isInProgress,
-    isStarting,
-    unmarkedCount,
+    isBootstrapping,
     hasProgress,
     isAbandoning,
     abandonSession,
@@ -51,6 +56,7 @@ export default function RollCallScreen() {
     resolvedClassId || null,
     rollCallQuery.data?.config ?? DEFAULT_ROLL_CALL_CONFIG,
   );
+  const removeMemberMutation = useRemoveRollCallClassMember(resolvedClassId || null);
 
   const cardWidth = width;
   const cardHeight = useMemo(
@@ -58,74 +64,77 @@ export default function RollCallScreen() {
     [height, insets.bottom, insets.top],
   );
 
-  const isLoading =
-    isQueryActivelyLoading(classQuery.isLoading, classQuery.isFetching) ||
-    isQueryActivelyLoading(rollCallQuery.isLoading, rollCallQuery.isFetching) ||
-    (isStarting && deck.length === 0);
-
+  /**
+   * Gate the deck until the first successful roster payload is ready and auto-start
+   * has settled. Background refetches must not flip this — that caused the flash.
+   */
   const isOfflineBlocked =
     networkStatusKnown &&
     !isOnline &&
     !isInProgress &&
     !isCompleted &&
-    !isLoading &&
+    !isBootstrapping &&
     deck.length === 0;
 
   const classTitle =
     classQuery.data?.title ?? rollCallQuery.data?.classTitle ?? 'Class roll call';
-  const startsAt =
-    classQuery.data?.startsAt ?? rollCallQuery.data?.startsAt ?? new Date().toISOString();
+  // Swipe queue excludes roster members without a facility check-in — they go to summary.
+  // Never auto-jump while checked-in / walk-in / QR recognition cards remain.
+  const swipeQueueCount = useMemo(() => buildRollCallSwipeQueue(deck).length, [deck]);
   const shouldOpenSummary =
     !isReviewFromSummary &&
-    !isLoading &&
+    !isBootstrapping &&
     !isCompleted &&
     deck.length > 0 &&
-    unmarkedCount === 0;
+    swipeQueueCount === 0;
 
-  useEffect(() => {
-    if (!shouldOpenSummary || !resolvedClassId) return;
-    router.replace(rollCallSummaryPath(resolvedClassId));
-  }, [resolvedClassId, router, shouldOpenSummary]);
+  // Replace (not push) so Back never returns to a dead "all marked" deck screen.
+  useFocusEffect(
+    useCallback(() => {
+      if (!shouldOpenSummary || !resolvedClassId) return;
+      replaceWithRollCallSummary(resolvedClassId);
+    }, [resolvedClassId, shouldOpenSummary]),
+  );
 
   useFocusEffect(
     useCallback(() => {
       if (!isCompleted || !resolvedClassId) return;
-      router.replace(COACH_HOME_PATH);
-    }, [isCompleted, resolvedClassId, router]),
+      exitCompletedRollCall();
+    }, [isCompleted, resolvedClassId]),
   );
 
   const handleDiscard = useCallback(async () => {
     try {
       await abandonSession();
-      router.back();
+      leaveRollCallDeck();
     } catch (error) {
       showAlert(
         'Could not discard roll call',
-        error instanceof Error ? error.message : 'Check your connection and try again.',
+        toUserFacingErrorMessage(error, { fallback: USER_FACING_NETWORK_ERROR }),
       );
     }
-  }, [abandonSession, router, showAlert]);
+  }, [abandonSession, showAlert]);
 
   const confirmExit = useCallback(() => {
     if (isAbandoning) return;
 
     if (isCompleted) {
-      router.replace(COACH_HOME_PATH);
+      exitCompletedRollCall();
       return;
     }
 
     if (!hasProgress) {
-      router.back();
+      leaveRollCallDeck();
       return;
     }
 
     showConfirm(
       'Leave roll call?',
-      'Your progress is already saved.',
+      'Your marks stay on this device until you confirm attendance.',
       () => {
         showDialog({
           title: 'Save your progress?',
-          message: 'Save & resume later keeps your marks. Discard clears this roll call.',
+          message: 'Save & resume later keeps your marks on this device. Discard clears this roll call.',
           dismissOnBackdropPress: true,
           buttons: [
             {
@@ -133,7 +142,7 @@ export default function RollCallScreen() {
               variant: 'primary',
               onPress: () => {
                 hideDialog();
-                router.back();
+                leaveRollCallDeck();
               },
             },
             {
@@ -155,7 +164,6 @@ export default function RollCallScreen() {
     hideDialog,
     isAbandoning,
     isCompleted,
-    router,
     showConfirm,
     showDialog,
   ]);
@@ -168,6 +176,30 @@ export default function RollCallScreen() {
       });
       return () => subscription.remove();
     }, [confirmExit]),
+  );
+
+  const openScanner = useCallback(() => {
+    if (!resolvedClassId) return;
+    openRollCallScanner(resolvedClassId, 'swiper');
+  }, [resolvedClassId]);
+
+  const handleRemoveMember = useCallback(
+    async (member: RollCallDeckMember) => {
+      if (!member.userId) {
+        showAlert('Cannot remove', 'This member has no app account on the list.');
+        return;
+      }
+      try {
+        await removeMemberMutation.mutateAsync(member.userId);
+      } catch (error) {
+        showAlert(
+          'Could not remove member',
+          toUserFacingErrorMessage(error, { fallback: USER_FACING_NETWORK_ERROR }),
+        );
+        throw error;
+      }
+    },
+    [removeMemberMutation, showAlert],
   );
 
   if (!resolvedClassId) {
@@ -188,7 +220,7 @@ export default function RollCallScreen() {
         <StateBlock
           kind="error"
           title="Connect to start roll call"
-          message="Roll call needs internet to load the roster and begin. Marks made earlier will sync when you reconnect."
+          message="Roll call needs internet to load the class list and begin. Marks made earlier will sync when you reconnect."
           actionLabel="Retry"
           onAction={() => {
             void classQuery.refetch();
@@ -200,13 +232,15 @@ export default function RollCallScreen() {
     );
   }
 
-  if (classQuery.isError && rollCallQuery.isError) {
+  if (rollCallQuery.isError && !rollCallQuery.data) {
     return (
       <View style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
         <StateBlock
           kind="error"
           title="Could not load roll call"
-          message="Check your connection and try again."
+          message={toUserFacingErrorMessage(rollCallQuery.error, {
+            fallback: USER_FACING_NETWORK_ERROR,
+          })}
           actionLabel="Retry"
           onAction={() => {
             void classQuery.refetch();
@@ -232,17 +266,19 @@ export default function RollCallScreen() {
       <RollCallDeck
         classId={resolvedClassId}
         classTitle={classTitle}
-        startsAt={startsAt}
         members={deck}
         screenWidth={cardWidth}
         screenHeight={height}
         cardHeight={cardHeight}
-        isLoading={isLoading}
+        isLoading={isBootstrapping}
         isRecording={isRecording || isAbandoning}
+        isRemovingMember={removeMemberMutation.isPending}
         reviewMode={isReviewFromSummary}
         onBackPress={confirmExit}
+        onScanPress={openScanner}
+        onRemoveMember={handleRemoveMember}
         onDeckComplete={() => {
-          router.replace(rollCallSummaryPath(resolvedClassId));
+          replaceWithRollCallSummary(resolvedClassId);
         }}
         onRecordMark={recordWithStatus}
         onRevertMark={revertMark}

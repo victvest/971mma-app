@@ -44,11 +44,19 @@ export function LegalDocumentView({ document }: Props) {
     >
       <RevealOnMount delay={0}>
         <ScreenSectionHeader kicker={document.eyebrow} />
-        <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, marginTop: gap.xs }]}>
+        <Text
+          style={[
+            typography.textPresets.homeHero,
+            { color: colors.text.primary, marginTop: gap.xs },
+          ]}
+        >
           {document.title}
         </Text>
         <Text
-          style={[typography.textPresets.caption, { color: colors.text.tertiary, marginTop: gap.xs }]}
+          style={[
+            typography.textPresets.caption,
+            { color: colors.text.tertiary, marginTop: gap.xs },
+          ]}
         >
           Last updated · {document.lastUpdated}
         </Text>
@@ -83,7 +91,11 @@ export function LegalDocumentView({ document }: Props) {
               {section.paragraphs.map((paragraph, pIndex) => (
                 <Text
                   key={pIndex}
-                  style={[typography.textPresets.body, styles.body, { color: colors.text.secondary }]}
+                  style={[
+                    typography.textPresets.body,
+                    styles.body,
+                    { color: colors.text.secondary },
+                  ]}
                 >
                   {paragraph}
                 </Text>

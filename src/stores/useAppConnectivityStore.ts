@@ -16,21 +16,23 @@ type AppConnectivityActions = {
   setAppFocused: (isAppFocused: boolean) => void;
 };
 
-export const useAppConnectivityStore = create<AppConnectivityState & AppConnectivityActions>((set) => ({
-  isOnline: false,
-  connectionType: null,
-  networkStatusKnown: false,
-  isAppFocused: true,
+export const useAppConnectivityStore = create<AppConnectivityState & AppConnectivityActions>(
+  (set) => ({
+    isOnline: false,
+    connectionType: null,
+    networkStatusKnown: false,
+    isAppFocused: true,
 
-  setNetworkStatus: (patch) =>
-    set((state) => ({
-      ...state,
-      ...patch,
-      networkStatusKnown: patch.networkStatusKnown ?? true,
-    })),
+    setNetworkStatus: (patch) =>
+      set((state) => ({
+        ...state,
+        ...patch,
+        networkStatusKnown: patch.networkStatusKnown ?? true,
+      })),
 
-  setAppFocused: (isAppFocused) => set({ isAppFocused }),
-}));
+    setAppFocused: (isAppFocused) => set({ isAppFocused }),
+  }),
+);
 
 export function getNetworkOnline(): boolean {
   return useAppConnectivityStore.getState().isOnline;

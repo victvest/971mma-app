@@ -1,4 +1,4 @@
-import React, { memo, useLayoutEffect, type ReactNode } from 'react';
+import React, { memo, useCallback, useEffect, useLayoutEffect, type ReactNode } from 'react';
 import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -21,6 +21,7 @@ const SECTION_ENTRANCE_TRANSLATE = 42;
 const SECTION_STAGGER_MS = animations.stagger.base;
 const SECTION_FADE = animations.timing.fade;
 const SECTION_SPRING = animations.spring.gentle;
+const SECTION_FAILSAFE_MS = SECTION_STAGGER_MS * 7 + animations.duration.slow + 120;
 
 function runSectionEntrance(
   index: number,
@@ -40,9 +41,9 @@ function runSectionEntrance(
 type HomeAnimatedSectionProps = {
   children: ReactNode;
   index: number;
-  /** UI-thread tab refocus replay — preferred on Home (no React re-render). */
+  /** UI-thread tab refocus replay for smooth animation restarts. */
   entranceSignal?: SharedValue<number>;
-  /** React-state replay for other tabs / pull-to-refresh. */
+  /** React-state replay key that lets Home schedule a visibility failsafe. */
   replayKey?: number;
   /** @deprecated Scroll-linked motion removed — kept for call-site compatibility. */
   scrollY?: SharedValue<number>;
@@ -64,31 +65,50 @@ export const HomeAnimatedSection = memo(function HomeAnimatedSection({
 }: HomeAnimatedSectionProps) {
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(34);
+  const latestRun = useSharedValue<number>(0);
+
+  const startEntrance = useCallback(() => {
+    latestRun.value += 1;
+    runSectionEntrance(index, opacity, translateY);
+    return latestRun.value;
+  }, [index, latestRun, opacity, translateY]);
 
   useLayoutEffect(() => {
     if (!entranceSignal) {
       return;
     }
 
-    runSectionEntrance(index, opacity, translateY);
-  }, [entranceSignal, index, opacity, translateY]);
+    startEntrance();
+  }, [entranceSignal, replayKey, startEntrance]);
 
   useLayoutEffect(() => {
     if (entranceSignal) {
       return;
     }
 
-    runSectionEntrance(index, opacity, translateY);
-  }, [entranceSignal, index, opacity, replayKey, translateY]);
+    startEntrance();
+  }, [entranceSignal, replayKey, startEntrance]);
+
+  useEffect(() => {
+    const runId = latestRun.value;
+    const timer = setTimeout(() => {
+      if (latestRun.value !== runId) return;
+      opacity.value = 1;
+      translateY.value = 0;
+    }, SECTION_FAILSAFE_MS);
+
+    return () => clearTimeout(timer);
+  }, [entranceSignal, index, latestRun, opacity, replayKey, translateY]);
 
   useAnimatedReaction(
     () => entranceSignal?.value ?? null,
     (current, previous) => {
       if (entranceSignal && previous !== null && current !== previous) {
+        latestRun.value += 1;
         runSectionEntrance(index, opacity, translateY);
       }
     },
-    [entranceSignal, index, opacity, translateY],
+    [entranceSignal, index, latestRun, opacity, translateY],
   );
 
   const animatedStyle = useAnimatedStyle(() => ({

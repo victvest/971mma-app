@@ -3,18 +3,28 @@ import { StyleSheet, View } from 'react-native';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
 import { useTheme } from '@/shared/theme';
 
-export function CheckInSectionHeader() {
+type Props = {
+  mode?: 'member-card' | 'child-status';
+};
+
+export function CheckInSectionHeader({ mode = 'member-card' }: Props) {
   const { gap } = useTheme();
+  const childStatus = mode === 'child-status';
 
   return (
     <View style={[styles.container, { gap: gap.sm }]}>
-      <AcademyEyebrow label="Member Card" accent showFlag={false} />
+      <AcademyEyebrow
+        label={childStatus ? 'Check-in status' : 'Member Card'}
+        accent
+        showFlag={false}
+      />
       <TabHeroTitle
         collapseOnWide
-        lines={[
-          [{ text: 'Your card.' }],
-          [{ text: 'Your identity.', accent: true }],
-        ]}
+        lines={
+          childStatus
+            ? [[{ text: 'Today' }], [{ text: 'at the gym.', accent: true }]]
+            : [[{ text: 'Your card.' }], [{ text: 'Your identity.', accent: true }]]
+        }
       />
     </View>
   );

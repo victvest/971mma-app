@@ -7,7 +7,13 @@ function normalizeName(value: string): string {
 export function findCoachForProfile(
   coaches: CoachItem[],
   fullName: string | null | undefined,
+  userId?: string | null,
 ): CoachItem | null {
+  if (userId) {
+    const byUserId = coaches.find((coach) => coach.userId === userId);
+    if (byUserId) return byUserId;
+  }
+
   if (!fullName?.trim()) return null;
 
   const normalized = normalizeName(fullName);

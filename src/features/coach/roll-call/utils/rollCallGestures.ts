@@ -1,4 +1,4 @@
-import type { WithSpringConfig } from 'react-native-reanimated';
+import type { WithSpringConfig, WithTimingConfig } from 'react-native-reanimated';
 
 /** Commit when horizontal drag exceeds ~25% of card width (TINDER Phase 6). */
 export const ROLL_CALL_SWIPE_THRESHOLD_RATIO = 0.25;
@@ -11,6 +11,15 @@ export const HUD_WING_WIDTH_RATIO = 0.17;
 export const HUD_WING_MIN_HEIGHT_RATIO = 0.7;
 /** HUD wing height as a fraction of the device screen. */
 export const HUD_SCREEN_HEIGHT_RATIO = 0.6;
+
+/** How many portrait cards peek in the stack behind the active card. */
+export const ROLL_CALL_STACK_MAX_VISIBLE = 3;
+/** Vertical offset (px) between stacked cards — matches inspiration card swipe. */
+export const ROLL_CALL_STACK_PEEK_Y = 30;
+/** Scale step between stacked cards (front = 1, next = 0.9, …). */
+export const ROLL_CALL_STACK_SCALE_STEP = 0.1;
+/** Max tilt (deg) while dragging the front card off-screen. */
+export const ROLL_CALL_STACK_ROTATION_MAX_DEG = 20;
 
 export type RollCallSwipeCommit = 'attended' | 'absent';
 
@@ -26,6 +35,35 @@ export const rollCallSwipeSpringReset = {
   mass: 0.85,
 } satisfies WithSpringConfig;
 
+export const rollCallStackProgressReset = {
+  duration: 500,
+} satisfies WithTimingConfig;
+
+/**
+ * Stack depth for a card at `stackIndex` (0 = front) given swipe progress 0→1.
+ * Progress advances the whole stack so the next card rises into the front slot.
+ */
+export function rollCallStackDepth(stackIndex: number, progress: number): number {
+  'worklet';
+  return Math.max(0, stackIndex - progress);
+}
+
+export function rollCallStackTranslateY(stackIndex: number, progress: number): number {
+  'worklet';
+  return -rollCallStackDepth(stackIndex, progress) * ROLL_CALL_STACK_PEEK_Y;
+}
+
+export function rollCallStackScale(stackIndex: number, progress: number): number {
+  'worklet';
+  return 1 - rollCallStackDepth(stackIndex, progress) * ROLL_CALL_STACK_SCALE_STEP;
+}
+
+export function rollCallStackSwipeProgress(translationX: number, screenWidth: number): number {
+  'worklet';
+  if (screenWidth <= 0) return 0;
+  return Math.min(Math.abs(translationX) / screenWidth, 1);
+}
+
 export function rollCallSwipeThreshold(screenWidth: number): number {
   'worklet';
   return screenWidth * ROLL_CALL_SWIPE_THRESHOLD_RATIO;
@@ -39,20 +77,14 @@ export function rollCallOffscreenTranslation(
   return direction === 'attended' ? screenWidth * 1.25 : -screenWidth * 1.25;
 }
 
-export function rollCallPresentOverlayOpacity(
-  translationX: number,
-  screenWidth: number,
-): number {
+export function rollCallPresentOverlayOpacity(translationX: number, screenWidth: number): number {
   'worklet';
   const threshold = rollCallSwipeThreshold(screenWidth);
   if (threshold <= 0) return 0;
   return Math.min(Math.max(translationX / threshold, 0), 1);
 }
 
-export function rollCallAbsentOverlayOpacity(
-  translationX: number,
-  screenWidth: number,
-): number {
+export function rollCallAbsentOverlayOpacity(translationX: number, screenWidth: number): number {
   'worklet';
   const threshold = rollCallSwipeThreshold(screenWidth);
   if (threshold <= 0) return 0;
@@ -147,7 +179,7 @@ export function rollCallHudIconScale(
 ): number {
   'worklet';
   const progress = swipeProgressForSide(side, translationX, screenWidth);
-  return (0.9 + hudReveal * 0.04) + progress * 0.22;
+  return 0.9 + hudReveal * 0.04 + progress * 0.22;
 }
 
 export function rollCallHudGlowRadius(
@@ -177,14 +209,11 @@ export function rollCallCardLiftY(
 ): number {
   'worklet';
   if (hudReveal <= 0) return 0;
-  const dragLift = Math.min(Math.abs(translationX) / Math.max(screenWidth, 1) * 10, 10);
+  const dragLift = Math.min((Math.abs(translationX) / Math.max(screenWidth, 1)) * 10, 10);
   return -3 - dragLift * hudReveal;
 }
 
-export function rollCallCardRotationDeg(
-  translationX: number,
-  screenWidth: number,
-): number {
+export function rollCallCardRotationDeg(translationX: number, screenWidth: number): number {
   'worklet';
   if (screenWidth <= 0) return 0;
   return (translationX / screenWidth) * 14;

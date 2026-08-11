@@ -41,7 +41,11 @@ function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: Pro
       accessibilityRole="button"
       accessibilityState={{ selected, disabled: !isInteractive }}
       accessibilityLabel={
-        pending ? `${name}, awaiting approval` : selected ? `${name}, active profile` : `Switch to ${name}`
+        pending
+          ? `${name}, awaiting approval`
+          : selected
+            ? `${name}, active profile`
+            : `Switch to ${name}`
       }
       style={({ pressed }) => [
         styles.row,
@@ -73,9 +77,13 @@ function ProfileRow({ name, selected, pending = false, avatarUrl, onPress }: Pro
           {name}
         </Text>
         {pending ? (
-          <Text style={[styles.pendingLabel, { color: colors.text.tertiary }]}>Awaiting approval</Text>
+          <Text style={[styles.pendingLabel, { color: colors.text.tertiary }]}>
+            Awaiting approval
+          </Text>
         ) : selected ? (
-          <Text style={[styles.pendingLabel, { color: colors.accent.default }]}>Active profile</Text>
+          <Text style={[styles.pendingLabel, { color: colors.accent.default }]}>
+            Active profile
+          </Text>
         ) : null}
       </View>
 
@@ -122,7 +130,8 @@ export function FamilyTraineesScreenContent() {
   const { isOnline, networkStatusKnown } = useNetworkStatus();
   const hasData = links.length > 0 || activeProfileOptions.length > 0;
   const hasError = linksQuery.isError;
-  const isInitialLoading = isQueryActivelyLoading(linksQuery.isLoading, linksQuery.isFetching) && !hasData;
+  const isInitialLoading =
+    isQueryActivelyLoading(linksQuery.isLoading, linksQuery.isFetching) && !hasData;
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
     isOnline,
@@ -207,80 +216,87 @@ export function FamilyTraineesScreenContent() {
           />
         </View>
       ) : (
-      <AppScrollView
-        contentContainerStyle={[styles.scrollContent, { padding: inset.lg, gap: gap.lg }]}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
-        showsVerticalScrollIndicator={false}
-      >
-        <View style={{ gap: gap.xs }}>
-          <AcademyEyebrow label="971 MMA · Family" accent />
-          <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, lineHeight: 42 }]}>
-            Switch profile
-          </Text>
-          <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
-            Choose whose progress you want to see in the app.
-          </Text>
-        </View>
-
-        <View
-          style={[
-            styles.listShell,
-            {
-              borderRadius: radius.cardLarge,
-              borderColor: colors.border.subtle,
-              borderWidth: layout.borderWidth,
-              backgroundColor: colors.surface.primary,
-              overflow: 'hidden',
-            },
-          ]}
+        <AppScrollView
+          contentContainerStyle={[styles.scrollContent, { padding: inset.lg, gap: gap.lg }]}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          showsVerticalScrollIndicator={false}
         >
-          <ProfileRow
-            name={selfLabel}
-            selected={isSelfSelected}
-            avatarUrl={profileOptionsByUserId.get(authUserId)?.avatarUrl ?? null}
-            onPress={
-              hasLimitedAccess
-                ? () => prompt('family-profiles')
-                : isSelfSelected
-                  ? undefined
-                  : handleSwitchToSelf
-            }
-          />
+          <View style={{ gap: gap.xs }}>
+            <AcademyEyebrow label="971 MMA · Family" accent />
+            <Text
+              style={[
+                typography.textPresets.homeHero,
+                { color: colors.text.primary, lineHeight: 42 },
+              ]}
+            >
+              Switch profile
+            </Text>
+            <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
+              Choose whose progress you want to see in the app.
+            </Text>
+          </View>
 
-          {listLinks.map((link) => {
-            const isSelected = Boolean(link.traineeUserId && link.traineeUserId === selectedTraineeId);
-            const canSwitch = link.status === 'approved' && link.traineeUserId && !isSelected;
+          <View
+            style={[
+              styles.listShell,
+              {
+                borderRadius: radius.cardLarge,
+                borderColor: colors.border.subtle,
+                borderWidth: layout.borderWidth,
+                backgroundColor: colors.surface.primary,
+                overflow: 'hidden',
+              },
+            ]}
+          >
+            <ProfileRow
+              name={selfLabel}
+              selected={isSelfSelected}
+              avatarUrl={profileOptionsByUserId.get(authUserId)?.avatarUrl ?? null}
+              onPress={
+                hasLimitedAccess
+                  ? () => prompt('family-profiles')
+                  : isSelfSelected
+                    ? undefined
+                    : handleSwitchToSelf
+              }
+            />
 
-            return (
-              <React.Fragment key={link.id}>
+            {listLinks.map((link) => {
+              const isSelected = Boolean(
+                link.traineeUserId && link.traineeUserId === selectedTraineeId,
+              );
+              const canSwitch = link.status === 'approved' && link.traineeUserId && !isSelected;
+
+              return (
+                <React.Fragment key={link.id}>
+                  <RowDivider />
+                  <ProfileRow
+                    name={link.childDisplayName}
+                    selected={isSelected}
+                    pending={link.status === 'pending'}
+                    avatarUrl={resolveLinkAvatar(link)}
+                    onPress={
+                      hasLimitedAccess
+                        ? () => prompt('family-profiles')
+                        : canSwitch
+                          ? () => handleSwitch(link)
+                          : undefined
+                    }
+                  />
+                </React.Fragment>
+              );
+            })}
+
+            {isInitialLoading ? (
+              <>
                 <RowDivider />
-                <ProfileRow
-                  name={link.childDisplayName}
-                  selected={isSelected}
-                  pending={link.status === 'pending'}
-                  avatarUrl={resolveLinkAvatar(link)}
-                  onPress={
-                    hasLimitedAccess
-                      ? () => prompt('family-profiles')
-                      : canSwitch
-                        ? () => handleSwitch(link)
-                        : undefined
-                  }
-                />
-              </React.Fragment>
-            );
-          })}
-
-          {isInitialLoading ? (
-            <>
-              <RowDivider />
-              <View style={[styles.loadingRow, { padding: inset.md }]}>
-                <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>Loading…</Text>
-              </View>
-            </>
-          ) : null}
-        </View>
-      </AppScrollView>
+                <View style={[styles.loadingRow, { padding: inset.md }]}>
+                  <Text style={{ color: colors.text.tertiary, fontSize: 13 }}>Loading…</Text>
+                </View>
+              </>
+            ) : null}
+          </View>
+        </AppScrollView>
       )}
 
       {!isInitialLoading && !isOfflineBlocked && listLinks.length === 0 ? (

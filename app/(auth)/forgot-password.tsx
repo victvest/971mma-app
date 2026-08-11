@@ -10,7 +10,12 @@ import {
 } from '@/features/auth/components/AuthExperience';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authRoutes, backFromForgotPassword } from '@/features/auth/navigation/authNavigation';
-import { formatAuthError, normalizeEmail, validateEmail } from '@/features/auth/services/authValidation';
+import {
+  formatAuthError,
+  normalizeEmail,
+  validateEmail,
+} from '@/features/auth/services/authValidation';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
@@ -20,7 +25,7 @@ export default function ForgotPasswordScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 

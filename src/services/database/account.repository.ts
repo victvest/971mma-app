@@ -1,3 +1,4 @@
+import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { getSupabaseClient } from '@/services/supabase/client';
 
 export type AccountDeletionRequest = {
@@ -9,6 +10,13 @@ export type AccountDeletionRequest = {
   authDeletedAt: string | null;
   memberDisplayName: string | null;
   notes: string | null;
+};
+
+export type AccountSelfDeleteResult = {
+  requestId: string;
+  status: 'completed';
+  deletedUserId: string;
+  authDeletedAt: string;
 };
 
 type AccountDeletionRequestRow = {
@@ -35,7 +43,15 @@ function mapRow(row: AccountDeletionRequestRow): AccountDeletionRequest {
   };
 }
 
-/** Submit (or return existing) pending account deletion request. Does not delete the account. */
+/**
+ * Permanently deletes the signed-in app account (Auth user + app data).
+ * Required for App Store Guideline 5.1.1(v) and Play Data safety.
+ */
+export async function deleteMyAccount(): Promise<AccountSelfDeleteResult> {
+  return invokeEdge<AccountSelfDeleteResult>('account-self-delete', {});
+}
+
+/** @deprecated Prefer deleteMyAccount for store compliance. Staff queue only. */
 export async function requestAccountDeletion(): Promise<AccountDeletionRequest> {
   const { data, error } = await getSupabaseClient().rpc('request_account_deletion');
 

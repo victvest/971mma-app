@@ -36,6 +36,11 @@ export const ENV = {
   MEMBER_PROVIDER: readOptional('MEMBER_PROVIDER'),
   CHECKIN_PROVIDER: readOptional('CHECKIN_PROVIDER'),
   COACH_DEMO_MODE: readOptional('COACH_DEMO_MODE'),
+  PERSONA_ASSISTANT_ENABLED: readOptional('PERSONA_ASSISTANT_ENABLED'),
+  /** Web OAuth client ID — required for native Google idToken (Android + iOS). */
+  GOOGLE_WEB_CLIENT_ID: readOptional('GOOGLE_WEB_CLIENT_ID'),
+  /** iOS OAuth client ID — required for native Google Sign-In on iOS. */
+  GOOGLE_IOS_CLIENT_ID: readOptional('GOOGLE_IOS_CLIENT_ID'),
 } as const;
 
 export function isSupabaseConfigured(): boolean {

@@ -1,9 +1,9 @@
-import React, { memo, useCallback, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { memo, useCallback } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import type { RollCallMemberStatus } from '@/features/coach/roll-call/types';
 import { rollCallStatusDisplayLabel } from '@/features/coach/roll-call/types';
 import { MotiPressable } from '@/shared/animations/MotiPressable';
+import { AppBottomSheet, AppBottomSheetButton } from '@/shared/components/AppBottomSheet';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 
@@ -102,96 +102,43 @@ export const RollCallStatusPickerSheet = memo(function RollCallStatusPickerSheet
   onSelect,
   onCancel,
 }: Props) {
-  const { colors, inset, radius, typography, gap } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, typography, gap } = useTheme();
 
   const statusOptions = includeLeftEarly
     ? [...BASE_STATUS_OPTIONS, LEFT_EARLY_OPTION]
     : BASE_STATUS_OPTIONS;
 
-  useEffect(() => {
-    if (visible) {
-      triggerLightImpact();
-    }
-  }, [visible]);
-
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-      <View style={styles.overlay}>
-        <Pressable
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background.overlay }]}
-          onPress={onCancel}
-          accessibilityLabel="Close status picker"
-        />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface.primary,
-              borderTopLeftRadius: radius.modal,
-              borderTopRightRadius: radius.modal,
-              paddingHorizontal: inset.lg,
-              paddingTop: inset.lg,
-              paddingBottom: insets.bottom + inset.lg,
-              gap: gap.md,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
-          <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
-            Change attendance
-          </Text>
-          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-            {memberName}
-          </Text>
-
-          {statusOptions.map((option) => (
-            <ChoiceButton
-              key={option.status}
-              label={rollCallStatusDisplayLabel(option.status)}
-              hint={option.hint}
-              selected={currentStatus === option.status}
-              onPress={() => onSelect(option.status)}
-            />
-          ))}
-
-          <MotiPressable
-            onPress={onCancel}
-            accessibilityLabel="Cancel"
-            style={[styles.cancelButton, { minHeight: 48 }]}
-          >
-            <Text style={[typography.textPresets.button, { color: colors.text.secondary }]}>
-              Cancel
-            </Text>
-          </MotiPressable>
-        </View>
+    <AppBottomSheet visible={visible} onDismiss={onCancel}>
+      <View style={{ gap: gap.xs }}>
+        <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
+          Change attendance
+        </Text>
+        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+          {memberName}
+        </Text>
       </View>
-    </Modal>
+
+      {statusOptions.map((option) => (
+        <ChoiceButton
+          key={option.status}
+          label={rollCallStatusDisplayLabel(option.status)}
+          hint={option.hint}
+          selected={currentStatus === option.status}
+          onPress={() => onSelect(option.status)}
+        />
+      ))}
+
+      <AppBottomSheetButton label="Cancel" variant="secondary" onPress={onCancel} />
+    </AppBottomSheet>
   );
 });
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    borderWidth: 0,
-  },
-  handle: {
-    alignSelf: 'center',
-    borderRadius: 999,
-    height: 4,
-    width: 40,
-  },
   choiceButton: {
     alignItems: 'flex-start',
     borderWidth: 1,
     justifyContent: 'center',
     width: '100%',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

@@ -1,23 +1,27 @@
+import { getAnnouncements } from '@/services/database/announcements.repository';
 import { getSupabaseClient } from '@/services/supabase/client';
+import {
+  isBroadcastNotification,
+  mapAnnouncementToNotification,
+} from '@/features/notifications/utils/broadcastNotifications';
+import {
+  notificationDisplayBody,
+  notificationDisplayTitle,
+} from '@/features/notifications/utils/notificationDisplay';
+import { getGuestBroadcastLastSeen } from '@/features/notifications/services/guestBroadcastReadState';
 import type { NotificationItem, NotificationPreferences } from '@/types/domain';
 import type { NotificationPreferencesRow, NotificationRow } from '@/types/database';
 
-function payloadTitle(payload: Record<string, unknown>): string | null {
-  const title = payload.title;
-  return typeof title === 'string' && title.trim() ? title : null;
-}
-
-function payloadBody(payload: Record<string, unknown>): string | null {
-  const body = payload.body;
-  return typeof body === 'string' && body.trim() ? body : null;
+function isCommunityNotificationType(type: string): boolean {
+  return type.trim().toLowerCase().includes('community');
 }
 
 function mapNotificationRow(row: NotificationRow): NotificationItem {
   return {
     id: row.id,
     type: row.type,
-    title: payloadTitle(row.payload) ?? row.type,
-    body: payloadBody(row.payload),
+    title: notificationDisplayTitle(row.type, row.payload),
+    body: notificationDisplayBody(row.payload),
     payload: row.payload,
     readAt: row.read_at,
     createdAt: row.created_at,
@@ -32,15 +36,13 @@ function mapPreferencesRow(row: NotificationPreferencesRow): NotificationPrefere
     milestones: row.milestones,
     rewards: row.rewards,
     guardianAlerts: row.guardian_alerts,
-    community: row.community,
     updatedAt: row.updated_at,
   };
 }
 
 function isMissingRpcError(error: { code?: string; message?: string }): boolean {
   return (
-    error.code === 'PGRST202' ||
-    Boolean(error.message?.includes('Could not find the function'))
+    error.code === 'PGRST202' || Boolean(error.message?.includes('Could not find the function'))
   );
 }
 
@@ -51,12 +53,16 @@ async function getAuthUserId(): Promise<string> {
   return data.user.id;
 }
 
-async function getNotificationPreferencesFromTable(userId: string): Promise<NotificationPreferences> {
+async function getNotificationPreferencesFromTable(
+  userId: string,
+): Promise<NotificationPreferences> {
   const client = getSupabaseClient();
 
   const { data, error } = await client
     .from('notification_preferences')
-    .select('user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at')
+    .select(
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+    )
     .eq('user_id', userId)
     .maybeSingle();
 
@@ -66,7 +72,9 @@ async function getNotificationPreferencesFromTable(userId: string): Promise<Noti
   const { data: inserted, error: insertError } = await client
     .from('notification_preferences')
     .insert({ user_id: userId })
-    .select('user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at')
+    .select(
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+    )
     .single();
 
   if (insertError) throw insertError;
@@ -78,12 +86,7 @@ async function updateNotificationPreferencesFromTable(
   patch: Partial<
     Pick<
       NotificationPreferences,
-      | 'announcements'
-      | 'classReminders'
-      | 'milestones'
-      | 'rewards'
-      | 'guardianAlerts'
-      | 'community'
+      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts'
     >
   >,
 ): Promise<NotificationPreferences> {
@@ -95,13 +98,14 @@ async function updateNotificationPreferencesFromTable(
   if (patch.milestones !== undefined) update.milestones = patch.milestones;
   if (patch.rewards !== undefined) update.rewards = patch.rewards;
   if (patch.guardianAlerts !== undefined) update.guardian_alerts = patch.guardianAlerts;
-  if (patch.community !== undefined) update.community = patch.community;
 
   const { data, error } = await getSupabaseClient()
     .from('notification_preferences')
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
-    .select('user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at')
+    .select(
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+    )
     .single();
 
   if (error) throw error;
@@ -112,17 +116,53 @@ export async function getNotifications(limit = 50): Promise<NotificationItem[]> 
   const { data, error } = await getSupabaseClient()
     .from('notifications')
     .select('id, user_id, type, payload, read_at, created_at')
+    .not('type', 'ilike', '%community%')
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (error) throw error;
-  return ((data ?? []) as NotificationRow[]).map(mapNotificationRow);
+  return ((data ?? []) as NotificationRow[])
+    .filter((row) => !isCommunityNotificationType(row.type))
+    .map(mapNotificationRow);
+}
+
+export async function getBroadcastNotifications(limit = 50): Promise<NotificationItem[]> {
+  const notifications = await getNotifications(limit);
+  return notifications.filter(isBroadcastNotification);
+}
+
+export async function getGuestBroadcastNotifications(limit = 30): Promise<NotificationItem[]> {
+  const [announcements, lastSeen] = await Promise.all([
+    getAnnouncements(limit),
+    getGuestBroadcastLastSeen(),
+  ]);
+  const lastSeenMs = lastSeen ? new Date(lastSeen).getTime() : null;
+
+  return announcements.map((announcement) => {
+    const item = mapAnnouncementToNotification(announcement);
+    if (lastSeenMs != null && new Date(announcement.createdAt).getTime() <= lastSeenMs) {
+      return { ...item, readAt: lastSeen };
+    }
+    return item;
+  });
 }
 
 export async function getUnreadNotificationCount(): Promise<number> {
   const { count, error } = await getSupabaseClient()
     .from('notifications')
     .select('id', { count: 'exact', head: true })
+    .not('type', 'ilike', '%community%')
+    .is('read_at', null);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function getBroadcastUnreadNotificationCount(): Promise<number> {
+  const { count, error } = await getSupabaseClient()
+    .from('notifications')
+    .select('id', { count: 'exact', head: true })
+    .eq('type', 'announcement')
     .is('read_at', null);
 
   if (error) throw error;
@@ -158,12 +198,7 @@ export async function updateNotificationPreferences(
   patch: Partial<
     Pick<
       NotificationPreferences,
-      | 'announcements'
-      | 'classReminders'
-      | 'milestones'
-      | 'rewards'
-      | 'guardianAlerts'
-      | 'community'
+      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts'
     >
   >,
 ): Promise<NotificationPreferences> {
@@ -173,7 +208,7 @@ export async function updateNotificationPreferences(
     p_milestones: patch.milestones ?? null,
     p_rewards: patch.rewards ?? null,
     p_guardian_alerts: patch.guardianAlerts ?? null,
-    p_community: patch.community ?? null,
+    p_community: null,
   });
 
   if (!error && data) {

@@ -8,6 +8,7 @@ import {
 } from '@/services/database/coach.repository';
 import { getCoachDashboardSummary } from '@/services/database/coachDashboard.repository';
 import { useAuthStore } from '@/stores/useAuthStore';
+import type { ClassRosterResponse } from '@/types/domain';
 
 export const coachDashboardKey = (coachId: string) => ['coach-dashboard', coachId] as const;
 /** @deprecated Prefer coachDashboardKey — kept for invalidation compatibility. */
@@ -22,14 +23,40 @@ function canUseCoachTools(role: string | null | undefined): boolean {
   return role === 'coach' || role === 'admin';
 }
 
+function emptyClassRoster(classId = ''): ClassRosterResponse {
+  return {
+    classId,
+    mindbodyClassId: '',
+    title: '',
+    startsAt: '',
+    visitors: [],
+    cached: true,
+  };
+}
+
 function useCoachDashboardQuery() {
   const role = useAuthStore((s) => s.role);
   const { coach, isLoading: coachLoading, isError: coachError } = useMyCoachRecord();
+  const hasRealCoachId = Boolean(coach?.id) && !String(coach?.id).startsWith('demo-');
 
   const query = useQuery({
     queryKey: coachDashboardKey(coach?.id ?? 'none'),
-    queryFn: () => getCoachDashboardSummary(coach!),
-    enabled: canUseCoachTools(role) && Boolean(coach),
+    queryFn: () => {
+      if (!coach) {
+        return {
+          stats: {
+            todayClassCount: 0,
+            liveClassCount: 0,
+            todayCheckIns: 0,
+            promotionCandidateCount: 0,
+          },
+          classes: [],
+        };
+      }
+      return getCoachDashboardSummary(coach);
+    },
+    // Wait for the linked coach row so we never hit get_coach_dashboard with DEMO_COACH's fake id.
+    enabled: canUseCoachTools(role) && !coachLoading && (hasRealCoachId || Boolean(coach)),
     staleTime: 60 * 1000,
   });
 
@@ -54,7 +81,10 @@ export function useCoachClass(classId: string | null) {
 
   return useQuery({
     queryKey: coachClassKey(classId ?? 'none'),
-    queryFn: () => getCoachClassById(classId!),
+    queryFn: () => {
+      if (!classId) return null;
+      return getCoachClassById(classId);
+    },
     enabled: Boolean(classId) && canUseCoachTools(role),
     staleTime: 60 * 1000,
   });
@@ -77,11 +107,12 @@ export function useCoachDashboardStats() {
 
 export function useClassRoster(classId: string | null) {
   const role = useAuthStore((s) => s.role);
+  const resolvedClassId = classId && classId !== 'none' ? classId : null;
 
   return useQuery({
-    queryKey: coachRosterKey(classId ?? 'none'),
-    queryFn: () => fetchClassRoster(classId!),
-    enabled: Boolean(classId) && canUseCoachTools(role),
+    queryKey: coachRosterKey(resolvedClassId ?? 'none'),
+    queryFn: () => (resolvedClassId ? fetchClassRoster(resolvedClassId) : emptyClassRoster()),
+    enabled: Boolean(resolvedClassId) && canUseCoachTools(role),
     staleTime: 30 * 1000,
   });
 }
@@ -104,12 +135,14 @@ export function usePromotionCandidates(
   options: { enabled?: boolean } = {},
 ) {
   const role = useAuthStore((s) => s.role);
-  const queryEnabled =
-    (options.enabled ?? true) && canUseCoachTools(role) && discipline !== null;
+  const queryEnabled = (options.enabled ?? true) && canUseCoachTools(role) && discipline !== null;
 
   return useQuery({
     queryKey: [...promotionCandidatesKey, discipline ?? 'none'],
-    queryFn: () => listPromotionCandidates(discipline!),
+    queryFn: () => {
+      if (!discipline) return [];
+      return listPromotionCandidates(discipline);
+    },
     enabled: queryEnabled,
     staleTime: 60 * 1000,
   });

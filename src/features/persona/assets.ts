@@ -1,5 +1,5 @@
-import personaPortrait from '../../../assets/brand/persona.png';
+import chatbotIcon from '../../../assets/brand/chatbot-icon.jpg';
 
 export const personaAssets = {
-  portrait: personaPortrait,
+  portrait: chatbotIcon,
 } as const;

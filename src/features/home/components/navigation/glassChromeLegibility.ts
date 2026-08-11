@@ -14,8 +14,10 @@ export const GLASS_TAB_ACTIVE = {
 
 export function glassTabActiveCapsule(mode: ThemeMode, borderRadius: number): ViewStyle {
   return {
-    backgroundColor: mode === 'dark' ? GLASS_TAB_ACTIVE.capsuleFillDark : GLASS_TAB_ACTIVE.capsuleFill,
-    borderColor: mode === 'dark' ? GLASS_TAB_ACTIVE.capsuleBorderDark : GLASS_TAB_ACTIVE.capsuleBorder,
+    backgroundColor:
+      mode === 'dark' ? GLASS_TAB_ACTIVE.capsuleFillDark : GLASS_TAB_ACTIVE.capsuleFill,
+    borderColor:
+      mode === 'dark' ? GLASS_TAB_ACTIVE.capsuleBorderDark : GLASS_TAB_ACTIVE.capsuleBorder,
     borderRadius,
     borderWidth: Platform.OS === 'ios' ? StyleSheet.hairlineWidth : 0.5,
   };

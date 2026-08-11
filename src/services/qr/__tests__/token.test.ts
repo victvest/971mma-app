@@ -19,17 +19,17 @@ describe('member QR token (v1)', () => {
 
   it('parses v2 signed member pass tokens (client-side ID extraction)', () => {
     const exp = Math.floor(Date.now() / 1000) + 90;
-    expect(
-      parseMemberQrToken(`971mma:v2:supabase:user-abc:${exp}:jti-1:fake-sig`),
-    ).toEqual({
+    expect(parseMemberQrToken(`971mma:v2:supabase:user-abc:${exp}:jti-1:fake-sig`)).toEqual({
       memberId: 'user-abc',
       source: 'supabase',
       exp,
+      jti: 'jti-1',
     });
     expect(parseMemberQrToken(`971mma:v2:mindbody:mb-99:${exp}:jti-2:sig`)).toEqual({
       memberId: 'mb-99',
       source: 'mindbody',
       exp,
+      jti: 'jti-2',
     });
   });
 
@@ -43,6 +43,7 @@ describe('member QR token (v1)', () => {
       memberId: 'user',
       source: 'supabase',
       exp: undefined,
+      jti: 'jti',
     });
   });
 

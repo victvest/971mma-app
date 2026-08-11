@@ -9,9 +9,6 @@ type Options = {
 
 const STATIC_STYLE: ViewStyle = { opacity: 1 };
 
-export function useStaggeredListAnimation(
-  _index: number,
-  _options: Options = {},
-): ViewStyle {
+export function useStaggeredListAnimation(_index: number, _options: Options = {}): ViewStyle {
   return STATIC_STYLE;
 }

@@ -28,7 +28,6 @@ export default function RollCallPreviewScreen() {
   );
 
   const cardWidth = width - inset.lg * 2;
-  const member = ROLL_CALL_CARD_MOCK_MEMBERS[index] ?? ROLL_CALL_CARD_MOCK_MEMBERS[0];
 
   const cycleMember = useCallback(() => {
     triggerSelectionHaptic();
@@ -44,10 +43,12 @@ export default function RollCallPreviewScreen() {
 
   const handleCommit = useCallback((direction: RollCallSwipeCommit) => {
     setLastCommit(direction);
+    setIndex((current) => (current + 1) % ROLL_CALL_CARD_MOCK_MEMBERS.length);
   }, []);
 
   const handleUndo = useCallback(() => {
     triggerSelectionHaptic();
+    setIndex((current) => Math.max(0, current - 1));
     setUndoSignal((value) => value + 1);
     cardRef.current?.undo();
     setLastCommit(null);
@@ -86,7 +87,8 @@ export default function RollCallPreviewScreen() {
         ) : (
           <RollCallSwipeableCard
             ref={cardRef}
-            member={member}
+            members={ROLL_CALL_CARD_MOCK_MEMBERS}
+            currentIndex={index}
             screenWidth={cardWidth}
             screenHeight={height}
             undoSignal={undoSignal}

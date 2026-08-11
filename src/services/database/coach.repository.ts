@@ -20,6 +20,7 @@ import type {
 } from '@/types/domain';
 
 const rosterInflightRequests = new Map<string, Promise<ClassRosterResponse>>();
+type RankPromotionDiscipline = 'bjj' | 'wrestling';
 
 async function filterCoachClassesByAssignedDisciplines(
   coach: CoachItem,
@@ -146,6 +147,21 @@ export async function listPromotionCandidates(
   }));
 }
 
+export function resolveCoachPromotionDisciplines(
+  assigned: Array<{ slug: string; hasRankProgression: boolean }>,
+): RankPromotionDiscipline[] {
+  const resolved = assigned.flatMap<RankPromotionDiscipline>((item) => {
+    if (!item.hasRankProgression) return [];
+    return item.slug === 'bjj' || item.slug === 'wrestling' ? [item.slug] : [];
+  });
+
+  return resolved.length > 0 ? resolved : ['bjj'];
+}
+
+export function countPromotionReviewCandidates(candidates: PromotionCandidateItem[][]): number {
+  return candidates.flat().filter((item) => item.candidateReason !== 'tracking').length;
+}
+
 export async function getCoachDashboardStats(
   coach: CoachItem,
   classes?: ClassItem[],
@@ -174,10 +190,13 @@ export async function getCoachDashboardStats(
 
   if (error) throw error;
 
-  const candidates = await listPromotionCandidates('bjj');
-  const promotionCandidateCount = candidates.filter(
-    (item) => item.candidateReason !== 'tracking',
-  ).length;
+  const promotionDisciplines = resolveCoachPromotionDisciplines(
+    await getCoachAssignedDisciplines(coach.id),
+  );
+  const promotionCandidatePools = await Promise.all(
+    promotionDisciplines.map((discipline) => listPromotionCandidates(discipline)),
+  );
+  const promotionCandidateCount = countPromotionReviewCandidates(promotionCandidatePools);
 
   return {
     todayClassCount: todayClasses.length,

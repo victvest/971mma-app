@@ -8,6 +8,13 @@ import { academyAssets } from '@/features/academy/assets';
 import coachFallbackTeam from '../../../../assets/images/optimized/coach-fallback-team.jpg';
 import coachFallbackMma from '../../../../assets/images/optimized/coach-fallback-mma.jpg';
 import coachFallbackStriking from '../../../../assets/images/optimized/coach-fallback-striking.jpg';
+import rogerioAlvesFilhoPortrait from '../../../../assets/images/coaches/rogerio-alves-filho.jpg';
+import wagnerGabrielSilvaPortrait from '../../../../assets/images/coaches/wagner-gabriel-silva.jpg';
+import ahmadBoutiPortrait from '../../../../assets/images/coaches/ahmad-bouti.jpg';
+import wellingtonPereiraPortrait from '../../../../assets/images/coaches/wellington-pereira.jpg';
+import mohammadaliGeraeiPortrait from '../../../../assets/images/coaches/mohammadali-geraei.jpg';
+import josephGerrardPortrait from '../../../../assets/images/coaches/joseph-gerrard.jpg';
+import carlBoothPortrait from '../../../../assets/images/coaches/carl-booth.jpg';
 
 const FALLBACK_IMAGES = [
   academyAssets.coachFallbackHero,
@@ -15,6 +22,37 @@ const FALLBACK_IMAGES = [
   coachFallbackMma,
   coachFallbackStriking,
 ] as const;
+
+/** Local portraits when Mindbody has no ImageUrl (matched by slug fragment or name). */
+const LOCAL_COACH_PORTRAITS: Record<string, ImageSourcePropType> = {
+  'rogerio-alves-filho': rogerioAlvesFilhoPortrait,
+  'rogerio alves filho': rogerioAlvesFilhoPortrait,
+  'wagner-gabriel-silva': wagnerGabrielSilvaPortrait,
+  'wagner gabriel silva': wagnerGabrielSilvaPortrait,
+  'ahmad-bouti': ahmadBoutiPortrait,
+  'ahmad bouti': ahmadBoutiPortrait,
+  'wellington-pereira': wellingtonPereiraPortrait,
+  'wellington pereira': wellingtonPereiraPortrait,
+  'mohammadali-geraei': mohammadaliGeraeiPortrait,
+  'mohammadali geraei': mohammadaliGeraeiPortrait,
+  'joseph-gerrard': josephGerrardPortrait,
+  'joseph gerrard': josephGerrardPortrait,
+  'joe gerrard': josephGerrardPortrait,
+  'carl-booth': carlBoothPortrait,
+  'carl booth': carlBoothPortrait,
+};
+
+function localCoachPortrait(coach: Pick<CoachItem, 'name' | 'mindbodyStaffId'>): ImageSourcePropType | null {
+  const nameKey = coach.name.trim().toLowerCase();
+  if (LOCAL_COACH_PORTRAITS[nameKey]) return LOCAL_COACH_PORTRAITS[nameKey];
+
+  // Slugs look like "rogerio-alves-filho-000069" — match the stable name prefix.
+  for (const [key, source] of Object.entries(LOCAL_COACH_PORTRAITS)) {
+    if (key.includes(' ') ) continue;
+    if (nameKey.includes(key.replace(/-/g, ' '))) return source;
+  }
+  return null;
+}
 
 export function getCoachInitials(name: string): string {
   return name
@@ -29,6 +67,11 @@ export function getCoachImageSource(
   coach: CoachItem | null | undefined,
   fallbackIndex = 0,
 ): ImageSourcePropType {
+  // Prefer bundled academy portraits so Mindbody null/wipes never show gym fallbacks.
+  if (coach) {
+    const local = localCoachPortrait(coach);
+    if (local) return local;
+  }
   if (coach?.photoUrl) return { uri: coach.photoUrl };
   return FALLBACK_IMAGES[fallbackIndex % FALLBACK_IMAGES.length];
 }
@@ -110,7 +153,9 @@ export function RatingPill({ rating }: RatingPillProps) {
   return (
     <GlassMediaChip>
       <Star size={12} color={colors.text.inverse} fill={colors.text.inverse} strokeWidth={0} />
-      <Text style={[typography.textPresets.label, { color: colors.text.inverse, letterSpacing: 0.3 }]}>
+      <Text
+        style={[typography.textPresets.label, { color: colors.text.inverse, letterSpacing: 0.3 }]}
+      >
         {rating}
       </Text>
     </GlassMediaChip>
@@ -138,7 +183,12 @@ export function CoachRoleChip({ label, headCoach = false }: CoachRoleChipProps) 
           },
         ]}
       >
-        <Text style={[typography.textPresets.label, { color: colors.accent.onAccent, letterSpacing: 0.5 }]}>
+        <Text
+          style={[
+            typography.textPresets.label,
+            { color: colors.accent.onAccent, letterSpacing: 0.5 },
+          ]}
+        >
           {label}
         </Text>
       </View>
@@ -147,7 +197,9 @@ export function CoachRoleChip({ label, headCoach = false }: CoachRoleChipProps) 
 
   return (
     <GlassMediaChip>
-      <Text style={[typography.textPresets.label, { color: colors.text.inverse, letterSpacing: 0.5 }]}>
+      <Text
+        style={[typography.textPresets.label, { color: colors.text.inverse, letterSpacing: 0.5 }]}
+      >
         {label}
       </Text>
     </GlassMediaChip>

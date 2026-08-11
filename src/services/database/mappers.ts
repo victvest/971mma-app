@@ -49,6 +49,7 @@ function mapCoachStringArray(value: unknown): string[] {
 export function mapCoachRow(row: CoachRow): CoachItem {
   return {
     id: row.id,
+    userId: row.user_id,
     mindbodyStaffId: row.mindbody_staff_id,
     name: row.name,
     specialty: row.specialty,
@@ -59,10 +60,17 @@ export function mapCoachRow(row: CoachRow): CoachItem {
     isHeadCoach: row.is_head_coach,
     coachingPhilosophy: row.coaching_philosophy,
     yearsExperience: row.years_experience,
+    yearsMartialArts: row.years_martial_arts ?? null,
+    yearsCoaching: row.years_coaching ?? null,
     fightRecord: row.fight_record,
     titles: mapCoachStringArray(row.titles),
     certifications: mapCoachStringArray(row.certifications),
     languages: row.languages ?? [],
+    nickname: row.nickname ?? null,
+    statusAchievements: mapCoachStringArray(row.status_achievements),
+    experienceHighlights: mapCoachStringArray(row.experience_highlights),
+    coachingStyle: mapCoachStringArray(row.coaching_style),
+    inviteBlurb: row.invite_blurb ?? null,
   };
 }
 
@@ -81,7 +89,7 @@ export function mapProfileRow(row: ProfileRow, email?: string | null): MemberPro
     membershipLastSyncedAt: row.membership_last_synced_at,
     beltRank: row.belt_rank,
     beltStripes: row.belt_stripes ?? 0,
-    memberSince: row.member_since,
+    memberSince: row.member_since ?? row.created_at,
     dateOfBirth: row.date_of_birth,
     onboardingCompletedAt: row.onboarding_completed_at,
     externalId: row.id,
@@ -118,6 +126,8 @@ export function mapRewardRow(row: RewardRow): RewardItem {
     name: row.name,
     category: row.category,
     costPoints: row.cost_points,
+    priceAed: Number(row.price_aed ?? 99),
+    imageUrl: row.image_url ?? null,
     active: row.active,
     unlockRule: row.unlock_rule,
     fulfillment: row.fulfillment,

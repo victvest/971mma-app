@@ -1,0 +1,382 @@
+{
+  "info": {
+    "name": "971 MMA SALTO Gate Access",
+    "_postman_id": "6a0d6f4e-a28e-4b95-b171-0d4ea3f37ef0",
+    "description": "Postman collection for the SALTO NexusOne gate flow. The access decision is made live against Mindbody after our API validates the member QR or MemberId and the calling device. Use `Issue Member QR Pass` for the QR path, or test the MemberId endpoints directly after sign-in. The async worker requests are optional and mainly help flush background membership-refresh jobs.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [],
+  "variable": [
+    {
+      "key": "functions_base_url",
+      "value": "{{supabase_url}}/functions/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Member Sign In",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "apikey",
+            "value": "{{supabase_anon_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"{{test_user_email}}\",\n  \"password\": \"{{test_user_password}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{supabase_url}}/auth/v1/token?grant_type=password",
+          "host": ["{{supabase_url}}"],
+          "path": ["auth", "v1", "token"],
+          "query": [
+            {
+              "key": "grant_type",
+              "value": "password"
+            }
+          ]
+        },
+        "description": "Signs in the test member account and stores its access token in `member_access_token`, plus the member app user id in `member_user_id`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Member sign-in succeeded', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.access_token).to.be.a('string');",
+              "  pm.environment.set('member_access_token', json.access_token);",
+              "  if (json.user && json.user.id) pm.environment.set('member_user_id', json.user.id);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "1. Issue Member QR Pass",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{member_access_token}}",
+            "type": "text"
+          },
+          {
+            "key": "apikey",
+            "value": "{{supabase_anon_key}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/qr-issue",
+          "host": ["{{functions_base_url}}"],
+          "path": ["qr-issue"]
+        },
+        "description": "Calls the authenticated member QR issuer and stores the returned token in `member_qr_token`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('QR issue succeeded', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json.token).to.be.a('string');",
+              "  pm.environment.set('member_qr_token', json.token);",
+              "  if (json.expiresAt) pm.environment.set('member_qr_expires_at', json.expiresAt);",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "2. SALTO Access By Media",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{salto_api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Data\": \"{{member_qr_token}}\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"{{salto_device_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/salto-access-by-media",
+          "host": ["{{functions_base_url}}"],
+          "path": ["salto-access-by-media"]
+        },
+        "description": "Core NexusOne-style QR access request. Our API validates the QR locally, calls Mindbody live for the real access decision, and returns `{ Granted, Message }`."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('SALTO contract returned', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('Granted');",
+              "  pm.expect(json).to.have.property('Message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "3. SALTO Access By Media - Invalid Token",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{salto_api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Data\": \"{{invalid_member_qr_token}}\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"{{salto_device_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/salto-access-by-media",
+          "host": ["{{functions_base_url}}"],
+          "path": ["salto-access-by-media"]
+        },
+        "description": "Negative-path request for invalid or tampered QR tokens."
+      },
+      "response": []
+    },
+    {
+      "name": "4. SALTO Get Profile By Member Id",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{salto_api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"MemberId\": \"{{member_user_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/salto-profile-by-member-id",
+          "host": ["{{functions_base_url}}"],
+          "path": ["salto-profile-by-member-id"]
+        },
+        "description": "SALTO-compatible profile lookup by MemberId. This uses the signed-in member's app user id by default."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('Profile lookup returned', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('FirstName');",
+              "  pm.expect(json).to.have.property('LastName');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "5. SALTO Access By Member Id",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{salto_api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"MemberId\": \"{{member_user_id}}\",\n  \"DeviceId\": \"{{salto_device_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/salto-access-by-member-id",
+          "host": ["{{functions_base_url}}"],
+          "path": ["salto-access-by-member-id"]
+        },
+        "description": "SALTO-compatible access decision by MemberId. This is useful for future biometric or hardware-reader flows that resolve a member before calling our API."
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "pm.test('MemberId access contract returned', function () {",
+              "  pm.response.to.have.status(200);",
+              "  const json = pm.response.json();",
+              "  pm.expect(json).to.have.property('Granted');",
+              "  pm.expect(json).to.have.property('Message');",
+              "});"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
+      "response": []
+    },
+    {
+      "name": "6. Process Gate Sync Jobs",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-cron-secret",
+            "value": "{{cron_secret}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"limit\": 25\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/gate-sync-jobs",
+          "host": ["{{functions_base_url}}"],
+          "path": ["gate-sync-jobs"]
+        },
+        "description": "Optional helper to flush any queued background jobs. With the live Mindbody gate decision path, this is mainly useful for membership-refresh jobs rather than the core access response."
+      },
+      "response": []
+    },
+    {
+      "name": "7. Enqueue Scheduled Membership Refresh",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "x-cron-secret",
+            "value": "{{cron_secret}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"limit\": 50,\n  \"staleHours\": 36\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": {
+          "raw": "{{functions_base_url}}/membership-refresh-cron",
+          "host": ["{{functions_base_url}}"],
+          "path": ["membership-refresh-cron"]
+        },
+        "description": "Queues a batch of stale membership mirrors so you can test the freshness hardening path without waiting for a real cron trigger."
+      },
+      "response": []
+    }
+  ]
+}

@@ -8,6 +8,7 @@ import {
 import { Button, TextField } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import type { GuardianLinkItem } from '@/types/domain';
 
 function PendingLinkRow({ link }: { link: GuardianLinkItem }) {
@@ -31,7 +32,14 @@ function PendingLinkRow({ link }: { link: GuardianLinkItem }) {
       accountMode: link.accountMode,
       allowGuardianQr: link.allowGuardianQr,
     });
-  }, [approveMutation, link.accountMode, link.allowGuardianQr, link.id, mindbodyClientId, traineeUserId]);
+  }, [
+    approveMutation,
+    link.accountMode,
+    link.allowGuardianQr,
+    link.id,
+    mindbodyClientId,
+    traineeUserId,
+  ]);
 
   const handleReject = useCallback(async () => {
     await rejectMutation.mutateAsync({
@@ -43,7 +51,12 @@ function PendingLinkRow({ link }: { link: GuardianLinkItem }) {
   }, [rejectMutation, link.id, rejectReason]);
 
   return (
-    <View style={[styles.row, { backgroundColor: colors.background.elevated, borderColor: colors.border.subtle }]}>
+    <View
+      style={[
+        styles.row,
+        { backgroundColor: colors.background.elevated, borderColor: colors.border.subtle },
+      ]}
+    >
       <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
         {link.childDisplayName}
       </Text>
@@ -51,7 +64,9 @@ function PendingLinkRow({ link }: { link: GuardianLinkItem }) {
         {link.accountMode === 'managed' ? 'MANAGED — parent QR' : 'INDEPENDENT — own phone'}
       </Text>
       {link.childEmail ? (
-        <Text style={[styles.meta, { color: colors.text.secondary }]}>Email hint: {link.childEmail}</Text>
+        <Text style={[styles.meta, { color: colors.text.secondary }]}>
+          Email hint: {link.childEmail}
+        </Text>
       ) : null}
       {link.requestNotes ? (
         <Text style={[styles.meta, { color: colors.text.secondary }]}>{link.requestNotes}</Text>
@@ -134,7 +149,7 @@ export function PendingGuardianApprovalsPanel() {
       <StateBlock
         kind="error"
         title="Could not load guardian requests"
-        message={pendingQuery.error instanceof Error ? pendingQuery.error.message : 'Please try again.'}
+        message={toUserFacingErrorMessage(pendingQuery.error, { fallback: 'Please try again.' })}
         actionLabel="Retry"
         onAction={() => pendingQuery.refetch()}
       />
@@ -154,7 +169,9 @@ export function PendingGuardianApprovalsPanel() {
         <Text style={[styles.empty, { color: colors.text.tertiary }]}>No pending requests.</Text>
       ) : (
         <View style={styles.list}>
-          {links.map((link) => <PendingLinkRow key={link.id} link={link} />)}
+          {links.map((link) => (
+            <PendingLinkRow key={link.id} link={link} />
+          ))}
         </View>
       )}
     </View>

@@ -20,7 +20,10 @@ export async function uploadAvatar(userId: string, localUri: string): Promise<st
   return uploadAvatarToPath(path, localUri);
 }
 
-export async function uploadPendingTraineeAvatar(guardianUserId: string, localUri: string): Promise<string> {
+export async function uploadPendingTraineeAvatar(
+  guardianUserId: string,
+  localUri: string,
+): Promise<string> {
   const extension = extensionFromUri(localUri);
   const path = `${guardianUserId}/pending-trainees/${globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`}/avatar.${extension}`;
   return uploadAvatarToPath(path, localUri);

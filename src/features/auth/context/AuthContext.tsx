@@ -1,23 +1,14 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { AppState } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
 import type { Session } from '@supabase/supabase-js';
 import { getSupabaseConfigError, isSupabaseConfigured } from '@/core/config/env';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
 import { isGuestModePersisted } from '../services/guestModeStorage';
-import {
-  handleAuthDeepLink,
-  routeAuthDeepLinkOutcome,
-} from '../services/authDeepLinkHandler';
+import { handleAuthDeepLink, routeAuthDeepLinkOutcome } from '../services/authDeepLinkHandler';
 import { isAuthCallbackUrl } from '../services/authRedirect';
 import { supabaseAuthService } from '../services/supabaseAuth';
 import { readSecureStoreChunkCount } from '@/lib/secureStorageAdapter';
@@ -63,10 +54,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [passwordRecoveryActive, setPasswordRecoveryActive] = useState(false);
   const [completingSignupVerification, setCompletingSignupVerification] = useState(false);
   const router = useRouter();
-  const configError = isSupabaseConfigured() ? null : getSupabaseConfigError();
+  const supabaseMisconfigured = !isSupabaseConfigured();
+  /** Member-safe only — never expose env/setup diagnostics in the UI. */
+  const configError = supabaseMisconfigured ? USER_FACING_CONFIG_ERROR : null;
 
   useEffect(() => {
-    if (configError) {
+    if (supabaseMisconfigured) {
+      if (__DEV__) {
+        console.warn('[auth] Supabase config issue:', getSupabaseConfigError());
+      }
       setInitializing(false);
       return;
     }
@@ -166,7 +162,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       linkSub.remove();
       appStateSub.remove();
     };
-  }, [configError, router]);
+  }, [supabaseMisconfigured, router]);
 
   const signIn = useCallback(
     (email: string, password: string) => {

@@ -31,7 +31,8 @@ function mapDisciplineRow(row: DisciplineScoreRow | null): DisciplineScoreSummar
       streakStatus === 'inactive'
         ? streakStatus
         : undefined,
-    lastTrainingDay: typeof components.lastTrainingDay === 'string' ? components.lastTrainingDay : null,
+    lastTrainingDay:
+      typeof components.lastTrainingDay === 'string' ? components.lastTrainingDay : null,
     graceUntil: typeof components.graceUntil === 'string' ? components.graceUntil : null,
     graceDaysUsed: parseNumber(components.graceDaysUsed),
   };
@@ -130,14 +131,33 @@ function gymDateKey(date: Date): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(date);
 }
 
+/** Gym-local calendar day at noon GST, offset by whole days (device TZ independent). */
+function gymDayNoon(offsetDays: number, now = new Date()): Date {
+  const todayKey = gymDateKey(now);
+  const noon = new Date(`${todayKey}T12:00:00+04:00`);
+  noon.setTime(noon.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+  return noon;
+}
+
+/** Most recent Monday (gym-local), including today when today is Monday. */
+function gymMondayNoon(now = new Date()): Date {
+  const today = gymDayNoon(0, now);
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: GYM_TIME_ZONE,
+    weekday: 'short',
+  }).format(today);
+  const map: Record<string, number> = { Sun: 0, Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6 };
+  const day = map[weekday] ?? 1;
+  const distanceToMonday = day === 0 ? -6 : 1 - day;
+  return gymDayNoon(distanceToMonday, now);
+}
+
 export async function getGymWeekActivity(userId: string): Promise<GymDayActivity[]> {
   const now = new Date();
   const days: GymDayActivity[] = [];
 
   for (let offset = 6; offset >= 0; offset -= 1) {
-    const day = new Date(now);
-    day.setDate(day.getDate() - offset);
-    days.push({ date: gymDateKey(day), trained: false });
+    days.push({ date: gymDateKey(gymDayNoon(-offset, now)), trained: false });
   }
 
   const start = new Date(`${days[0]!.date}T00:00:00+04:00`).toISOString();
@@ -165,18 +185,10 @@ export async function getGymWeekActivity(userId: string): Promise<GymDayActivity
 }
 
 export async function getGym8WeeksActivity(userId: string): Promise<number[]> {
-  const now = new Date();
-  const currentDay = now.getDay();
-  const distanceToMonday = currentDay === 0 ? -6 : 1 - currentDay;
-  const thisMonday = new Date(now);
-  thisMonday.setDate(now.getDate() + distanceToMonday);
-  thisMonday.setHours(0, 0, 0, 0);
-
+  const thisMonday = gymMondayNoon();
   const weekStarts: Date[] = [];
   for (let i = 7; i >= 0; i--) {
-    const monday = new Date(thisMonday);
-    monday.setDate(thisMonday.getDate() - i * 7);
-    weekStarts.push(monday);
+    weekStarts.push(new Date(thisMonday.getTime() - i * 7 * 24 * 60 * 60 * 1000));
   }
 
   const startDateStr = gymDateKey(weekStarts[0]!);
@@ -194,13 +206,12 @@ export async function getGym8WeeksActivity(userId: string): Promise<number[]> {
   if (error) throw error;
 
   const counts = new Array(8).fill(0);
+  const weekStartKeys = weekStarts.map((d) => gymDateKey(d));
 
   for (const row of data ?? []) {
     const date = new Date(row.checked_in_at);
-    // Find which week bucket it falls into
     for (let w = 7; w >= 0; w--) {
-      const weekStart = weekStarts[w]!;
-      const startLimit = new Date(`${gymDateKey(weekStart)}T00:00:00+04:00`);
+      const startLimit = new Date(`${weekStartKeys[w]!}T00:00:00+04:00`);
       if (date >= startLimit) {
         counts[w]++;
         break;

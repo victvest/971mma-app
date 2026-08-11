@@ -1,13 +1,14 @@
 import React, { useMemo } from 'react';
 import { PillSegmentedTabs } from '@/shared/components/ui/PillSegmentedTabs';
 
-export type BeltReviewHubTab = 'on-mat' | 'ready';
+export type BeltReviewHubTab = 'on-mat' | 'ready' | 'scanned';
 
 type Props = {
   tab: BeltReviewHubTab;
   onTabChange: (tab: BeltReviewHubTab) => void;
   signedInCount: number;
   readyCount: number;
+  scannedCount: number;
   disabled?: boolean;
 };
 
@@ -16,6 +17,7 @@ export function BeltReviewHubTabToggle({
   onTabChange,
   signedInCount,
   readyCount,
+  scannedCount,
   disabled,
 }: Props) {
   const options = useMemo(
@@ -31,8 +33,13 @@ export function BeltReviewHubTabToggle({
           label: readyCount > 0 ? `Ready (${readyCount})` : 'Ready to promote',
           accessibilityLabel: 'Ready to promote — members at promotion readiness',
         },
+        {
+          value: 'scanned' as const,
+          label: scannedCount > 0 ? `Members (${scannedCount})` : 'Members',
+          accessibilityLabel: 'Members — members on all roll call lists',
+        },
       ] as const,
-    [readyCount, signedInCount],
+    [readyCount, signedInCount, scannedCount],
   );
 
   return (

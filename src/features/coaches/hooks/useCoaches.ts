@@ -2,11 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { getCoaches, getCoachById, getClassesByCoachId } from '@/services/database';
 import { getCoachAssignedDisciplines } from '@/services/database/coachMemberNotes.repository';
 import { getDirectoryProvider } from '@/services/integrations';
-import { useCanInvokeProtectedEdge } from '@/features/auth/utils/canInvokeProtectedEdge';
-import {
-  STATIC_DIRECTORY_GC_MS,
-  STATIC_DIRECTORY_STALE_MS,
-} from '@/lib/queryCachePolicy';
+import { useCanRunMindbodyMirrorSync } from '@/features/auth/utils/canInvokeProtectedEdge';
+import { STATIC_DIRECTORY_GC_MS, STATIC_DIRECTORY_STALE_MS } from '@/lib/queryCachePolicy';
 
 export const coachesKey = ['coaches'] as const;
 export const coachesRefreshKey = ['coaches-refresh'] as const;
@@ -22,7 +19,7 @@ export function useCoaches() {
 
 export function useCoachesRefresh() {
   const provider = getDirectoryProvider();
-  const canSync = useCanInvokeProtectedEdge();
+  const canSync = useCanRunMindbodyMirrorSync();
 
   return useQuery({
     queryKey: coachesRefreshKey,

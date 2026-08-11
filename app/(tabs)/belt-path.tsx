@@ -1,5 +1,13 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Platform,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -24,26 +32,31 @@ import { BeltPathSectionTitle } from '@/features/belt/components/BeltPathSection
 import { CurriculumAscentModule } from '@/features/belt/components/CurriculumAscentModule';
 import { mapCurriculumRanksToAscentStops } from '@/features/belt/data/beltPathPreviewContent';
 import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
-import { useRankEligibility, useMemberDisciplines } from '@/features/auth/hooks/useMemberDisciplines';
+import {
+  useRankEligibility,
+  useMemberDisciplines,
+} from '@/features/auth/hooks/useMemberDisciplines';
 import { useDisciplineScore, useGym8WeeksActivity } from '@/features/home/hooks/useHomeDashboard';
 import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
-import { MotiEntrance, ScreenEntrance, LoadingCrossfade, BeltPathSkeleton } from '@/shared/animations';
+import {
+  MotiEntrance,
+  ScreenEntrance,
+  LoadingCrossfade,
+  BeltPathSkeleton,
+} from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import {
-  isOfflineWithoutCache,
-  OFFLINE_MESSAGE,
-  OFFLINE_TITLE,
-} from '@/lib/offlineState';
+import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 
 const DEFAULT_8WEEKS_DATA = [0, 0, 0, 0, 0, 0, 0, 0];
 
 export default function BeltPathScreen() {
-  const { colors, typography, inset, gap, radius } = useTheme();
+  const { colors, typography, inset, gap, radius, layout } = useTheme();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
   const topInset = useAppTopInset();
@@ -55,14 +68,15 @@ export default function BeltPathScreen() {
   const memberDisciplinesQuery = useMemberDisciplines();
 
   const rankTrackDisciplines = useMemo(() => {
-    return (memberDisciplinesQuery.data ?? []).filter(
-      (d) => d.active && d.hasRankProgression
-    );
+    return (memberDisciplinesQuery.data ?? []).filter((d) => d.active && d.hasRankProgression);
   }, [memberDisciplinesQuery.data]);
 
-  const [selectedDisciplineSlug, setSelectedDisciplineSlug] = useState<string | undefined>(undefined);
+  const [selectedDisciplineSlug, setSelectedDisciplineSlug] = useState<string | undefined>(
+    undefined,
+  );
 
-  const activeDisciplineSlug = selectedDisciplineSlug ?? rankEligibilityQuery.data?.disciplineSlug ?? 'bjj';
+  const activeDisciplineSlug =
+    selectedDisciplineSlug ?? rankEligibilityQuery.data?.disciplineSlug ?? 'bjj';
 
   const beltPathQuery = useBeltPath(activeDisciplineSlug);
   const scoreQuery = useDisciplineScore();
@@ -123,14 +137,20 @@ export default function BeltPathScreen() {
   const showNotEligible = rankEligibilityKnown && !rankEligible;
 
   const hasError =
-    rankEligibilityQuery.isError || beltPathQuery.isError || scoreQuery.isError || week8Query.isError;
+    rankEligibilityQuery.isError ||
+    beltPathQuery.isError ||
+    scoreQuery.isError ||
+    week8Query.isError;
   const hasData = summary !== undefined && summary !== null;
   const isInitialLoading =
-    (rankEligibilityQuery.isLoading || (rankEligible && beltPathQuery.isLoading) || scoreQuery.isLoading) &&
+    (rankEligibilityQuery.isLoading ||
+      (rankEligible && beltPathQuery.isLoading) ||
+      scoreQuery.isLoading) &&
     !hasData &&
     !showNotEligible;
-  const errorMessage =
-    beltPathQuery.error instanceof Error ? beltPathQuery.error.message : 'Please check your connection.';
+  const errorMessage = toUserFacingErrorMessage(beltPathQuery.error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
     isOnline,
@@ -193,8 +213,7 @@ export default function BeltPathScreen() {
 
     return {
       showPending: !summary.hasConfiguredRequirements && !shouldShowCurriculumPending,
-      showPromotionReady:
-        summary.hasConfiguredRequirements && atMaxStripe && targetStripeComplete,
+      showPromotionReady: summary.hasConfiguredRequirements && atMaxStripe && targetStripeComplete,
       items: summary.requirements,
     };
   }, [shouldShowCurriculumPending, summary]);
@@ -221,10 +240,16 @@ export default function BeltPathScreen() {
             <Ionicons name="chevron-back" size={NAV_CHROME.iconSize} color={UAE.ink} />
           </GlassNavChrome>
 
-          <Animated.View pointerEvents="none" style={[styles.floatingNavTitleWrap, animatedHeaderTitleStyle]}>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.floatingNavTitleWrap, animatedHeaderTitleStyle]}
+          >
             <Text
               numberOfLines={1}
-              style={[typography.textPresets.bodyStrong, { color: colors.text.primary, textAlign: 'center' }]}
+              style={[
+                typography.textPresets.bodyStrong,
+                { color: colors.text.primary, textAlign: 'center' },
+              ]}
             >
               Belt Path
             </Text>
@@ -302,7 +327,18 @@ export default function BeltPathScreen() {
             {summary ? (
               <>
                 {rankTrackDisciplines.length > 1 ? (
-                  <View style={[styles.switcherContainer, { backgroundColor: colors.fill.secondary, borderRadius: radius.pill, padding: 4, flexDirection: 'row', marginBottom: gap.md }]}>
+                  <View
+                    style={[
+                      styles.switcherContainer,
+                      {
+                        backgroundColor: colors.fill.secondary,
+                        borderRadius: radius.pill,
+                        padding: 4,
+                        flexDirection: 'row',
+                        marginBottom: gap.md,
+                      },
+                    ]}
+                  >
                     {rankTrackDisciplines.map((d) => {
                       const isActive = d.slug === activeDisciplineSlug;
                       return (
@@ -321,11 +357,19 @@ export default function BeltPathScreen() {
                               paddingVertical: 8,
                               alignItems: 'center',
                               justifyContent: 'center',
-                              shadowColor: '#000',
-                              shadowOffset: { width: 0, height: isActive ? 1 : 0 },
-                              shadowOpacity: isActive ? 0.08 : 0,
-                              shadowRadius: isActive ? 2 : 0,
-                              elevation: isActive ? 1 : 0,
+                              ...(Platform.OS === 'ios'
+                                ? {
+                                    shadowColor: '#000',
+                                    shadowOffset: { width: 0, height: isActive ? 1 : 0 },
+                                    shadowOpacity: isActive ? 0.08 : 0,
+                                    shadowRadius: isActive ? 2 : 0,
+                                  }
+                                : isActive
+                                  ? {
+                                      borderColor: colors.border.subtle,
+                                      borderWidth: layout.borderWidth,
+                                    }
+                                  : null),
                             },
                           ]}
                         >

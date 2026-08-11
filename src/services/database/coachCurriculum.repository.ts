@@ -40,7 +40,8 @@ function mapCurriculumPayload(payload: CurriculumRpcPayload): CoachCurriculumSum
       stripe: row.stripe,
       title: row.title,
       description: row.description,
-      requirementType: row.requirementType as CoachCurriculumSummary['requirements'][number]['requirementType'],
+      requirementType:
+        row.requirementType as CoachCurriculumSummary['requirements'][number]['requirementType'],
       attendanceTarget: row.attendanceTarget,
       sortOrder: row.sortOrder,
     })),

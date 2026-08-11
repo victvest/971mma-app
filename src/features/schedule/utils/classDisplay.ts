@@ -6,6 +6,14 @@ import {
   scheduleCategoryLabel,
 } from '@/features/schedule/utils/scheduleCategory';
 
+/** Open-floor gym access — no instructor / coach UI. */
+export function isGymUsageClass(
+  classItem: Pick<ClassItem, 'title' | 'discipline'> | { title: string; discipline?: string | null },
+): boolean {
+  const haystack = `${classItem.title} ${classItem.discipline ?? ''}`.toLowerCase();
+  return /gym usage/.test(haystack);
+}
+
 export function formatDisciplineLabel(item: ClassItem): string {
   const category = resolveScheduleCategory(item.title, item.discipline);
   const discipline = category
@@ -20,7 +28,10 @@ export function formatDisciplineLabel(item: ClassItem): string {
 
 export function plainClassDescription(value: string | null): string | null {
   if (!value) return null;
-  const stripped = value.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim();
+  const stripped = value
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
   return stripped || null;
 }
 

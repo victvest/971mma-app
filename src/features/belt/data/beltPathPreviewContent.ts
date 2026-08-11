@@ -16,7 +16,10 @@ export type BeltCurriculumAscentStop = {
 };
 
 export function normalizeBeltRankKey(rankName: string | null | undefined): BeltCurriculumRankKey {
-  const normalized = (rankName ?? 'white').toLowerCase().replace(/\s+belt$/i, '').trim();
+  const normalized = (rankName ?? 'white')
+    .toLowerCase()
+    .replace(/\s+belt$/i, '')
+    .trim();
 
   if (
     normalized === 'white' ||

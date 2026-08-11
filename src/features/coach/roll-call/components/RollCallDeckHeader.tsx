@@ -1,66 +1,59 @@
-import React, { memo, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
-import { useRouter } from 'expo-router';
-import { formatRunClassSchedule } from '@/features/coach/utils/classDisplay';
+import React, { memo } from 'react';
+import { View } from 'react-native';
 import { AppBar, AppBarIconButton } from '@/shared/components/ui';
 import { triggerLightImpact } from '@/shared/haptics';
-import { useTheme } from '@/shared/theme';
 
 type Props = {
-  classId: string;
   classTitle: string;
-  startsAt: string;
   onBackPress: () => void;
+  /**
+   * QR scan when the class list is empty (or review). Hidden while actively
+   * swiping so the more-menu owns the right slot for the current member.
+   */
+  showScan?: boolean;
+  onScanPress?: () => void;
+  /** Opens member actions for the current top-of-deck card. */
+  showMemberMenu?: boolean;
+  onMemberMenuPress?: () => void;
 };
 
 export const RollCallDeckHeader = memo(function RollCallDeckHeader({
-  classId,
   classTitle,
-  startsAt,
   onBackPress,
+  showScan = false,
+  onScanPress,
+  showMemberMenu = false,
+  onMemberMenuPress,
 }: Props) {
-  const router = useRouter();
-  const { colors, inset, typography } = useTheme();
-  const scheduleLabel = useMemo(() => formatRunClassSchedule(startsAt), [startsAt]);
-
-  const scanAction = (
+  const rightElement = showMemberMenu ? (
+    <AppBarIconButton
+      icon="ellipsis-horizontal"
+      accessibilityLabel="Member options"
+      onPress={() => {
+        triggerLightImpact();
+        onMemberMenuPress?.();
+      }}
+    />
+  ) : showScan && onScanPress ? (
     <AppBarIconButton
       icon="qr-code-outline"
       accessibilityLabel="Scan member QR"
       onPress={() => {
         triggerLightImpact();
-        router.push(`/(coach)/scanner?classId=${classId}`);
+        onScanPress();
       }}
     />
-  );
+  ) : undefined;
 
   return (
-    <View style={styles.wrap}>
+    <View>
       <AppBar
         title={classTitle}
         showBackButton
         onBackPress={onBackPress}
-        rightElement={scanAction}
+        rightElement={rightElement}
+        titleNumberOfLines={2}
       />
-      <Text
-        style={[
-          typography.textPresets.footnote,
-          styles.subtitle,
-          { color: colors.text.secondary, paddingBottom: inset.sm },
-        ]}
-        numberOfLines={1}
-      >
-        {scheduleLabel}
-      </Text>
     </View>
   );
-});
-
-const styles = StyleSheet.create({
-  wrap: {
-    width: '100%',
-  },
-  subtitle: {
-    textAlign: 'center',
-  },
 });

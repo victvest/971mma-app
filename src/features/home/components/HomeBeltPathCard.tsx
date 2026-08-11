@@ -29,10 +29,7 @@ export const HomeBeltPathCard = memo(function HomeBeltPathCard({
   const { colors, typography } = useTheme();
 
   return (
-    <HomeAnimatedPressable
-      onPress={onPress}
-      accessibilityLabel="Open belt path progression"
-    >
+    <HomeAnimatedPressable onPress={onPress} accessibilityLabel="Open belt path progression">
       <HomeCommandCard>
         <View style={styles.main}>
           <View style={styles.copy}>

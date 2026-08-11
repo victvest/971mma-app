@@ -5,8 +5,8 @@ export type AccountActionKey =
   | 'family-profiles'
   | 'access-profile'
   | 'access-notifications'
-  | 'access-communities'
-  | 'access-mindbody';
+  | 'access-mindbody'
+  | 'access-feed';
 
 export type AccountActionCopy = {
   title: string;
@@ -37,18 +37,17 @@ export const ACCOUNT_ACTION_COPY: Record<AccountActionKey, AccountActionCopy> = 
       'Activate your membership to unlock the points economy, milestones, and redemptions.',
   },
   'family-profiles': {
-    title: 'Track your child\'s progress',
+    title: "Track your child's progress",
     anonymousDescription:
-      'Parent at 971? We\'ve got you. Join the academy to link family profiles and follow each child\'s training, ranks, and check-ins.',
+      "Parent at 971? We've got you. Join the academy to link family profiles and follow each child's training, ranks, and check-ins.",
     activationDescription:
-      'Link your membership to switch family profiles and track each trainee\'s progress.',
+      "Link your membership to switch family profiles and track each trainee's progress.",
   },
   'access-profile': {
     title: 'Your member profile',
     anonymousDescription:
       'Your photo, training history, and achievements live here. Join the academy to unlock yours.',
-    activationDescription:
-      'Link your membership to access your profile and full training history.',
+    activationDescription: 'Link your membership to access your profile and full training history.',
   },
   'access-notifications': {
     title: 'Stay in the loop',
@@ -57,18 +56,17 @@ export const ACCOUNT_ACTION_COPY: Record<AccountActionKey, AccountActionCopy> = 
     activationDescription:
       'Link your membership to receive class, rewards, and academy notifications.',
   },
-  'access-communities': {
-    title: 'Academy communities',
-    anonymousDescription:
-      'Connect with your class, coaches, and training groups in the app. Join the academy to join the conversation.',
-    activationDescription:
-      'Activate your membership to join academy communities and stay connected with your team.',
-  },
   'access-mindbody': {
     title: 'Your Mindbody ID',
     anonymousDescription:
       'Your linked membership and academy ID in one place. Join the academy to connect your Mindbody account.',
+    activationDescription: 'Link your membership to view your Mindbody ID and membership details.',
+  },
+  'access-feed': {
+    title: 'Academy feed',
+    anonymousDescription:
+      'See class photos, training notes, and updates from your disciplines. Join the academy to unlock the feed.',
     activationDescription:
-      'Link your membership to view your Mindbody ID and membership details.',
+      'Link your membership to post, comment, and follow what your team is sharing.',
   },
 };

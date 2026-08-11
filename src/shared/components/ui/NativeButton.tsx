@@ -86,12 +86,5 @@ export function BrandedButton({
     return <NativeButton {...props} />;
   }
 
-  return (
-    <Button
-      {...props}
-      loading={loading}
-      icon={icon}
-      iconPosition={iconPosition}
-    />
-  );
+  return <Button {...props} loading={loading} icon={icon} iconPosition={iconPosition} />;
 }

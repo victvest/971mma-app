@@ -116,6 +116,7 @@ function rangeBoundsISO(startDate: string, endDate: string): { fromISO: string; 
 }
 
 const TOMBSTONE_BATCH_SIZE = 100;
+const DEMO_CLASS_ID_PREFIXES = ['client-demo-', 'demo-'];
 
 async function resolveProgram(
   svc: ReturnType<typeof serviceClient>,
@@ -218,7 +219,11 @@ async function tombstoneMissingClasses(
   const staleIds = (data ?? [])
     .filter((row) => {
       const mindbodyClassId = row.mindbody_class_id;
-      return typeof mindbodyClassId === 'string' && !fetchedIds.has(mindbodyClassId);
+      if (typeof mindbodyClassId !== 'string') return false;
+      if (DEMO_CLASS_ID_PREFIXES.some((prefix) => mindbodyClassId.startsWith(prefix))) {
+        return false;
+      }
+      return !fetchedIds.has(mindbodyClassId);
     })
     .map((row) => row.id)
     .filter((id): id is string => typeof id === 'string');
@@ -278,7 +283,7 @@ Deno.serve(async (req) => {
         },
         (page) => page.Classes ?? [],
       ),
-      svc.from('coaches').select('id, name, mindbody_staff_id').eq('active', true),
+      svc.from('coaches').select('id, name, mindbody_staff_id').eq('active', true).is('deleted_at', null),
     ]);
 
     if (coachesResult.error) {

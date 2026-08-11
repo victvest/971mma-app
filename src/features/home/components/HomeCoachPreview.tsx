@@ -25,7 +25,7 @@ type CoachCardProps = {
 };
 
 const CoachCard = memo(function CoachCard({ coach, index, onPress }: CoachCardProps) {
-  const { colors, radius, typography, shadows } = useTheme();
+  const { colors, radius, typography, surfaceShadow } = useTheme();
   const handlePress = useCallback(() => onPress(coach.id), [coach.id, onPress]);
 
   const opacity = useSharedValue(0);
@@ -53,7 +53,7 @@ const CoachCard = memo(function CoachCard({ coach, index, onPress }: CoachCardPr
         <View
           style={[
             styles.imageFrame,
-            shadows.card,
+            surfaceShadow('card'),
             {
               borderRadius: radius.cardLarge,
               backgroundColor: colors.surface.secondary,
@@ -76,12 +76,6 @@ const CoachCard = memo(function CoachCard({ coach, index, onPress }: CoachCardPr
             numberOfLines={1}
           >
             {coach.name}
-          </Text>
-          <Text
-            style={[typography.textPresets.caption, { color: colors.text.secondary }]}
-            numberOfLines={1}
-          >
-            {coach.specialty || 'Instructor'}
           </Text>
         </View>
       </HomeAnimatedPressable>

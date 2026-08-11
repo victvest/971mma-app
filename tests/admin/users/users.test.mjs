@@ -2,7 +2,7 @@
  * Admin panel — User management.
  *
  * Covers admin user search and role assignment (admin_set_user_role), the action
- * that promotes a member to coach/gate or demotes them. Acts on an ephemeral user
+ * that promotes a member to coach or demotes them. Acts on an ephemeral user
  * so no real member is touched.
  */
 import { suite, test, assert, assertEqual } from '../../lib/framework.mjs';

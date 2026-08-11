@@ -32,6 +32,7 @@ export function useCoachAssignedDisciplines() {
     rankDisciplines,
     rankDisciplineSlugs: rankDisciplines.map((item) => item.slug as RankDisciplineSlug),
     primaryRankDiscipline,
-    primaryRankDisciplineSlug: (primaryRankDiscipline?.slug as RankDisciplineSlug | undefined) ?? null,
+    primaryRankDisciplineSlug:
+      (primaryRankDiscipline?.slug as RankDisciplineSlug | undefined) ?? null,
   };
 }

@@ -82,4 +82,4 @@ export async function applyReferralCode(code: string): Promise<ReferralItem> {
   };
 }
 
-export const REFERRAL_BONUS_POINTS = 250;
+export const REFERRAL_BONUS_POINTS_DEFAULT = 250;

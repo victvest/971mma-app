@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  View,
-  Text,
-  Pressable,
-  StyleSheet,
-  useWindowDimensions,
-} from 'react-native';
+import { View, Text, Pressable, StyleSheet, useWindowDimensions } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import ToastLib, { type ToastConfig, type ToastConfigParams } from 'react-native-toast-message';
 import { useTheme } from '@/shared/theme';
@@ -46,7 +40,7 @@ type ExtraProps = { duration?: number; placement?: 'top' | 'bottom' };
 type Props = ToastConfigParams<ExtraProps>;
 
 function AppToast({ text1, text2, type, hide, onPress }: Props) {
-  const { colors, typography, radius, shadows } = useTheme();
+  const { colors, typography, radius, surfaceShadow } = useTheme();
   const { width } = useWindowDimensions();
 
   const variant = ((type as ToastVariant) in VARIANT ? type : 'info') as ToastVariant;
@@ -60,7 +54,7 @@ function AppToast({ text1, text2, type, hide, onPress }: Props) {
     <View
       style={[
         styles.card,
-        shadows.lg,
+        surfaceShadow('lg'),
         {
           width: TOAST_W,
           borderRadius: radius.card,
@@ -71,10 +65,7 @@ function AppToast({ text1, text2, type, hide, onPress }: Props) {
     >
       <Pressable style={styles.row} onPress={() => onPress?.()}>
         <View
-          style={[
-            styles.iconPill,
-            { backgroundColor: subtleColor, borderRadius: radius.pill },
-          ]}
+          style={[styles.iconPill, { backgroundColor: subtleColor, borderRadius: radius.pill }]}
         >
           <Ionicons name={cfg.icon} size={20} color={accentColor} />
         </View>

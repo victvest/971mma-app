@@ -41,7 +41,9 @@ export function CoachDetailStats({ coach, classCount, classesReady = true }: Pro
           >
             {getCoachPrimaryRank(coach)}
           </Text>
-          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>Rank</Text>
+          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
+            Rank
+          </Text>
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.border.subtle }]} />
@@ -52,12 +54,20 @@ export function CoachDetailStats({ coach, classCount, classesReady = true }: Pro
               value={classCount}
               duration={950}
               delay={260}
-              style={[typography.textPresets.metricValue, styles.count, { color: colors.text.primary }]}
+              style={[
+                typography.textPresets.metricValue,
+                styles.count,
+                { color: colors.text.primary },
+              ]}
             />
           ) : (
-            <Text style={[typography.textPresets.metricValue, { color: colors.text.tertiary }]}>—</Text>
+            <Text style={[typography.textPresets.metricValue, { color: colors.text.tertiary }]}>
+              —
+            </Text>
           )}
-          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>Classes</Text>
+          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
+            Classes
+          </Text>
         </View>
 
         <View style={[styles.divider, { backgroundColor: colors.border.subtle }]} />
@@ -69,14 +79,20 @@ export function CoachDetailStats({ coach, classCount, classesReady = true }: Pro
               decimals={1}
               duration={950}
               delay={340}
-              style={[typography.textPresets.metricValue, styles.count, { color: colors.text.primary }]}
+              style={[
+                typography.textPresets.metricValue,
+                styles.count,
+                { color: colors.text.primary },
+              ]}
             />
           ) : (
             <Text style={[typography.textPresets.metricValue, { color: colors.text.primary }]}>
               {getCoachRatingLabel(coach)}
             </Text>
           )}
-          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>Rating</Text>
+          <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
+            Rating
+          </Text>
         </View>
       </View>
     </View>

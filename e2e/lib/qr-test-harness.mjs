@@ -5,25 +5,14 @@
 import { createClient } from '@supabase/supabase-js';
 import { createHmac } from 'crypto';
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { mkdirSync, writeFileSync } from 'fs';
 import { resolve } from 'path';
 import { loadE2EEnv, appRoot, outputRoot } from './env.mjs';
 
-export const ACADEMY_LAT = 25.1309;
-export const ACADEMY_LNG = 55.2320;
-export const FAR_LAT = ACADEMY_LAT + 0.05;
-export const FAR_LNG = ACADEMY_LNG + 0.05;
-export const GATE_LOCATION_ID = '971mma-al-quoz';
 export const CHECK_IN_POINTS = 10;
 
 export function loadQrEnv() {
-  const env = loadE2EEnv();
-  return {
-    ...env,
-    ACADEMY_LAT: Number(env.ACADEMY_LAT ?? ACADEMY_LAT),
-    ACADEMY_LNG: Number(env.ACADEMY_LNG ?? ACADEMY_LNG),
-    GATE_LOCATION_ID: env.GATE_LOCATION_ID ?? GATE_LOCATION_ID,
-  };
+  return loadE2EEnv();
 }
 
 export function runSql(sql, env = loadQrEnv()) {
@@ -168,14 +157,6 @@ export function createHarness(env = loadQrEnv()) {
     )[0]?.id;
   }
 
-  async function issueGateQr(deviceLabel = 'qr-test-harness') {
-    const result = await invokeEdge('gate-qr-issue', { deviceLabel });
-    if (!result.ok || !result.body?.token) {
-      throw new Error(`gate-qr-issue failed: ${JSON.stringify(result.body)}`);
-    }
-    return result.body;
-  }
-
   async function issueMemberQr(targetUserId) {
     const body = targetUserId ? { targetUserId } : {};
     const result = await invokeEdge('qr-issue', body);
@@ -208,19 +189,12 @@ export function createHarness(env = loadQrEnv()) {
     getLatestCheckIn,
     getStreak,
     findSecondMember,
-    issueGateQr,
     issueMemberQr,
   };
 }
 
 export function toBase64Url(buffer) {
   return buffer.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-export function signGateToken(locationId, expEpoch, jti, secret) {
-  const payload = `gate:${locationId}:${expEpoch}:${jti}`;
-  const sig = toBase64Url(createHmac('sha256', secret).update(payload).digest());
-  return `971mma:v2:gate:${locationId}:${expEpoch}:${jti}:${sig}`;
 }
 
 export function signMemberToken(memberId, expEpoch, jti, secret) {
@@ -239,17 +213,6 @@ export function simulateCoachScannerParse(raw) {
   if (parts[1] === 'v2' && parts.length === 7 && (parts[2] === 'supabase' || parts[2] === 'mindbody')) {
     return { memberId: parts[3], source: parts[2], exp: parseInt(parts[4], 10) };
   }
-  return null;
-}
-
-/** Mirrors EntranceScanner client rejection of member pass at gate. */
-export function simulateEntranceScannerReject(raw) {
-  const parts = raw.trim().split(':');
-  if (parts.length < 3 || parts[0] !== '971mma') return 'invalid_format';
-  const kind = parts[2];
-  if (kind === 'supabase' || kind === 'mindbody') return 'member_pass_at_gate';
-  if (kind !== 'gate') return 'invalid_format';
-  if (parts.length !== 7) return 'invalid_format';
   return null;
 }
 

@@ -17,18 +17,28 @@ type MbClient = {
   Id?: unknown;
   ClientId?: unknown;
   UniqueId?: unknown;
+  Name?: unknown;
+  DisplayName?: unknown;
   FirstName?: unknown;
   LastName?: unknown;
+  PhotoUrl?: unknown;
+  ImageUrl?: unknown;
   SignedIn?: unknown;
   SignedInStatus?: unknown;
+};
+
+type MbVisit = MbClient & {
+  Client?: MbClient;
 };
 
 type MbClassVisits = {
   Class?: {
     Id?: unknown;
     Clients?: MbClient[];
+    Visits?: MbVisit[];
+    TotalBooked?: unknown;
   };
-  Visits?: MbClient[];
+  Visits?: MbVisit[];
 };
 
 type ClassRow = {
@@ -47,27 +57,135 @@ type CheckInRow = {
   user_id: string;
 };
 
+type ClientSearchResponse = {
+  Clients?: MbClient[];
+};
+
 function asString(value: unknown): string | null {
   if (typeof value === 'string' && value) return value;
   if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return null;
 }
 
-function clientIdOf(client: MbClient): string | null {
-  return asString(client.ClientId) ?? asString(client.Id);
+function clientIdOf(client: MbClient, options: { allowIdFallback?: boolean } = {}): string | null {
+  const clientId = asString(client.ClientId);
+  if (clientId) return clientId;
+  if (options.allowIdFallback) return asString(client.Id);
+  return null;
 }
 
-function clientName(client: MbClient): string {
-  const first = asString(client.FirstName) ?? '';
-  const last = asString(client.LastName) ?? '';
+function mindbodyClientName(client: MbClient): string {
+  const display = asString(client.DisplayName)?.trim();
+  if (display) return display;
+
+  const first = asString(client.FirstName)?.trim() ?? '';
+  const last = asString(client.LastName)?.trim() ?? '';
   const full = `${first} ${last}`.trim();
   return full || 'Member';
+}
+
+function mindbodyPhotoUrl(client: MbClient): string | null {
+  return asString(client.PhotoUrl)?.trim() || asString(client.ImageUrl)?.trim() || null;
 }
 
 function isSignedIn(client: MbClient): boolean {
   if (typeof client.SignedIn === 'boolean') return client.SignedIn;
   const status = asString(client.SignedInStatus)?.toLowerCase();
   return status === 'signedin' || status === 'true';
+}
+
+function flattenVisitClients(page: MbClassVisits): MbClient[] {
+  if (page.Class?.Clients?.length) {
+    return page.Class.Clients.map((client) => ({
+      ...client,
+      ClientId: client.ClientId ?? client.Id,
+    }));
+  }
+
+  const visits = page.Visits ?? page.Class?.Visits ?? [];
+  return visits.map((visit) => {
+    const nested = visit.Client;
+    if (nested && typeof nested === 'object') {
+      return {
+        ...nested,
+        ClientId: nested.ClientId ?? visit.ClientId ?? nested.Id,
+        DisplayName: nested.DisplayName,
+        FirstName: nested.FirstName ?? visit.FirstName,
+        LastName: nested.LastName ?? visit.LastName,
+        PhotoUrl: nested.PhotoUrl ?? visit.PhotoUrl,
+        ImageUrl: nested.ImageUrl ?? visit.ImageUrl,
+        SignedIn: visit.SignedIn ?? nested.SignedIn,
+        SignedInStatus: visit.SignedInStatus ?? nested.SignedInStatus,
+      };
+    }
+
+    return {
+      ClientId: visit.ClientId,
+      FirstName: visit.FirstName,
+      LastName: visit.LastName,
+      DisplayName: visit.DisplayName,
+      PhotoUrl: visit.PhotoUrl,
+      ImageUrl: visit.ImageUrl,
+      SignedIn: visit.SignedIn,
+      SignedInStatus: visit.SignedInStatus,
+    };
+  });
+}
+
+async function fetchClientDetailsMap(
+  svc: ReturnType<typeof serviceClient>,
+  clientIds: string[],
+): Promise<Map<string, { name: string; photoUrl: string | null }>> {
+  const map = new Map<string, { name: string; photoUrl: string | null }>();
+  const unique = [...new Set(clientIds.filter(Boolean))];
+  if (unique.length === 0) return map;
+
+  const ingestClients = (clients: MbClient[]) => {
+    for (const client of clients) {
+      const id = clientIdOf(client, { allowIdFallback: true });
+      if (!id) continue;
+      map.set(id, {
+        name: mindbodyClientName(client),
+        photoUrl: mindbodyPhotoUrl(client),
+      });
+    }
+  };
+
+  for (let offset = 0; offset < unique.length; offset += 50) {
+    const chunk = unique.slice(offset, offset + 50);
+    const params = new URLSearchParams();
+    params.set('request.limit', String(Math.max(chunk.length, 1)));
+    params.set('request.offset', '0');
+    params.set('request.clientIDs', chunk.join(','));
+    params.set('request.includeInactive', 'true');
+
+    const response = await mbFetch<ClientSearchResponse>(
+      svc,
+      `/client/clients?${params.toString()}`,
+    );
+    ingestClients(response.Clients ?? []);
+  }
+
+  const missing = unique.filter((id) => !map.has(id));
+  if (missing.length > 0) {
+    await Promise.all(
+      missing.map(async (clientId) => {
+        const params = new URLSearchParams();
+        params.set('request.limit', '1');
+        params.set('request.offset', '0');
+        params.set('request.clientIDs', clientId);
+        params.set('request.includeInactive', 'true');
+
+        const response = await mbFetch<ClientSearchResponse>(
+          svc,
+          `/client/clients?${params.toString()}`,
+        );
+        ingestClients(response.Clients ?? []);
+      }),
+    );
+  }
+
+  return map;
 }
 
 function gymTodayBounds(): { start: string; end: string } {
@@ -150,7 +268,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    const cacheKey = `classvisits:${mindbodyClassId}`;
+    const cacheKey = `classvisits:v3:${mindbodyClassId}`;
     if (!body.force) {
       const cached = await cacheGet<{
         classId: string;
@@ -165,11 +283,13 @@ Deno.serve(async (req) => {
 
     const query = new URLSearchParams({ 'request.classID': mindbodyClassId });
     const page = await mbFetch<MbClassVisits>(svc, `/class/classvisits?${query.toString()}`);
-    const rawClients = page.Class?.Clients ?? page.Visits ?? [];
+    const rawClients = flattenVisitClients(page);
 
     const clientIds = rawClients
-      .map((client) => clientIdOf(client))
+      .map((client) => clientIdOf(client, { allowIdFallback: true }))
       .filter((value): value is string => Boolean(value));
+
+    const clientDetails = await fetchClientDetailsMap(svc, clientIds);
 
     const linkMap = new Map<string, string>();
     if (clientIds.length > 0) {
@@ -208,11 +328,14 @@ Deno.serve(async (req) => {
     }
 
     const visitors = rawClients.map((client) => {
-      const mindbodyClientId = clientIdOf(client) ?? '';
+      const mindbodyClientId =
+        clientIdOf(client, { allowIdFallback: true }) ?? '';
+      const details = mindbodyClientId ? clientDetails.get(mindbodyClientId) : undefined;
       const userId = mindbodyClientId ? (linkMap.get(mindbodyClientId) ?? null) : null;
       return {
         mindbodyClientId,
-        name: clientName(client),
+        name: details?.name ?? mindbodyClientName(client),
+        photoUrl: details?.photoUrl ?? mindbodyPhotoUrl(client),
         signedInMindbody: isSignedIn(client),
         userId,
         checkedInLocally: userId ? localCheckedIn.has(userId) : false,

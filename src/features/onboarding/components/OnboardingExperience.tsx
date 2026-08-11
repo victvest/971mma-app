@@ -3,9 +3,7 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import { KeyboardAvoidingView, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Animated, {
-  type EntryOrExitLayoutType,
-} from 'react-native-reanimated';
+import Animated, { type EntryOrExitLayoutType } from 'react-native-reanimated';
 import { ArrowLeft } from 'lucide-react-native';
 import { AppScrollView } from '@/shared/components/ui';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
@@ -154,11 +152,11 @@ export function OnboardingScreen({
               {children}
             </AnimatedView>
 
-            {controls ? <View style={[styles.controlsWrap, { gap: gap.md }]}>{controls}</View> : null}
-
-            {onBack ? (
-              <OnboardingStepBack label={backLabel} onPress={onBack} />
+            {controls ? (
+              <View style={[styles.controlsWrap, { gap: gap.md }]}>{controls}</View>
             ) : null}
+
+            {onBack ? <OnboardingStepBack label={backLabel} onPress={onBack} /> : null}
           </View>
         </AppScrollView>
       </KeyboardAvoidingView>

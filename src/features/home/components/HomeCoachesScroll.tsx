@@ -15,7 +15,10 @@ type Props = {
  * - Breaks out of screen padding with negative margins so cards render edge-to-edge.
  * - Restores inner padding so first/last card aligns with the rest of the screen content.
  */
-export const HomeCoachesScroll = memo(function HomeCoachesScroll({ children, cardGap = 12 }: Props) {
+export const HomeCoachesScroll = memo(function HomeCoachesScroll({
+  children,
+  cardGap = 12,
+}: Props) {
   const { inset } = useTheme();
 
   return (

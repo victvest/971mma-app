@@ -8,20 +8,19 @@ import {
 } from '@/features/coach/roll-call/types';
 import {
   formatAttendanceHeadline,
-  formatAttendanceSubtitle,
+  formatAttendanceTime,
 } from '@/features/checkin/utils/formatAttendance';
 import type { ClassSessionAttendanceRow as ClassSessionAttendanceRecord } from '@/services/database/classAttendance.repository';
 import { useTheme } from '@/shared/theme';
+import { resolveScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
+import { ScheduleCategoryIcon } from '@/features/schedule/components/ScheduleCategoryIcon';
 
 type Props = {
   item: ClassSessionAttendanceRecord;
   compact?: boolean;
 };
 
-function statusSpec(
-  status: RollCallMemberStatus,
-  colors: ReturnType<typeof useTheme>['colors'],
-) {
+function statusSpec(status: RollCallMemberStatus, colors: ReturnType<typeof useTheme>['colors']) {
   switch (status) {
     case 'late':
       return {
@@ -57,9 +56,17 @@ export const ClassSessionAttendanceRow = memo(function ClassSessionAttendanceRow
   const { colors, typography, inset, radius, radii, layout } = useTheme();
   const isToday = isGymToday(item.classStartsAt);
   const headline = item.classTitle;
+
+  const resolvedCategory = useMemo(
+    () => resolveScheduleCategory(item.classTitle, item.classDiscipline),
+    [item.classTitle, item.classDiscipline],
+  );
+  const iconSize = compact ? 18 : 20;
+  const iconColor = isToday ? colors.accent.default : colors.text.secondary;
+
   const subtitle = useMemo(() => {
     const dateLine = formatAttendanceHeadline(item.classStartsAt);
-    const timeLine = formatAttendanceSubtitle(item.classStartsAt);
+    const timeLine = formatAttendanceTime(item.classStartsAt);
     return `${dateLine} · ${timeLine}`;
   }, [item.classStartsAt]);
   const statusLabel = rollCallStatusDisplayLabel(item.status);
@@ -88,11 +95,15 @@ export const ClassSessionAttendanceRow = memo(function ClassSessionAttendanceRow
           },
         ]}
       >
-        <Ionicons
-          name={isToday ? 'school' : 'calendar-outline'}
-          size={compact ? 18 : 20}
-          color={isToday ? colors.accent.default : colors.text.secondary}
-        />
+        {resolvedCategory ? (
+          <ScheduleCategoryIcon category={resolvedCategory} color={iconColor} size={iconSize} />
+        ) : (
+          <Ionicons
+            name={isToday ? 'school' : 'calendar-outline'}
+            size={iconSize}
+            color={iconColor}
+          />
+        )}
       </View>
 
       <View style={styles.textBlock}>

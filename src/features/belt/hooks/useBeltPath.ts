@@ -9,15 +9,14 @@ import {
   searchMembersForCoach,
 } from '@/services/database/belt.repository';
 import { invalidateAfterBeltProgressChange } from '@/lib/queryInvalidation';
-import {
-  BELT_PATH_STALE_MS,
-  COACH_SEARCH_STALE_MS,
-} from '@/lib/queryCachePolicy';
+import { BELT_PATH_STALE_MS, COACH_SEARCH_STALE_MS } from '@/lib/queryCachePolicy';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
 import { useAuthStore } from '@/stores/useAuthStore';
 
-export const beltPathKey = (userId: string) => ['belt-path', userId] as const;
+import { beltPathKey } from './beltPathKeys';
+
+export { beltPathKey } from './beltPathKeys';
 
 export function useBeltPath(disciplineSlug?: string) {
   const activeMemberId = useActiveMemberId();
@@ -26,8 +25,7 @@ export function useBeltPath(disciplineSlug?: string) {
 
   return useQuery({
     queryKey: [...beltPathKey(activeMemberId), targetDiscipline],
-    queryFn: () =>
-      getBeltPathSummary(activeMemberId, targetDiscipline),
+    queryFn: () => getBeltPathSummary(activeMemberId, targetDiscipline),
     enabled: Boolean(activeMemberId) && rankEligibility.data?.eligible === true,
     staleTime: BELT_PATH_STALE_MS,
   });
@@ -102,13 +100,24 @@ export function useUnseenPromotion() {
 export function useMarkPromotionCelebrationSeen() {
   const queryClient = useQueryClient();
   const activeMemberId = useActiveMemberId();
+  const unseenPromotionKey = ['unseen-promotion', activeMemberId] as const;
 
   return useMutation({
     mutationFn: (promotionId: string) => markPromotionCelebrationSeen(promotionId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['unseen-promotion', activeMemberId] });
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: unseenPromotionKey });
+      const previous = queryClient.getQueryData(unseenPromotionKey);
+      queryClient.setQueryData(unseenPromotionKey, null);
+      return { previous };
+    },
+    onError: (_error, _promotionId, context) => {
+      if (context) {
+        queryClient.setQueryData(unseenPromotionKey, context.previous);
+      }
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: unseenPromotionKey });
       queryClient.invalidateQueries({ queryKey: ['belt-path', activeMemberId] });
     },
   });
 }
-

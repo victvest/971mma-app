@@ -1,12 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { KeyboardAvoidingView, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Image } from 'expo-image';
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
@@ -19,6 +12,7 @@ import { RevealOnMount } from '@/shared/animations';
 import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_SAVE_ERROR } from '@/lib/userFacingError';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useAuthProfile } from '@/features/profile/hooks/useProfile';
 import { useUpdateProfile } from '@/features/profile/hooks/useUpdateProfile';
@@ -78,16 +72,14 @@ export function EditProfileScreenContent() {
   const canSave = isDirty && !nameError && !phoneError && !saving;
 
   const displayAvatar = pickedAvatar ?? profile?.avatarUrl ?? null;
-  const initials = useMemo(() => initialsFromName(fullName || profile?.fullName || 'M'), [fullName, profile?.fullName]);
+  const initials = useMemo(
+    () => initialsFromName(fullName || profile?.fullName || 'M'),
+    [fullName, profile?.fullName],
+  );
 
   const pickAvatar = useCallback(async () => {
     triggerLightImpact();
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      toast.error('Photo access needed', 'Allow photo access to change your picture.');
-      return;
-    }
-
+    // System photo picker — no broad READ_MEDIA / library permission (Play policy).
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -132,7 +124,7 @@ export function EditProfileScreenContent() {
       toast.success('Profile updated', 'Your changes have been saved.');
       router.back();
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not save your changes.';
+      const message = toUserFacingErrorMessage(error, { fallback: USER_FACING_SAVE_ERROR });
       toast.error('Update failed', message);
     } finally {
       setSaving(false);
@@ -203,7 +195,9 @@ export function EditProfileScreenContent() {
                   borderRadius: radius.avatar,
                   borderColor: colors.accent.default,
                   borderWidth: layout.borderWidthStrong,
-                  backgroundColor: displayAvatar ? colors.background.elevated : colors.accent.subtle,
+                  backgroundColor: displayAvatar
+                    ? colors.background.elevated
+                    : colors.accent.subtle,
                 },
               ]}
             >
@@ -266,7 +260,6 @@ export function EditProfileScreenContent() {
             error={phoneError ?? undefined}
           />
         </RevealOnMount>
-
       </AppScrollView>
 
       {/* Sticky save bar */}

@@ -1,11 +1,7 @@
 import React, { useCallback } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import Animated, {
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { parseScheduleCardTime } from '@/features/schedule/utils/formatScheduleTime';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -68,19 +64,34 @@ export const CoachClassRow = React.memo(function CoachClassRow({ item, onPress }
           },
         ]}
       >
-        <Text style={[typography.textPresets.label, { color: colors.accent.pressed }]}>{label}</Text>
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>{time}</Text>
+        <Text style={[typography.textPresets.label, { color: colors.accent.pressed }]}>
+          {label}
+        </Text>
+        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+          {time}
+        </Text>
       </View>
       <View style={styles.body}>
-        <Text numberOfLines={1} style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
+        <Text
+          numberOfLines={1}
+          style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}
+        >
           {item.title}
         </Text>
-        <Text numberOfLines={1} style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+        <Text
+          numberOfLines={1}
+          style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+        >
           {item.discipline}
           {item.level ? ` · ${item.level}` : ''}
         </Text>
       </View>
-      <View style={[styles.chevron, { backgroundColor: colors.background.secondary, borderRadius: radius.pill }]}>
+      <View
+        style={[
+          styles.chevron,
+          { backgroundColor: colors.background.secondary, borderRadius: radius.pill },
+        ]}
+      >
         <Ionicons name="chevron-forward" size={18} color={colors.text.tertiary} />
       </View>
     </AnimatedPressable>

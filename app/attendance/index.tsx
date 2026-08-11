@@ -1,79 +1,137 @@
-import React, { useCallback } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { FlashList } from '@shopify/flash-list';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams } from 'expo-router';
 import { AttendanceRow } from '@/features/checkin/components/AttendanceRow';
-import { useAttendance } from '@/features/checkin/hooks/useCheckin';
+import { AttendanceMonthHeader } from '@/features/attendance/components/AttendanceMonthHeader';
+import { ClassSessionAttendanceRow } from '@/features/attendance/components/ClassSessionAttendanceRow';
+import {
+  useAttendanceHistory,
+  type AttendanceHistoryTab,
+  type GateListItem,
+  type UnifiedClassAttendanceItem,
+} from '@/features/attendance/hooks/useAttendanceHistory';
+import type { AttendanceListEntry } from '@/features/attendance/utils/groupAttendanceByMonth';
 import { AppBar, FlashListScrollComponent } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import {
+  FLASH_LIST_ESTIMATES,
+} from '@/shared/constants/flashListEstimates';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
+import { PillSegmentedTabs } from '@/shared/components/ui/PillSegmentedTabs';
 import {
   isOfflineWithoutCache,
   isQueryActivelyLoading,
   OFFLINE_MESSAGE,
   OFFLINE_TITLE,
 } from '@/lib/offlineState';
-import type { CheckInRow } from '@/types/database';
+
+type ListItem = GateListItem | UnifiedClassAttendanceItem;
 
 export default function AttendanceHistoryScreen() {
-  const { colors, inset, typography } = useTheme();
-  const router = useRouter();
-  const attendanceQuery = useAttendance();
-  const checkIns = attendanceQuery.data?.pages.flat() ?? [];
+  const { colors, inset } = useTheme();
+  const params = useLocalSearchParams<{ tab?: string }>();
+  const [activeTab, setActiveTab] = useState<AttendanceHistoryTab>(
+    params.tab === 'classes' ? 'classes' : 'gate',
+  );
+
+  useEffect(() => {
+    if (params.tab === 'classes' || params.tab === 'gate') {
+      setActiveTab(params.tab);
+    }
+  }, [params.tab]);
+
   const { isOnline, networkStatusKnown } = useNetworkStatus();
+  const history = useAttendanceHistory(activeTab);
 
   const renderItem = useCallback(
-    ({ item }: { item: CheckInRow }) => <AttendanceRow item={item} />,
+    ({ item }: { item: AttendanceListEntry<ListItem> }) => {
+      if (item.kind === 'month') {
+        return <AttendanceMonthHeader label={item.label} />;
+      }
+
+      const row = item.item;
+      if ('rawItem' in row && 'type' in row && row.type === 'roll_call') {
+        return <ClassSessionAttendanceRow item={row.rawItem} />;
+      }
+      if ('rawItem' in row && 'type' in row && row.type === 'check_in') {
+        return <AttendanceRow item={row.rawItem} />;
+      }
+      // Gate list item
+      if ('rawItem' in row) {
+        return <AttendanceRow item={(row as GateListItem).rawItem} />;
+      }
+      return null;
+    },
     [],
   );
 
-  const hasError = !!attendanceQuery.error;
-  const hasData = checkIns.length > 0;
+  const getItemType = useCallback((item: AttendanceListEntry<ListItem>) => item.kind, []);
+
+  const hasError = !!history.error;
+  const hasData = history.hasData;
   const isInitialLoading =
-    isQueryActivelyLoading(attendanceQuery.isLoading, attendanceQuery.isFetching) && !hasData;
+    isQueryActivelyLoading(history.isLoading, history.isFetching) && !hasData;
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
     isOnline,
     hasData,
     hasError,
   });
-  const errorMessage = attendanceQuery.error instanceof Error ? attendanceQuery.error.message : 'Please check your connection.';
+  const errorMessage = toUserFacingErrorMessage(history.error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
 
-  const listHeader = (
-    <View style={{ marginBottom: inset.md, gap: inset.sm }}>
-      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-        Visits synced when you check in at the academy. Training streaks use these records.
-      </Text>
-      {hasError && hasData ? (
+  const tabOptions = useMemo(
+    () => [
+      { value: 'gate' as const, label: 'Gate', accessibilityLabel: 'Gate visits' },
+      { value: 'classes' as const, label: 'Classes', accessibilityLabel: 'Class attendance' },
+    ],
+    [],
+  );
+
+  const listHeader =
+    history.softError && hasData ? (
+      <View style={{ marginBottom: inset.md }}>
         <StateBlock
           kind="error"
           title="Sync issue"
-          message="Could not refresh history."
+          message={
+            activeTab === 'gate'
+              ? 'Could not refresh history.'
+              : 'Could not refresh class attendance.'
+          }
           actionLabel="Retry"
-          onAction={() => attendanceQuery.refetch()}
+          onAction={() => void history.refetch()}
         />
-      ) : null}
-      <Pressable
-        onPress={() => router.push('/attendance/class-sessions')}
-        accessibilityRole="button"
-        style={({ pressed }) => [styles.linkRow, { opacity: pressed ? 0.7 : 1 }]}
-      >
-        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-          Class roll call
-        </Text>
-        <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.default }]}>
-          View all
-        </Text>
-      </Pressable>
-    </View>
-  );
+      </View>
+    ) : null;
+
+  const emptyTitle =
+    activeTab === 'gate' ? 'No gym visits yet' : 'No class attendance yet';
+  const emptyMessage =
+    activeTab === 'gate'
+      ? 'When you check in at the academy, your visit history appears here.'
+      : 'Class visits from roll call and synced Mindbody classes appear here.';
 
   return (
-    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top', 'bottom']}>
-      <AppBar title="Gym visits" />
+    <AppSafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background.primary }]}
+      edges={['top', 'bottom']}
+    >
+      <AppBar title="Attendance history" />
+
+      <View style={{ paddingHorizontal: inset.lg, paddingVertical: inset.sm }}>
+        <PillSegmentedTabs
+          value={activeTab}
+          options={tabOptions}
+          onValueChange={setActiveTab}
+          selectedVariant="accent"
+        />
+      </View>
 
       {isOfflineBlocked ? (
         <StateBlock
@@ -81,44 +139,51 @@ export default function AttendanceHistoryScreen() {
           title={OFFLINE_TITLE}
           message={OFFLINE_MESSAGE}
           actionLabel="Retry"
-          onAction={() => attendanceQuery.refetch()}
+          onAction={() => void history.refetch()}
           offlineAwareRetry
         />
       ) : isInitialLoading ? (
-        <StateBlock kind="loading" title="Loading gym visits" />
+        <StateBlock
+          kind="loading"
+          title={activeTab === 'gate' ? 'Loading gym visits' : 'Loading class attendance'}
+        />
       ) : hasError && !hasData ? (
         <StateBlock
           kind="error"
-          title="Could not load history"
+          title={
+            activeTab === 'gate' ? 'Could not load history' : 'Could not load class attendance'
+          }
           message={errorMessage}
           actionLabel="Retry"
-          onAction={() => attendanceQuery.refetch()}
+          onAction={() => void history.refetch()}
           offlineAwareRetry
         />
-      ) : !hasError && checkIns.length === 0 ? (
-        <StateBlock
-          kind="empty"
-          title="No gym visits yet"
-          message="When you check in at the academy, your visit history appears here. For per-class roll call (present/absent), see Class attendance."
-        />
+      ) : !hasError && !hasData ? (
+        <StateBlock kind="empty" title={emptyTitle} message={emptyMessage} />
       ) : (
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
-          data={checkIns}
-          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.attendanceRow)}
+          data={history.list}
+          getItemType={getItemType}
+          overrideItemLayout={(layout, item) => {
+            (layout as { size?: number }).size =
+              item.kind === 'month'
+                ? FLASH_LIST_ESTIMATES.attendanceMonthHeader
+                : FLASH_LIST_ESTIMATES.attendanceRow;
+          }}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
           ListHeaderComponent={listHeader}
-          contentContainerStyle={{ padding: inset.lg, paddingTop: 12 }}
-          ItemSeparatorComponent={AttendanceSeparator}
+          contentContainerStyle={{ paddingHorizontal: inset.lg, paddingBottom: inset.lg }}
+          ItemSeparatorComponent={AttendanceListSeparator}
           onEndReached={() => {
-            if (attendanceQuery.hasNextPage && !attendanceQuery.isFetchingNextPage) {
-              void attendanceQuery.fetchNextPage();
+            if (history.hasNextPage && !history.isFetchingNextPage) {
+              history.fetchNextPage();
             }
           }}
           onEndReachedThreshold={0.35}
           ListFooterComponent={
-            attendanceQuery.isFetchingNextPage ? (
+            history.isFetchingNextPage ? (
               <ActivityIndicator style={styles.footerLoader} color={colors.accent.default} />
             ) : null
           }
@@ -128,17 +193,19 @@ export default function AttendanceHistoryScreen() {
   );
 }
 
-function AttendanceSeparator() {
+function AttendanceListSeparator({
+  leadingItem,
+}: {
+  leadingItem: AttendanceListEntry<ListItem> | null;
+}) {
+  if (!leadingItem || leadingItem.kind === 'month') {
+    return null;
+  }
   return <View style={styles.separator} />;
 }
 
 const styles = StyleSheet.create({
   safe: { flex: 1 },
-  linkRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
   footerLoader: { marginVertical: 20 },
   separator: { height: 10 },
 });

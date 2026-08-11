@@ -10,10 +10,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { useTheme } from '@/shared/theme';
-import {
-  APP_BAR_SIDE_SLOT_WIDTH,
-  getAppBarTitleStyle,
-} from './appBarShared';
+import { APP_BAR_SIDE_SLOT_WIDTH, getAppBarTitleStyle } from './appBarShared';
 import { AppBarBackButton, AppBarIconButton, appBarButtonStyles } from './AppBarBackButton';
 
 type CollapsibleAppBarProps = {
@@ -35,12 +32,7 @@ function useCollapsibleAppBarIconLayers(
   }));
 
   const solidIconOpacity = useAnimatedStyle(() => ({
-    opacity: interpolate(
-      scrollY.value,
-      [collapseStart, collapseEnd],
-      [0, 1],
-      Extrapolation.CLAMP,
-    ),
+    opacity: interpolate(scrollY.value, [collapseStart, collapseEnd], [0, 1], Extrapolation.CLAMP),
   }));
 
   return { heroIconOpacity, solidIconOpacity };
@@ -102,6 +94,7 @@ export function CollapsibleAppBar({
   }));
 
   const barHeight = layout.headerHeight;
+  const bottomInset = layout.appBarBottomInset;
 
   return (
     <Animated.View
@@ -110,10 +103,11 @@ export function CollapsibleAppBar({
         {
           alignItems: 'center',
           flexDirection: 'row',
-          height: barHeight + topInset,
+          height: barHeight + topInset + bottomInset,
           justifyContent: 'space-between',
           paddingHorizontal: inset.md,
           paddingTop: topInset,
+          paddingBottom: bottomInset,
           borderBottomWidth: StyleSheet.hairlineWidth,
         },
         shellStyle,

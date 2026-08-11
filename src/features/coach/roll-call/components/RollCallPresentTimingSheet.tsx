@@ -1,7 +1,7 @@
-import React, { memo, useCallback, useEffect } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { memo, useCallback } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
 import { MotiPressable } from '@/shared/animations/MotiPressable';
+import { AppBottomSheet, AppBottomSheetButton } from '@/shared/components/AppBottomSheet';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 
@@ -81,100 +81,47 @@ export const RollCallPresentTimingSheet = memo(function RollCallPresentTimingShe
   onSelect,
   onCancel,
 }: Props) {
-  const { colors, inset, radius, typography, gap } = useTheme();
-  const insets = useSafeAreaInsets();
-
-  useEffect(() => {
-    if (visible) {
-      triggerLightImpact();
-    }
-  }, [visible]);
+  const { colors, typography, gap } = useTheme();
 
   const handleOnTime = useCallback(() => onSelect('present'), [onSelect]);
   const handleLate = useCallback(() => onSelect('late'), [onSelect]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onCancel}>
-      <View style={styles.overlay}>
-        <Pressable
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background.overlay }]}
-          onPress={onCancel}
-          accessibilityLabel="Cancel present timing"
-        />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.surface.primary,
-              borderTopLeftRadius: radius.modal,
-              borderTopRightRadius: radius.modal,
-              paddingHorizontal: inset.lg,
-              paddingTop: inset.lg,
-              paddingBottom: insets.bottom + inset.lg,
-              gap: gap.md,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
-          <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
-            Mark present
-          </Text>
-          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-            {memberName} arrived — on time or late?
-          </Text>
-
-          <ChoiceButton
-            label="On time"
-            hint="Counts as present"
-            variant="primary"
-            onPress={handleOnTime}
-            accessibilityLabel="Mark on time"
-          />
-          <ChoiceButton
-            label="Present (late)"
-            hint="Arrived after roll call started"
-            variant="secondary"
-            onPress={handleLate}
-            accessibilityLabel="Mark present late"
-          />
-
-          <MotiPressable
-            onPress={onCancel}
-            accessibilityLabel="Cancel"
-            style={[styles.cancelButton, { minHeight: 48 }]}
-          >
-            <Text style={[typography.textPresets.button, { color: colors.text.secondary }]}>
-              Cancel
-            </Text>
-          </MotiPressable>
-        </View>
+    <AppBottomSheet visible={visible} onDismiss={onCancel}>
+      <View style={{ gap: gap.xs }}>
+        <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
+          Mark present
+        </Text>
+        <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+          {memberName} arrived — on time or late?
+        </Text>
       </View>
-    </Modal>
+
+      <ChoiceButton
+        label="On time"
+        hint="Counts as present"
+        variant="primary"
+        onPress={handleOnTime}
+        accessibilityLabel="Mark on time"
+      />
+      <ChoiceButton
+        label="Present (late)"
+        hint="Arrived after roll call started"
+        variant="secondary"
+        onPress={handleLate}
+        accessibilityLabel="Mark present late"
+      />
+
+      <AppBottomSheetButton label="Cancel" variant="secondary" onPress={onCancel} />
+    </AppBottomSheet>
   );
 });
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
-  sheet: {
-    borderWidth: 0,
-  },
-  handle: {
-    alignSelf: 'center',
-    borderRadius: 999,
-    height: 4,
-    width: 40,
-  },
   choiceButton: {
     alignItems: 'flex-start',
     borderWidth: 1,
     justifyContent: 'center',
     width: '100%',
-  },
-  cancelButton: {
-    alignItems: 'center',
-    justifyContent: 'center',
   },
 });

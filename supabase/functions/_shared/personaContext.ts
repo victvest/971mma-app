@@ -68,6 +68,7 @@ export type PersonaAssistantContext = {
     memberSince: string | null;
     checkedInToday: boolean;
     enrolledDisciplines: string[];
+    referralCode: string | null;
   };
   engagement: {
     pointsBalance: number;
@@ -80,6 +81,27 @@ export type PersonaAssistantContext = {
     monthlyGoalPct: number;
     streakStatus: string;
   };
+  bookings: Array<{
+    status: string;
+    classTitle: string;
+    startsAtLocal: string;
+    coachName: string;
+  }>;
+  recentCheckins: Array<{
+    checkedInAtLocal: string;
+    method: string;
+    classTitle: string;
+    coachName: string;
+  }>;
+  familyLinks: Array<{
+    name: string;
+    status: string;
+    mode: string;
+  }>;
+  referrals: Array<{
+    email: string;
+    status: string;
+  }>;
   belt: {
     eligible: boolean;
     discipline: string | null;
@@ -118,7 +140,12 @@ export type PersonaAssistantContext = {
   }>;
   rewards: {
     catalog: Array<{ id: string; name: string; category: string; costPoints: number }>;
-    nextMilestones: Array<{ name: string; unlockDays: number; pointsAward: number; status: string }>;
+    nextMilestones: Array<{
+      name: string;
+      unlockDays: number;
+      pointsAward: number;
+      status: string;
+    }>;
   };
   knowledge: {
     faq: typeof PERSONA_ACADEMY_FAQ;
@@ -142,6 +169,19 @@ function formatGymLocal(iso: string): string {
     minute: '2-digit',
     hour12: true,
   }).format(date);
+}
+
+function cleanContextText(value: string | null | undefined, fallback: string): string {
+  const trimmed = value?.trim();
+  if (!trimmed || /^[-–—\s]+$/.test(trimmed) || /^(n\/a|na|null|undefined)$/i.test(trimmed)) {
+    return fallback;
+  }
+  return trimmed;
+}
+
+function cleanCoachName(value: string | null | undefined): string {
+  const cleaned = cleanContextText(value, 'TBA');
+  return /^(coach|tba|tbd)$/i.test(cleaned) ? 'TBA' : cleaned;
 }
 
 function addDaysIso(dateKey: string, days: number): string {
@@ -219,7 +259,9 @@ async function fetchNextMilestones(
       .map((row) => row.milestone_id),
   );
 
-  return (catalog as Array<{ id: string; name: string; unlock_days: number; points_award: number | null }>)
+  return (
+    catalog as Array<{ id: string; name: string; unlock_days: number; points_award: number | null }>
+  )
     .map((row) => {
       const earned = earnedIds.has(row.id) || trainingDays >= row.unlock_days;
       const isNext = !earned && trainingDays < row.unlock_days;
@@ -250,14 +292,18 @@ export async function buildPersonaContext(
     catalogResult,
     disciplinesResult,
     checkInResult,
+    bookingsResult,
+    recentCheckInsResult,
+    guardianLinksResult,
+    referralsResult,
   ] = await Promise.all([
     client
       .from('profiles')
       .select(
-        'full_name, membership_name, membership_status, membership_expires_at, belt_rank, belt_stripes, member_since',
+        'full_name, membership_name, membership_status, membership_expires_at, belt_rank, belt_stripes, member_since, referral_code',
       )
       .eq('id', userId)
-      .maybeSingle<ProfileRow>(),
+      .maybeSingle<ProfileRow & { referral_code: string | null }>(),
     client.rpc('get_member_home_dashboard', { p_user: userId }),
     client
       .from('classes')
@@ -271,8 +317,9 @@ export async function buildPersonaContext(
     client
       .from('coaches')
       .select('id, name, specialty, rank, is_head_coach, languages')
-      .not('slug', 'is', null)
+      .not('mindbody_staff_id', 'is', null)
       .eq('active', true)
+      .eq('visible_in_app', true)
       .is('deleted_at', null)
       .order('is_head_coach', { ascending: false })
       .order('sort_order', { ascending: true })
@@ -300,6 +347,28 @@ export async function buildPersonaContext(
       .gte('checked_in_at', startOfGymDayIso(today))
       .lte('checked_in_at', endOfGymDayIso(today))
       .limit(1),
+    client
+      .from('bookings')
+      .select('status, classes(title, starts_at, coach_name)')
+      .eq('user_id', userId)
+      .in('status', ['booked', 'waitlisted'])
+      .limit(15),
+    client
+      .from('check_ins')
+      .select('checked_in_at, method, classes(title, coach_name)')
+      .eq('user_id', userId)
+      .eq('signed_in', true)
+      .order('checked_in_at', { ascending: false })
+      .limit(10),
+    client
+      .from('guardian_links')
+      .select('child_display_name, status, account_mode')
+      .eq('guardian_user_id', userId),
+    client
+      .from('referrals')
+      .select('referred_email, status')
+      .eq('referrer_user_id', userId)
+      .limit(10),
   ]);
 
   const dashboard = (dashboardResult.data ?? {}) as Record<string, unknown>;
@@ -318,13 +387,13 @@ export async function buildPersonaContext(
 
   const classes = ((classesResult.data ?? []) as ClassRow[]).map((row) => ({
     id: row.id,
-    title: row.title,
-    discipline: row.discipline ?? 'Class',
-    coachName: row.coach_name ?? 'Coach',
+    title: cleanContextText(row.title, 'Class'),
+    discipline: cleanContextText(row.discipline, 'Class'),
+    coachName: cleanCoachName(row.coach_name),
     coachId: row.coach_id,
     startsAtLocal: formatGymLocal(row.starts_at),
     durationMinutes: row.duration_minutes,
-    level: row.level ?? 'All Levels',
+    level: cleanContextText(row.level, 'All Levels'),
   }));
 
   const classCountByCoach = new Map<string, number>();
@@ -334,9 +403,67 @@ export async function buildPersonaContext(
   }
 
   const profile = profileResult.data;
-  const enrolledDisciplines = ((disciplinesResult.data ?? []) as Array<{ disciplines: { display_name: string } | null }>)
+  const enrolledDisciplines = (
+    (disciplinesResult.data ?? []) as Array<{ disciplines: { display_name: string } | null }>
+  )
     .map((row) => row.disciplines?.display_name)
     .filter((name): name is string => Boolean(name));
+
+  const rawBookings = (bookingsResult.data ?? []) as Array<{
+    status: string;
+    classes: { title: string; starts_at: string; coach_name: string | null } | { title: string; starts_at: string; coach_name: string | null }[] | null;
+  }>;
+  const bookings = rawBookings
+    .map((b) => {
+      const cls = Array.isArray(b.classes) ? b.classes[0] : b.classes;
+      if (!cls) return null;
+      return {
+        status: b.status,
+        classTitle: cls.title,
+        startsAtLocal: formatGymLocal(cls.starts_at),
+        startsAtRaw: cls.starts_at,
+        coachName: cleanCoachName(cls.coach_name),
+      };
+    })
+    .filter((b): b is NonNullable<typeof b> => b !== null && new Date(b.startsAtRaw) >= new Date())
+    .slice(0, 5);
+
+  const rawCheckins = (recentCheckInsResult.data ?? []) as Array<{
+    checked_in_at: string;
+    method: string;
+    classes: { title: string; coach_name: string | null } | { title: string; coach_name: string | null }[] | null;
+  }>;
+  const recentCheckins = rawCheckins
+    .map((c) => {
+      const cls = Array.isArray(c.classes) ? c.classes[0] : c.classes;
+      return {
+        checkedInAtLocal: formatGymLocal(c.checked_in_at),
+        method: c.method,
+        classTitle: cls ? cls.title : 'Gym Access',
+        coachName: cls ? cleanCoachName(cls.coach_name) : 'TBA',
+      };
+    })
+    .slice(0, 5);
+
+  const rawGuardians = (guardianLinksResult.data ?? []) as Array<{
+    child_display_name: string;
+    status: string;
+    account_mode: string;
+  }>;
+  const familyLinks = rawGuardians.map((g) => ({
+    name: g.child_display_name,
+    status: g.status,
+    mode: g.account_mode,
+  }));
+
+  const rawReferrals = (referralsResult.data ?? []) as Array<{
+    referred_email: string;
+    status: string;
+  }>;
+  const referrals = rawReferrals.map((r) => ({
+    email: r.referred_email,
+    status: r.status,
+  }));
 
   return {
     generatedAt: nowIso,
@@ -352,6 +479,7 @@ export async function buildPersonaContext(
       memberSince: profile?.member_since ?? null,
       checkedInToday: (checkInResult.data ?? []).length > 0,
       enrolledDisciplines,
+      referralCode: profile?.referral_code ?? null,
     },
     engagement: {
       pointsBalance: Number(points.balance ?? 0),
@@ -364,10 +492,16 @@ export async function buildPersonaContext(
       monthlyGoalPct: Number(disciplineScore.monthlyGoalPct ?? 0),
       streakStatus: String(disciplineScore.streakStatus ?? 'inactive'),
     },
+    bookings,
+    recentCheckins,
+    familyLinks,
+    referrals,
     belt: {
       eligible: Boolean(rankEligibility.eligible),
-      discipline: typeof rankEligibility.disciplineSlug === 'string' ? rankEligibility.disciplineSlug : null,
-      disciplineName: typeof rankEligibility.disciplineName === 'string' ? rankEligibility.disciplineName : null,
+      discipline:
+        typeof rankEligibility.disciplineSlug === 'string' ? rankEligibility.disciplineSlug : null,
+      disciplineName:
+        typeof rankEligibility.disciplineName === 'string' ? rankEligibility.disciplineName : null,
       rankName: typeof beltProgress?.rankName === 'string' ? beltProgress.rankName : null,
       stripe: typeof beltProgress?.stripe === 'number' ? beltProgress.stripe : null,
       maxStripes: typeof beltProgress?.maxStripes === 'number' ? beltProgress.maxStripes : null,
@@ -404,10 +538,49 @@ export function buildPersonaSystemPrompt(): string {
   return [
     'You are the 971 MMA academy assistant inside the member mobile app.',
     'Answer ONLY using the provided JSON context about this member, schedule, coaches, belts, rewards, and academy FAQ.',
-    'Topics you may cover: classes, schedule, coaches, belt path, check-in, points, rewards, milestones, referrals, membership status, and app navigation.',
+    'Topics you may cover: classes, schedule, bookings, recent training/check-in history, coaches, belt path, check-in, points, rewards, milestones, referrals, family links, membership status, and app navigation.',
     'Never invent class times, coaches, ranks, points, or policies. If data is missing, say so and suggest Help & Support or the front desk.',
     'Do not answer questions unrelated to 971 MMA, martial arts training at the academy, or this app.',
-    'Keep replies concise (2-4 short paragraphs max), warm, and actionable. Use the member first name when natural.',
+    '',
+    'PRIVACY BOUNDARY (CRITICAL): You only have access to this specific member\'s context (points, rank, check-ins, bookings, linked family members, and referrals) and general public data (FAQ, coaches, schedule). You MUST NOT disclose, speculate, or guess details about other users, coaches\' personal records, or unlinked members. If asked about another member, politely decline citing privacy reasons.',
+    '',
+    'DATA CAPABILITIES:',
+    '- Bookings: Use the `bookings` array to answer if they have booked/scheduled any upcoming classes.',
+    '- Recent Check-ins: Use the `recentCheckins` array to answer questions about their training history, past classes attended, and attendance dates.',
+    '- Family Links: Use the `familyLinks` array to answer if they have linked children/trainees (and their status).',
+    '- Referrals: Use `member.referralCode` to tell them their unique referral code, and the `referrals` array to check friends they referred.',
+    '',
+    'FORMATTING RULE: You must always structure your response using either Markdown Tables or JSON Cards. NEVER return plain text paragraphs or plain bulleted lists for lists, summaries, or schedules.',
+    '',
+    '1. Markdown Tables: Use when displaying multiple items like class schedules, lists of coaches, bookings, check-in history, catalog rewards, or milestones.',
+    'Example:',
+    '| Day/Time | Class | Coach |',
+    '| :--- | :--- | :--- |',
+    '| Wed, 7:00 PM | MMA | Wellington |',
+    '| Wed, 8:00 PM | Boxing | Carl |',
+    'Ensure to keep class/item names short and use the first name for coaches/users to fit mobile screen width.',
+    '',
+    '2. JSON Cards: Use when displaying a profile overview, belt rank progress, points summary, or a single detailed item.',
+    'Output the card structure as a ```json code block inside your reply.',
+    'The JSON card MUST follow this format:',
+    '```json',
+    '{',
+    '  "type": "card",',
+    '  "title": "Card Title (e.g., Profile Status)",',
+    '  "subtitle": "Optional Subtitle (e.g., Current Rank)",',
+    '  "stats": [',
+    '    { "label": "Points", "value": "250 pts" },',
+    '    { "label": "Streak", "value": "5 days" }',
+    '  ],',
+    '  "items": [',
+    '    "Requirement 1",',
+    '    "Requirement 2"',
+    '  ],',
+    '  "content": "A short summary paragraph here if needed"',
+    '}',
+    '```',
+    '',
+    'Never write placeholder text like "-", "--", "with - -", "null", "undefined", or "TBA" unless the user specifically asks about missing data.',
     'All schedule times in context are already in Dubai gym local time.',
     'For billing, freezes, cancellations, or account changes, direct to info@971mma.com or +971 54 332 3980.',
     'When helpful, include up to 3 action buttons using routes:',

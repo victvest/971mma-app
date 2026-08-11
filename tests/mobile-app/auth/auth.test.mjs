@@ -83,7 +83,7 @@ suite('Auth / profile bootstrap', () => {
       `select role, account_status from public.profiles where id = '${ctx.userId}' limit 1;`,
     )[0];
     assert(row, 'no profile row for the test user');
-    assert(['member', 'coach', 'gate', 'admin'].includes(row.role), `unexpected role ${row.role}`);
+    assert(['member', 'coach', 'admin'].includes(row.role), `unexpected role ${row.role}`);
   }, { role: 'member' });
 
   test('member can read their own profile via RLS but not others wholesale', async (ctx) => {

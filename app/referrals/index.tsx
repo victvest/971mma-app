@@ -7,6 +7,7 @@ import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavCh
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 import { ReferralProgramCard } from '@/features/rewards/components/ReferralProgramCard';
 import { useReferralCode } from '@/features/rewards/hooks/useReferrals';
+import { useAppSettings } from '@/features/rewards/hooks/useRewards';
 import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
@@ -31,17 +32,18 @@ export default function ReferralsScreen() {
   const canRefer = accountStatus === 'active' && !viewingChild;
 
   const referralCodeQuery = useReferralCode();
+  const appSettingsQuery = useAppSettings();
   const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
     triggerLightImpact();
     setRefreshing(true);
     try {
-      await referralCodeQuery.refetch();
+      await Promise.all([referralCodeQuery.refetch(), appSettingsQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
-  }, [referralCodeQuery]);
+  }, [referralCodeQuery, appSettingsQuery]);
 
   const scrollPadding = {
     paddingHorizontal: inset.lg,
@@ -50,7 +52,10 @@ export default function ReferralsScreen() {
   };
 
   return (
-    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['left', 'right']}>
+    <AppSafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background.primary }]}
+      edges={['left', 'right']}
+    >
       <View
         pointerEvents="box-none"
         style={[styles.floatingNav, { paddingTop: floatingNavTop, paddingHorizontal: inset.lg }]}
@@ -71,7 +76,10 @@ export default function ReferralsScreen() {
           <View style={styles.floatingNavTitleWrap}>
             <Text
               numberOfLines={1}
-              style={[typography.textPresets.bodyStrong, { color: colors.text.primary, textAlign: 'center' }]}
+              style={[
+                typography.textPresets.bodyStrong,
+                { color: colors.text.primary, textAlign: 'center' },
+              ]}
             >
               Refer and earn
             </Text>
@@ -97,10 +105,7 @@ export default function ReferralsScreen() {
           <AcademyEyebrow label="Referrals" accent showFlag={false} />
           <TabHeroTitle
             collapseOnWide
-            lines={[
-              [{ text: 'Refer and ' }],
-              [{ text: 'earn.', accent: true }],
-            ]}
+            lines={[[{ text: 'Refer and ' }], [{ text: 'earn.', accent: true }]]}
           />
         </View>
 
@@ -126,6 +131,7 @@ export default function ReferralsScreen() {
           <ReferralProgramCard
             referralCode={referralCodeQuery.data ?? null}
             isLoadingCode={referralCodeQuery.isLoading}
+            bonusPoints={appSettingsQuery.data?.referralBonusPoints ?? 250}
             compact
           />
         )}

@@ -3,10 +3,11 @@ import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ClassDetailView } from '@/features/schedule/components/ClassDetailView';
 import { useClassDetail } from '@/features/schedule/hooks/useSchedule';
-import { findCoachIdForClass } from '@/features/schedule/utils/classDisplay';
+import { findCoachIdForClass, isGymUsageClass } from '@/features/schedule/utils/classDisplay';
 import { useCoachDetail, useCoaches } from '@/features/coaches/hooks/useCoaches';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 
 export default function ClassDetailScreen() {
   const { colors, inset } = useTheme();
@@ -17,11 +18,13 @@ export default function ClassDetailScreen() {
 
   const classQuery = useClassDetail(classId);
   const item = classQuery.data;
+  const hideCoach = Boolean(item && isGymUsageClass(item));
 
   const coachesQuery = useCoaches();
   const coachId = useMemo(
-    () => (item ? findCoachIdForClass(coachesQuery.data ?? [], item) : null),
-    [coachesQuery.data, item],
+    () =>
+      item && !hideCoach ? findCoachIdForClass(coachesQuery.data ?? [], item) : null,
+    [coachesQuery.data, hideCoach, item],
   );
   const coachQuery = useCoachDetail(coachId ?? undefined);
 
@@ -35,7 +38,12 @@ export default function ClassDetailScreen() {
 
   if (classQuery.isLoading) {
     return (
-      <View style={[styles.stateWrap, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+      <View
+        style={[
+          styles.stateWrap,
+          { backgroundColor: colors.background.primary, padding: inset.lg },
+        ]}
+      >
         <StateBlock kind="loading" title="Loading class" message="Fetching session details…" />
       </View>
     );
@@ -43,11 +51,16 @@ export default function ClassDetailScreen() {
 
   if (classQuery.error) {
     return (
-      <View style={[styles.stateWrap, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+      <View
+        style={[
+          styles.stateWrap,
+          { backgroundColor: colors.background.primary, padding: inset.lg },
+        ]}
+      >
         <StateBlock
           kind="error"
           title="Could not load class"
-          message={classQuery.error instanceof Error ? classQuery.error.message : 'Please try again.'}
+          message={toUserFacingErrorMessage(classQuery.error, { fallback: 'Please try again.' })}
           actionLabel="Retry"
           onAction={() => classQuery.refetch()}
         />
@@ -57,7 +70,12 @@ export default function ClassDetailScreen() {
 
   if (!item) {
     return (
-      <View style={[styles.stateWrap, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+      <View
+        style={[
+          styles.stateWrap,
+          { backgroundColor: colors.background.primary, padding: inset.lg },
+        ]}
+      >
         <StateBlock
           kind="empty"
           title="Class not found"

@@ -3,7 +3,7 @@ import { StyleSheet, type StyleProp, type ViewStyle } from 'react-native';
 import Animated, { type AnimatedStyle } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/shared/theme';
-import { APP_BAR_SIDE_SLOT_WIDTH } from './appBarShared';
+import { APP_BAR_ICON_CLUSTER_SIZE, APP_BAR_SIDE_SLOT_WIDTH } from './appBarShared';
 import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 
@@ -35,10 +35,14 @@ function AppBarIconLayers({
 }) {
   return (
     <>
-      <Animated.View style={[StyleSheet.absoluteFill, appBarButtonStyles.iconLayer, layers.heroOpacityStyle]}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, appBarButtonStyles.iconLayer, layers.heroOpacityStyle]}
+      >
         <Ionicons name={name} size={size} color={heroColor} />
       </Animated.View>
-      <Animated.View style={[StyleSheet.absoluteFill, appBarButtonStyles.iconLayer, layers.solidOpacityStyle]}>
+      <Animated.View
+        style={[StyleSheet.absoluteFill, appBarButtonStyles.iconLayer, layers.solidOpacityStyle]}
+      >
         <Ionicons name={name} size={size} color={solidColor} />
       </Animated.View>
     </>
@@ -59,7 +63,8 @@ export function AppBarBackButton({
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
       borderRadius={NAV_CHROME.glassRadius}
-      contentStyle={{ width: NAV_CHROME.clusterHeight, height: NAV_CHROME.clusterHeight }}
+      style={appBarButtonStyles.iconCluster}
+      contentStyle={appBarButtonStyles.iconCluster}
     >
       {animatedIconLayers ? (
         <AppBarIconLayers
@@ -83,6 +88,7 @@ export function AppBarBackButton({
     <Animated.View
       style={[
         surfaceStyle,
+        appBarButtonStyles.iconCluster,
         {
           borderRadius: NAV_CHROME.glassRadius,
           overflow: 'hidden',
@@ -116,7 +122,8 @@ export function AppBarIconButton({
       onPress={onPress}
       accessibilityLabel={accessibilityLabel}
       borderRadius={NAV_CHROME.glassRadius}
-      contentStyle={{ width: NAV_CHROME.clusterHeight, height: NAV_CHROME.clusterHeight }}
+      style={appBarButtonStyles.iconCluster}
+      contentStyle={appBarButtonStyles.iconCluster}
     >
       {animatedIconLayers ? (
         <AppBarIconLayers
@@ -140,6 +147,7 @@ export function AppBarIconButton({
     <Animated.View
       style={[
         surfaceStyle,
+        appBarButtonStyles.iconCluster,
         {
           borderRadius: NAV_CHROME.glassRadius,
           overflow: 'hidden',
@@ -152,8 +160,13 @@ export function AppBarIconButton({
 }
 
 export const appBarButtonStyles = StyleSheet.create({
+  iconCluster: {
+    height: APP_BAR_ICON_CLUSTER_SIZE,
+    width: APP_BAR_ICON_CLUSTER_SIZE,
+  },
   sideSlot: {
     alignItems: 'center',
+    alignSelf: 'center',
     justifyContent: 'center',
     width: APP_BAR_SIDE_SLOT_WIDTH,
   },

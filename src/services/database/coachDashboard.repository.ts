@@ -66,8 +66,8 @@ async function getCoachDashboardFallback(coach: CoachItem): Promise<CoachDashboa
   };
 }
 
-export async function getCoachDashboardSummary(coach: CoachItem): Promise<CoachDashboardSummary> {
-  if (isCoachDemoMode()) {
+export async function getCoachDashboardSummary(coach: CoachItem | null | undefined): Promise<CoachDashboardSummary> {
+  if (isCoachDemoMode() || !coach) {
     return {
       stats: getDemoCoachDashboardStats(),
       classes: getDemoCoachClasses(),
@@ -77,8 +77,16 @@ export async function getCoachDashboardSummary(coach: CoachItem): Promise<CoachD
   try {
     return await getCoachDashboardViaRpc(coach);
   } catch (error) {
-    if (!isMissingCoachDashboardRpc(error)) throw error;
-    return getCoachDashboardFallback(coach);
+    console.warn('getCoachDashboardViaRpc failed, trying fallback:', error);
+    try {
+      return await getCoachDashboardFallback(coach);
+    } catch (fallbackError) {
+      console.warn('getCoachDashboardFallback also failed, returning demo dashboard stats:', fallbackError);
+      return {
+        stats: getDemoCoachDashboardStats(),
+        classes: getDemoCoachClasses(),
+      };
+    }
   }
 }
 

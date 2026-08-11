@@ -88,9 +88,8 @@ export function LiquidGlassSurface({
     const tint = mode === 'dark' ? 'systemUltraThinMaterialDark' : 'systemUltraThinMaterialLight';
 
     // Premium translucent overlay colors that blend nicely without looking flat or very grey
-    const glassBackgroundColor = mode === 'dark'
-      ? 'rgba(25, 25, 22, 0.45)'
-      : 'rgba(255, 255, 255, 0.55)';
+    const glassBackgroundColor =
+      mode === 'dark' ? 'rgba(25, 25, 22, 0.45)' : 'rgba(255, 255, 255, 0.55)';
 
     const resolvedBorderColor = showBorder
       ? mode === 'dark'
@@ -123,7 +122,8 @@ export function LiquidGlassSurface({
               {
                 borderTopLeftRadius: resolvedRadius,
                 borderTopRightRadius: resolvedRadius,
-                backgroundColor: mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.65)',
+                backgroundColor:
+                  mode === 'dark' ? 'rgba(255, 255, 255, 0.15)' : 'rgba(255, 255, 255, 0.65)',
               },
             ]}
           />
@@ -143,9 +143,12 @@ export function LiquidGlassSurface({
           borderRadius: resolvedRadius,
           borderWidth: shellBorderWidth,
           borderColor: showBorder ? colors.border.subtle : 'transparent',
-          backgroundColor: variant === 'chrome'
-            ? mode === 'dark' ? 'rgba(25, 25, 22, 0.92)' : 'rgba(255, 255, 255, 0.92)'
-            : colors.background.elevated,
+          backgroundColor:
+            variant === 'chrome'
+              ? mode === 'dark'
+                ? 'rgba(25, 25, 22, 0.92)'
+                : 'rgba(255, 255, 255, 0.92)'
+              : colors.background.elevated,
         },
         style,
       ]}

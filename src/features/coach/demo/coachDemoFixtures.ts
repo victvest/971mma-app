@@ -16,15 +16,13 @@ import type {
   CoachDashboardStats,
   CoachItem,
   CoachMemberSearchItem,
-  CommunityChannelItem,
   PromotionCandidateItem,
   UpsertCoachRankRequirementInput,
 } from '@/types/domain';
 
-export const DEMO_COMMUNITY_CHANNEL_PREFIX = 'demo-community-channel-';
-
 export const DEMO_COACH: CoachItem = {
   id: 'demo-coach-profile',
+  userId: null,
   mindbodyStaffId: '999001',
   name: 'Bahaa',
   specialty: 'Brazilian Jiu-Jitsu',
@@ -35,10 +33,17 @@ export const DEMO_COACH: CoachItem = {
   isHeadCoach: true,
   coachingPhilosophy: null,
   yearsExperience: 12,
+  yearsMartialArts: null,
+  yearsCoaching: 12,
   fightRecord: null,
   titles: [],
   certifications: [],
   languages: ['English', 'Arabic'],
+  nickname: null,
+  statusAchievements: [],
+  experienceHighlights: [],
+  coachingStyle: [],
+  inviteBlurb: null,
 };
 
 /** Demo coach is BJJ-only — mirrors separate coach accounts per rank discipline. */
@@ -50,63 +55,6 @@ export const DEMO_COACH_ASSIGNED_DISCIPLINES = [
     hasRankProgression: true,
   },
 ] as const;
-
-export const DEMO_COMMUNITY_CHANNELS: CommunityChannelItem[] = [
-  {
-    id: 'demo-community-channel-bjj',
-    title: 'Bahaa · Brazilian Jiu-Jitsu',
-    description: null,
-    visibility: 'public',
-    channelKind: 'community',
-    disciplineId: 'demo-discipline-bjj',
-    disciplineName: 'Brazilian Jiu-Jitsu',
-    disciplineSlug: 'bjj',
-    coachId: DEMO_COACH.id,
-    coachName: DEMO_COACH.name,
-    coachAvatarUrl: null,
-    latestPostAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
-    lastMessageAt: new Date(Date.now() - 2 * 24 * 60 * 60_000).toISOString(),
-    lastMessagePreview: 'Open mat this Saturday — bring your gi.',
-    unreadCount: 0,
-    memberCount: 48,
-    isCoachOwner: true,
-    joinedAt: new Date(Date.now() - 30 * 24 * 60 * 60_000).toISOString(),
-    canJoin: false,
-  },
-  {
-    id: 'demo-community-channel-nogi',
-    title: 'Bahaa · No-Gi',
-    description: null,
-    visibility: 'private',
-    channelKind: 'group',
-    disciplineId: 'demo-discipline-bjj',
-    disciplineName: 'No-Gi',
-    disciplineSlug: 'nogi',
-    coachId: DEMO_COACH.id,
-    coachName: DEMO_COACH.name,
-    coachAvatarUrl: null,
-    latestPostAt: null,
-    lastMessageAt: null,
-    lastMessagePreview: null,
-    unreadCount: 0,
-    memberCount: 31,
-    isCoachOwner: true,
-    joinedAt: new Date(Date.now() - 20 * 24 * 60 * 60_000).toISOString(),
-    canJoin: false,
-  },
-];
-
-export function getDemoCoachCommunityChannels(): CommunityChannelItem[] {
-  return DEMO_COMMUNITY_CHANNELS.map((channel) => ({ ...channel }));
-}
-
-export function isDemoCommunityChannelId(channelId: string): boolean {
-  return channelId.startsWith(DEMO_COMMUNITY_CHANNEL_PREFIX);
-}
-
-export function getDemoCommunityChannels(): CommunityChannelItem[] {
-  return getDemoCoachCommunityChannels();
-}
 
 function gymTodayIso(hour: number, minute = 0): string {
   const today = gymDayKey();
@@ -288,7 +236,10 @@ export function getDemoCoachDashboardStats(): CoachDashboardStats {
 const DEMO_ROLL_CALL_DECK: RollCallDeckMember[] = buildRollCallMockDeck(14);
 
 export function getDemoRollCallDeck(): RollCallDeckMember[] {
-  return DEMO_ROLL_CALL_DECK.map((member) => ({ ...member, mark: member.mark ? { ...member.mark } : null }));
+  return DEMO_ROLL_CALL_DECK.map((member) => ({
+    ...member,
+    mark: member.mark ? { ...member.mark } : null,
+  }));
 }
 
 function deckMemberToRosterVisitor(member: RollCallDeckMember): ClassRosterVisitor {
@@ -378,7 +329,10 @@ function buildDemoRequirementsForUser(userId: string): BeltRequirementItem[] {
   });
 }
 
-function syncDemoCandidateFromRequirements(userId: string, requirements: BeltRequirementItem[]): void {
+function syncDemoCandidateFromRequirements(
+  userId: string,
+  requirements: BeltRequirementItem[],
+): void {
   const candidate = DEMO_PROMOTION_CANDIDATES.find((item) => item.userId === userId);
   if (!candidate) return;
 
@@ -546,6 +500,8 @@ export function upsertDemoCoachRankRequirement(
 }
 
 export function deleteDemoCoachRankRequirement(requirementId: string): CoachCurriculumSummary {
-  demoCurriculumRequirements = demoCurriculumRequirements.filter((item) => item.id !== requirementId);
+  demoCurriculumRequirements = demoCurriculumRequirements.filter(
+    (item) => item.id !== requirementId,
+  );
   return getDemoCoachRankCurriculum('bjj');
 }

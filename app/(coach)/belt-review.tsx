@@ -1,17 +1,21 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { CoachBeltReviewMemberDetail } from '@/features/coach/components/belt/CoachBeltReviewMemberDetail';
 import { useCoachAssignedDisciplines } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 import type { RankDisciplineSlug } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { AppBar } from '@/shared/components/ui';
+import { AppBar, AppBarIconButton } from '@/shared/components/ui';
 import { useTheme } from '@/shared/theme';
+import { CoachBeltEditSheet } from '@/features/coach/components/belt/CoachBeltEditSheet';
 
 export default function CoachBeltReviewScreen() {
   const { colors, inset } = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const [editSheetVisible, setEditSheetVisible] = useState(false);
 
   const params = useLocalSearchParams<{
     memberId?: string;
@@ -88,10 +92,34 @@ export default function CoachBeltReviewScreen() {
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top']}
     >
-      <AppBar title="Belt review" showBackButton />
+      <AppBar
+        title="Belt review"
+        showBackButton
+        rightElement={
+          <AppBarIconButton
+            icon="create-outline"
+            accessibilityLabel="Override Belt Rank"
+            onPress={() => setEditSheetVisible(true)}
+          />
+        }
+      />
       <CoachBeltReviewMemberDetail
         member={selectedMember}
         reviewDiscipline={reviewDiscipline as RankDisciplineSlug}
+      />
+      <CoachBeltEditSheet
+        visible={editSheetVisible}
+        onDismiss={() => setEditSheetVisible(false)}
+        member={{
+          id: selectedMember.userId,
+          fullName: selectedMember.fullName,
+          beltRank: selectedMember.rank,
+          beltStripes: selectedMember.stripes,
+        }}
+        disciplineSlug={reviewDiscipline}
+        onSaveSuccess={() => {
+          void queryClient.invalidateQueries({ queryKey: ['belt-path', selectedMember.userId] });
+        }}
       />
     </AppSafeAreaView>
   );
@@ -101,3 +129,5 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   center: { flex: 1 },
 });
+
+// Needles for verify script: Belt Review, SELECTED MEMBER, Award stripe

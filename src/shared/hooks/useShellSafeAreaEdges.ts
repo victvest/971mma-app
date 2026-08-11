@@ -20,6 +20,7 @@ export function useShellSafeAreaEdges(edges?: Edges): Edges | undefined {
   }
 
   const base: Edge[] = edges ?? DEFAULT_EDGES;
-  const filtered = base.filter((edge) => edge !== 'top');
-  return filtered.length > 0 ? filtered : undefined;
+  // Empty array is intentional: it means "no safe-area edges".
+  // Returning undefined would re-apply the default edges (including top).
+  return base.filter((edge) => edge !== 'top');
 }

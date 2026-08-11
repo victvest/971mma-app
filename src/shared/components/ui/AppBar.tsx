@@ -18,6 +18,8 @@ interface AppBarProps {
   floating?: boolean;
   /** Extra space below the bar content (adds height from the bottom edge). */
   bottomInset?: number;
+  /** Allow long titles to wrap without colliding with side actions. Default 1. */
+  titleNumberOfLines?: number;
 }
 
 export function AppBar({
@@ -27,10 +29,12 @@ export function AppBar({
   fallbackHref,
   rightElement,
   floating = false,
-  bottomInset = 0,
+  bottomInset,
+  titleNumberOfLines = 1,
 }: AppBarProps) {
   const theme = useTheme();
-  const { inset } = theme;
+  const { inset, appBarShadow } = theme;
+  const resolvedBottomInset = bottomInset ?? theme.layout.appBarBottomInset;
   const router = useRouter();
   const role = useAuthStore((state) => state.role);
   const topInset = useAppTopInset();
@@ -46,9 +50,13 @@ export function AppBar({
   };
 
   const barHeight = theme.layout.headerHeight;
-  const resolvedHeight = floating ? barHeight + topInset + bottomInset : barHeight + bottomInset;
+  const resolvedHeight = floating
+    ? barHeight + topInset + resolvedBottomInset
+    : barHeight + resolvedBottomInset;
   const resolvedPaddingTop = floating ? topInset : 0;
-  const resolvedPaddingBottom = bottomInset;
+  const resolvedPaddingBottom = resolvedBottomInset;
+
+  const allowsMultilineTitle = titleNumberOfLines > 1;
 
   const content = (
     <>
@@ -56,7 +64,14 @@ export function AppBar({
         {showBackButton ? <AppBarBackButton onPress={handleBack} /> : null}
       </View>
 
-      <Text numberOfLines={1} style={[styles.title, getAppBarTitleStyle(theme)]}>
+      <Text
+        numberOfLines={titleNumberOfLines}
+        style={[
+          styles.title,
+          getAppBarTitleStyle(theme),
+          allowsMultilineTitle && styles.titleMultiline,
+        ]}
+      >
         {title}
       </Text>
 
@@ -73,11 +88,9 @@ export function AppBar({
       showBorder={false}
       style={[
         styles.shell,
-        styles.shadow,
+        appBarShadow(),
         floating && styles.floating,
-        {
-          height: resolvedHeight,
-        },
+        allowsMultilineTitle ? { minHeight: resolvedHeight } : { height: resolvedHeight },
       ]}
       contentStyle={[
         styles.row,
@@ -86,6 +99,7 @@ export function AppBar({
           paddingBottom: resolvedPaddingBottom,
           paddingHorizontal: inset.md,
         },
+        allowsMultilineTitle && styles.rowMultiline,
       ]}
     >
       {content}
@@ -114,15 +128,16 @@ const styles = StyleSheet.create({
   title: {
     flex: 1,
     flexShrink: 1,
+    minWidth: 0,
+  },
+  titleMultiline: {
+    lineHeight: 22,
+  },
+  rowMultiline: {
+    alignItems: 'center',
+    paddingVertical: 6,
   },
   rightPlaceholder: {
     width: APP_BAR_SIDE_SLOT_WIDTH,
-  },
-  shadow: {
-    shadowColor: '#000000',
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
   },
 });

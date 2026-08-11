@@ -2,6 +2,7 @@ import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2.108.
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireRole, requireUser } from '../_shared/jwt.ts';
+import { verifyMemberQrToken } from '../_shared/memberQrToken.ts';
 import { mbFetch } from '../_shared/mindbody.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
@@ -18,98 +19,6 @@ type ArrivalResponse = {
 
 function shouldWriteArrivals(): boolean {
   return Deno.env.get('MB_WRITE_ARRIVALS') === 'true';
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function hmacSha256(secret: string, payload: string): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-  return new Uint8Array(sig);
-}
-
-function timingSafeEqual(a: string, b: string): boolean {
-  const aBytes = new TextEncoder().encode(a);
-  const bBytes = new TextEncoder().encode(b);
-  const len = Math.max(aBytes.length, bBytes.length);
-  let diff = aBytes.length ^ bBytes.length;
-  for (let i = 0; i < len; i++) {
-    diff |= (aBytes[i] ?? 0) ^ (bBytes[i] ?? 0);
-  }
-  return diff === 0;
-}
-
-async function verifyToken(
-  token: string,
-  secret: string,
-): Promise<{ memberId: string; jti: string }> {
-  const parts = token.split(':');
-
-  if (parts.length !== 7 || parts[0] !== '971mma' || parts[1] !== 'v2') {
-    throw new MbError('TOKEN_INVALID', 'Invalid token format.');
-  }
-
-  const [, , source, memberId, expStr, jti, sig] = parts;
-
-  if (source !== 'supabase' && source !== 'mindbody') {
-    throw new MbError('TOKEN_INVALID', 'Invalid token source.');
-  }
-  if (!memberId || !expStr || !jti || !sig) {
-    throw new MbError('TOKEN_INVALID', 'Malformed token fields.');
-  }
-
-  const expEpoch = parseInt(expStr, 10);
-  if (!Number.isFinite(expEpoch)) throw new MbError('TOKEN_INVALID', 'Invalid token expiry.');
-  if (expEpoch < Math.floor(Date.now() / 1000)) {
-    throw new MbError('TOKEN_EXPIRED', 'QR code has expired.');
-  }
-
-  const sigPayload = `${source}:${memberId}:${expEpoch}:${jti}`;
-  const expectedBytes = await hmacSha256(secret, sigPayload);
-  const expected = toBase64Url(expectedBytes);
-
-  if (!timingSafeEqual(expected, sig)) {
-    throw new MbError('TOKEN_INVALID', 'Invalid token signature.');
-  }
-
-  return { memberId, jti };
-}
-
-async function consumeToken(svc: SupabaseClient, jti: string, memberId: string): Promise<void> {
-  const { data, error } = await svc
-    .from('qr_tokens')
-    .update({ consumed_at: new Date().toISOString() })
-    .eq('jti', jti)
-    .eq('user_id', memberId)
-    .is('consumed_at', null)
-    .select('id')
-    .maybeSingle();
-
-  if (error) throw new MbError('UPSTREAM_ERROR', 'Unable to consume QR token.');
-  if (!data) throw new MbError('TOKEN_REPLAYED', 'QR code has already been used.');
-}
-
-async function isTokenConsumed(svc: SupabaseClient, jti: string): Promise<boolean> {
-  const { data, error } = await svc
-    .from('qr_tokens')
-    .select('consumed_at')
-    .eq('jti', jti)
-    .maybeSingle<{ consumed_at: string | null }>();
-
-  if (error) throw new MbError('UPSTREAM_ERROR', 'Unable to read QR token.');
-  return Boolean(data?.consumed_at);
 }
 
 async function resolveClientId(svc: SupabaseClient, userId: string): Promise<string> {
@@ -194,24 +103,29 @@ Deno.serve(async (req) => {
     const svc = serviceClient();
 
     let targetUserId: string;
-    let pendingJti: string | null = null;
     let presentedBy: string | null = null;
 
-    let checkInMethod: 'qr_scan' | 'coach_roster';
+    let checkInMethod: 'coach_roster';
 
     if (body.token) {
       requireRole(caller, ['coach', 'admin']);
-      const secret = Deno.env.get('QR_SIGNING_SECRET');
-      if (!secret) throw new MbError('UPSTREAM_ERROR', 'QR signing not configured.');
 
-      const { memberId, jti } = await verifyToken(body.token, secret);
-      targetUserId = memberId;
-      pendingJti = jti;
-      checkInMethod = 'qr_scan';
-
-      if (await isTokenConsumed(svc, jti)) {
-        throw new MbError('TOKEN_REPLAYED', 'QR code has already been used.');
+      // Facility entry is SALTO-only (member shows QR to Gantner). The legacy path
+      // where a coach scanned a member QR *without* a class created method=qr_scan
+      // facility rows and consumed the same jti SALTO needs — that raced the gate.
+      // Class attendance must go through Run Class / roll-call (record_roll_call_mark).
+      if (!body.classId?.trim()) {
+        throw new MbError(
+          'BAD_REQUEST',
+          'Facility check-in is handled by the academy gate scanner. For class attendance, open Run Class and scan from roll call.',
+        );
       }
+
+      const { memberId, jti } = await verifyMemberQrToken(body.token);
+      targetUserId = memberId;
+      // Class-linked coach scan — never occupy the facility unique index (gate_scan/qr_scan)
+      // and never consume the member QR (SALTO owns one-shot at the academy gate).
+      checkInMethod = 'coach_roster';
 
       const tokenMeta = await getTokenPresenter(svc, jti);
       presentedBy = tokenMeta?.presentedBy ?? null;
@@ -245,10 +159,6 @@ Deno.serve(async (req) => {
         'ALREADY_CHECKED_IN',
         'Already checked in today. One visit per gym day.',
       );
-    }
-
-    if (pendingJti) {
-      await consumeToken(svc, pendingJti, targetUserId);
     }
 
     const memberName = await getMemberName(svc, targetUserId);

@@ -4,7 +4,7 @@ export const PERSONA_ACADEMY_FAQ = [
     id: 'checkin',
     question: 'How does QR check-in work?',
     answer:
-      'Open the Check-in tab and choose Scan entrance. Point your camera at the QR code by the door — location is verified at the academy. You can also switch to My pass to show your personal QR for roll call. Both codes refresh automatically.',
+      'Open the Check-in tab and show your member QR pass to the gate reader. Coaches can also scan the same pass during roll call if needed. The pass refreshes automatically.',
   },
   {
     id: 'programs',
@@ -53,7 +53,7 @@ export const PERSONA_ACADEMY_FAQ = [
 export const PERSONA_APP_AREAS = [
   { id: 'home', name: 'Home', description: 'Dashboard with upcoming classes, streak, points, and belt snapshot.' },
   { id: 'schedule', name: 'Schedule', description: 'Browse and open class details for the full weekly timetable.' },
-  { id: 'checkin', name: 'Check-in', description: 'Scan entrance QR or show your member pass QR.' },
+  { id: 'checkin', name: 'Check-in', description: 'Show your member QR pass for academy access or roll call.' },
   { id: 'coaches', name: 'Coaches', description: 'Coach profiles, bios, specialties, and their upcoming classes.' },
   { id: 'belt-path', name: 'Belt Path', description: 'Rank, stripes, promotion history, and requirement checklist.' },
   { id: 'rewards', name: 'Rewards', description: 'Points balance, tier, milestones, catalog, and redemptions.' },

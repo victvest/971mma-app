@@ -13,7 +13,7 @@ type Props = {
 };
 
 export const MilestoneRow = memo(function MilestoneRow({ item, progressPct }: Props) {
-  const { colors, typography, radius, layout, shadows } = useTheme();
+  const { colors, typography, radius, layout, surfaceShadow } = useTheme();
   const imageSource = resolveMilestoneImage(item);
 
   const isEarned = item.status === 'earned';
@@ -25,7 +25,7 @@ export const MilestoneRow = memo(function MilestoneRow({ item, progressPct }: Pr
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -52,7 +52,9 @@ export const MilestoneRow = memo(function MilestoneRow({ item, progressPct }: Pr
           transition={200}
           accessibilityLabel={item.name}
         />
-        {isLocked ? <View style={[styles.imageDim, { backgroundColor: colors.background.overlay }]} /> : null}
+        {isLocked ? (
+          <View style={[styles.imageDim, { backgroundColor: colors.background.overlay }]} />
+        ) : null}
       </View>
 
       <View style={styles.content}>
@@ -112,7 +114,12 @@ export const MilestoneRow = memo(function MilestoneRow({ item, progressPct }: Pr
             </Text>
           </View>
         ) : (
-          <Ionicons name="lock-closed" size={16} color={colors.accent.default} style={{ opacity: 0.45 }} />
+          <Ionicons
+            name="lock-closed"
+            size={16}
+            color={colors.accent.default}
+            style={{ opacity: 0.45 }}
+          />
         )}
       </View>
     </View>

@@ -10,6 +10,7 @@ export function StartupBackgroundMonitor() {
   const { initializing } = useAuth();
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.id ?? null);
+  const isDemoUser = useAuthStore((state) => state.user?.demo === true);
 
   useEffect(() => {
     if (initializing) return;
@@ -19,8 +20,8 @@ export function StartupBackgroundMonitor() {
       return;
     }
 
-    scheduleStartupBackgroundWork(userId);
-  }, [initializing, isAuthenticated, userId]);
+    scheduleStartupBackgroundWork(userId, { skipMindbodyLink: isDemoUser });
+  }, [initializing, isAuthenticated, isDemoUser, userId]);
 
   return null;
 }

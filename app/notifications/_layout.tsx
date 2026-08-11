@@ -21,7 +21,12 @@ export default function NotificationsLayout() {
   return (
     <>
       <NotificationsStatusBar />
-      <Stack screenOptions={{ ...createStackScreenOptions(colors.background.primary, 'push'), headerShown: false }}>
+      <Stack
+        screenOptions={{
+          ...createStackScreenOptions(colors.background.primary, 'push'),
+          headerShown: false,
+        }}
+      >
         <Stack.Screen name="index" />
         <Stack.Screen name="preferences" />
       </Stack>

@@ -5,13 +5,8 @@ import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
 export function ScheduleSectionHeader() {
   return (
     <View style={styles.container}>
-      <AcademyEyebrow label="Schedule" accent showFlag={false} />
-      <TabHeroTitle
-        lines={[
-          [{ text: 'Today' }],
-          [{ text: 'on the mat.', accent: true }],
-        ]}
-      />
+      <AcademyEyebrow label="Classes" accent showFlag={false} />
+      <TabHeroTitle lines={[[{ text: 'Today' }], [{ text: 'on the mat.', accent: true }]]} />
     </View>
   );
 }

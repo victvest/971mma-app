@@ -1,11 +1,4 @@
-
-
-import type {
-  MemberProfile,
-  MemberRef,
-  Membership,
-  ProfilePatch,
-} from '@/types/domain';
+import type { MemberProfile, MemberRef, Membership, ProfilePatch } from '@/types/domain';
 
 export type ProviderSource = 'supabase' | 'mindbody';
 
@@ -32,5 +25,4 @@ export interface DirectoryProvider {
   refreshCoaches(options?: { force?: boolean }): Promise<{ refreshed: boolean; count?: number }>;
 }
 
-export interface IntegrationProvider
-  extends MemberProvider, ScheduleProvider, DirectoryProvider {}
+export interface IntegrationProvider extends MemberProvider, ScheduleProvider, DirectoryProvider {}

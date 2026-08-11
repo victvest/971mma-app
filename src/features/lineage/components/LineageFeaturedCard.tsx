@@ -52,8 +52,15 @@ export function LineageFeaturedCard({ entries }: LineageFeaturedCardProps) {
         style={styles.imageBg}
         borderRadius={radius.cardLarge}
       >
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surface.promo, opacity: 0.72 }]} />
-        <View style={[styles.bottomScrim, { backgroundColor: colors.media.scrimBottom, opacity: 0.92 }]} />
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: colors.surface.promo, opacity: 0.72 },
+          ]}
+        />
+        <View
+          style={[styles.bottomScrim, { backgroundColor: colors.media.scrimBottom, opacity: 0.92 }]}
+        />
         <View style={[styles.content, { padding: inset.lg, gap: gap.md }]}>
           <View style={styles.logoRow}>
             <Image

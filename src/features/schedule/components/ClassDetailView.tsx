@@ -1,23 +1,50 @@
 import React, { useMemo, useCallback } from 'react';
-import { StyleSheet, View, Text, Pressable, Linking, Platform, useWindowDimensions, Share } from 'react-native';
+import {
+  StyleSheet,
+  View,
+  Text,
+  Pressable,
+  Linking,
+  Platform,
+  useWindowDimensions,
+  Share,
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { AlertTriangle, Calendar, MapPin } from 'lucide-react-native';
-import Animated, { useAnimatedScrollHandler, useSharedValue, useAnimatedStyle, interpolate, Extrapolation } from 'react-native-reanimated';
+import Animated, {
+  useAnimatedScrollHandler,
+  useSharedValue,
+  useAnimatedStyle,
+  interpolate,
+  Extrapolation,
+} from 'react-native-reanimated';
 
-import { isClassLiveNow, isClassUpcoming, GYM_TIME_ZONE, formatGymTime12h } from '@/core/time/gymTime';
+import {
+  isClassLiveNow,
+  isClassUpcoming,
+  GYM_TIME_ZONE,
+  formatGymTime12h,
+} from '@/core/time/gymTime';
 import type { ClassItem, CoachItem } from '@/types/domain';
 import {
   CLASS_REMINDER_BAR_HEIGHT,
   ClassReminderSubscribeBar,
 } from '@/features/schedule/components/ClassReminderSubscribeBar';
-import { getCoachImageSource, getCoachRatingLabel } from '@/features/coaches/components/CoachVisuals';
+import {
+  getCoachImageSource,
+  getCoachRatingLabel,
+} from '@/features/coaches/components/CoachVisuals';
 import { GlassNavChrome, GlassSurface } from '@/features/home/components/navigation/GlassNavChrome';
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 import { resolveClassImage } from '@/features/schedule/utils/classImages';
-import { formatDisciplineLabel, plainClassDescription } from '@/features/schedule/utils/classDisplay';
+import {
+  formatDisciplineLabel,
+  isGymUsageClass,
+  plainClassDescription,
+} from '@/features/schedule/utils/classDisplay';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { triggerLightImpact, triggerMediumImpact } from '@/shared/haptics';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -54,6 +81,8 @@ export function ClassDetailView({
 
   const openSpots = item.capacity > 0 ? Math.max(item.capacity - item.bookedCount, 0) : null;
 
+  const hideCoachSection = isGymUsageClass(item);
+
   const coachDisplayName = useMemo(() => {
     const name = coach?.name ?? item.coachName;
     return name.trim().toLowerCase().startsWith('coach') ? name : `Coach ${name}`;
@@ -84,7 +113,10 @@ export function ClassDetailView({
 
   const calendarHeadline = `${weekdayLong} • ${timeStr} • ${item.durationMinutes} min`;
 
-  const classDescription = useMemo(() => plainClassDescription(item.description), [item.description]);
+  const classDescription = useMemo(
+    () => plainClassDescription(item.description),
+    [item.description],
+  );
   const disciplineLabel = useMemo(() => formatDisciplineLabel(item), [item]);
 
   const handleScroll = useAnimatedScrollHandler({
@@ -100,11 +132,16 @@ export function ClassDetailView({
           scrollY.value,
           [-100, 0, heroHeight],
           [-30, 0, heroHeight * 0.25],
-          Extrapolation.CLAMP
+          Extrapolation.CLAMP,
         ),
       },
       {
-        scale: interpolate(scrollY.value, [-100, 0, heroHeight], [1.15, 1.0, 1.1], Extrapolation.CLAMP),
+        scale: interpolate(
+          scrollY.value,
+          [-100, 0, heroHeight],
+          [1.15, 1.0, 1.1],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
   }));
@@ -113,17 +150,20 @@ export function ClassDetailView({
   const isFull = openSpots === 0;
   const isAlmostFull = openSpots !== null && openSpots > 0 && openSpots <= 5;
   const statusColor = isFull || isAlmostFull ? '#D71920' : '#007A33';
-  const spotsRemainingLabel = openSpots === null
-    ? 'Open floor session'
-    : openSpots === 0
-      ? 'No spots remaining'
-      : `${openSpots} spot${openSpots === 1 ? '' : 's'} remaining`;
+  const spotsRemainingLabel =
+    openSpots === null
+      ? 'Open floor session'
+      : openSpots === 0
+        ? 'No spots remaining'
+        : `${openSpots} spot${openSpots === 1 ? '' : 's'} remaining`;
 
   const coachRoleLabel = useMemo(() => {
     if (coachLoading) return 'Loading profile…';
     const specialty = (coach?.specialty?.split(',')[0] ?? item.discipline) || 'MMA';
     const rating =
-      coach?.rating !== null && coach?.rating !== undefined ? ` · ${getCoachRatingLabel(coach)}★` : '';
+      coach?.rating !== null && coach?.rating !== undefined
+        ? ` · ${getCoachRatingLabel(coach)}★`
+        : '';
     if (coach?.isHeadCoach) {
       return `Head ${specialty} Instructor${rating}`;
     }
@@ -131,11 +171,7 @@ export function ClassDetailView({
   }, [coach, coach?.isHeadCoach, coach?.rating, coach?.specialty, coachLoading, item.discipline]);
 
   const capacityTotal = item.capacity > 0 ? item.capacity : 30;
-  const statusHeadline = isFull
-    ? 'Full'
-    : isAlmostFull
-      ? 'Almost Full'
-      : 'Open';
+  const statusHeadline = isFull ? 'Full' : isAlmostFull ? 'Almost Full' : 'Open';
   const showStatusWarning = isFull || isAlmostFull;
 
   const openLocation = () => {
@@ -144,9 +180,7 @@ export function ClassDetailView({
     // Open the platform's native maps app rather than always Apple Maps
     // (which falls back to a browser on Android).
     const url =
-      Platform.OS === 'android'
-        ? `geo:0,0?q=${query}`
-        : `https://maps.apple.com/?q=${query}`;
+      Platform.OS === 'android' ? `geo:0,0?q=${query}` : `https://maps.apple.com/?q=${query}`;
     void Linking.openURL(url);
   };
 
@@ -182,7 +216,12 @@ export function ClassDetailView({
         {/* Hero Image */}
         <View style={[styles.hero, { height: heroHeight }]}>
           <Animated.View style={[StyleSheet.absoluteFill, heroImageStyle]}>
-            <Image source={imageSource} contentFit="cover" style={StyleSheet.absoluteFill} transition={200} />
+            <Image
+              source={imageSource}
+              contentFit="cover"
+              style={StyleSheet.absoluteFill}
+              transition={200}
+            />
           </Animated.View>
           <UaeBrandAmbientGlow variant="photo-hero" topInset={safeInsets.top} />
         </View>
@@ -191,40 +230,38 @@ export function ClassDetailView({
         <View style={styles.floatingCardWrap}>
           <View style={styles.floatingCard}>
             <View style={styles.floatingCardContent}>
-            <View style={styles.tagRow}>
-              {item.discipline ? (
-                <View style={styles.disciplineTag}>
-                  <Text style={styles.disciplineTagText}>
-                    {item.discipline.trim().toUpperCase()}
-                  </Text>
-                </View>
-              ) : null}
-              {item.level ? (
-                <View style={styles.levelTag}>
-                  <Text style={styles.levelTagText}>
-                    {item.level.trim().toUpperCase()}
-                  </Text>
-                </View>
-              ) : null}
-              {live && !item.isCancelled ? (
-                <View style={styles.liveTag}>
-                  <Text style={styles.liveTagText}>LIVE</Text>
-                </View>
-              ) : item.isCancelled ? (
-                <View style={styles.cancelledTag}>
-                  <Text style={styles.liveTagText}>CANCELLED</Text>
-                </View>
-              ) : null}
-            </View>
+              <View style={styles.tagRow}>
+                {item.discipline ? (
+                  <View style={styles.disciplineTag}>
+                    <Text style={styles.disciplineTagText}>
+                      {item.discipline.trim().toUpperCase()}
+                    </Text>
+                  </View>
+                ) : null}
+                {item.level ? (
+                  <View style={styles.levelTag}>
+                    <Text style={styles.levelTagText}>{item.level.trim().toUpperCase()}</Text>
+                  </View>
+                ) : null}
+                {live && !item.isCancelled ? (
+                  <View style={styles.liveTag}>
+                    <Text style={styles.liveTagText}>LIVE</Text>
+                  </View>
+                ) : item.isCancelled ? (
+                  <View style={styles.cancelledTag}>
+                    <Text style={styles.liveTagText}>CANCELLED</Text>
+                  </View>
+                ) : null}
+              </View>
 
-            <Text style={styles.title}>{item.title}</Text>
+              <Text style={styles.title}>{item.title}</Text>
 
-            <View style={styles.calendarRow}>
-              <Calendar size={16} color="#007A33" style={styles.calendarIcon} />
-              <Text style={styles.calendarText}>{calendarHeadline}</Text>
-            </View>
+              <View style={styles.calendarRow}>
+                <Calendar size={16} color="#007A33" style={styles.calendarIcon} />
+                <Text style={styles.calendarText}>{calendarHeadline}</Text>
+              </View>
 
-            <Text style={styles.disciplineLine}>{disciplineLabel}</Text>
+              <Text style={styles.disciplineLine}>{disciplineLabel}</Text>
             </View>
           </View>
         </View>
@@ -242,32 +279,36 @@ export function ClassDetailView({
             </GlassSurface>
           ) : null}
 
-          {/* Instructor profile card */}
-          <Pressable
-            onPress={canOpenCoach ? onOpenCoach : undefined}
-            disabled={!canOpenCoach}
-            style={({ pressed }) => [pressed && canOpenCoach && styles.detailCardPressed]}
-            accessibilityRole={canOpenCoach ? 'button' : undefined}
-            accessibilityLabel={canOpenCoach ? `View ${coachDisplayName} profile` : coachDisplayName}
-          >
-            <GlassSurface
-              borderRadius={32}
-              style={styles.detailCardGlass}
-              contentStyle={styles.detailCardContent}
+          {/* Instructor profile — omitted for Gym Usage (open floor, no coach). */}
+          {!hideCoachSection ? (
+            <Pressable
+              onPress={canOpenCoach ? onOpenCoach : undefined}
+              disabled={!canOpenCoach}
+              style={({ pressed }) => [pressed && canOpenCoach && styles.detailCardPressed]}
+              accessibilityRole={canOpenCoach ? 'button' : undefined}
+              accessibilityLabel={
+                canOpenCoach ? `View ${coachDisplayName} profile` : coachDisplayName
+              }
             >
-              <Image
-                source={getCoachImageSource(coach)}
-                contentFit="cover"
-                cachePolicy="memory-disk"
-                style={styles.instructorAvatarLarge}
-              />
-              <Text style={styles.instructorNameCentered}>{coachDisplayName}</Text>
-              <Text style={styles.instructorRoleCentered}>{coachRoleLabel}</Text>
-              {instructorBio ? (
-                <Text style={styles.instructorBioCentered}>{instructorBio}</Text>
-              ) : null}
-            </GlassSurface>
-          </Pressable>
+              <GlassSurface
+                borderRadius={32}
+                style={styles.detailCardGlass}
+                contentStyle={styles.detailCardContent}
+              >
+                <Image
+                  source={getCoachImageSource(coach)}
+                  contentFit="cover"
+                  cachePolicy="memory-disk"
+                  style={styles.instructorAvatarLarge}
+                />
+                <Text style={styles.instructorNameCentered}>{coachDisplayName}</Text>
+                <Text style={styles.instructorRoleCentered}>{coachRoleLabel}</Text>
+                {instructorBio ? (
+                  <Text style={styles.instructorBioCentered}>{instructorBio}</Text>
+                ) : null}
+              </GlassSurface>
+            </Pressable>
+          ) : null}
 
           {/* Location card */}
           <GlassSurface
@@ -284,7 +325,10 @@ export function ClassDetailView({
                 onPress={openLocation}
                 accessibilityRole="button"
                 accessibilityLabel="Open location in maps"
-                style={({ pressed }) => [styles.locationAction, pressed && styles.locationActionPressed]}
+                style={({ pressed }) => [
+                  styles.locationAction,
+                  pressed && styles.locationActionPressed,
+                ]}
               >
                 <MapPin size={20} color="#333333" strokeWidth={2.2} />
               </Pressable>
@@ -339,7 +383,6 @@ export function ClassDetailView({
             <Text style={styles.spotsRemaining}>{spotsRemainingLabel}</Text>
             <View style={styles.capacityDivider} />
           </GlassSurface>
-
         </View>
       </Animated.ScrollView>
 
@@ -423,12 +466,15 @@ const styles = StyleSheet.create({
     borderColor: '#EFEFEF',
     borderRadius: 24,
     borderWidth: 1,
-    elevation: 2,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
     width: '100%',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.04,
+        shadowRadius: 8,
+      },
+    }),
   },
   floatingCardContent: {
     alignItems: 'flex-start',
@@ -601,15 +647,20 @@ const styles = StyleSheet.create({
   locationAction: {
     alignItems: 'center',
     backgroundColor: '#F3F4F6',
+    borderColor: '#EBEBEB',
     borderRadius: 28,
-    elevation: 2,
+    borderWidth: 1,
     height: 56,
     justifyContent: 'center',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
     width: 56,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.06,
+        shadowRadius: 10,
+      },
+    }),
   },
   locationActionPressed: {
     opacity: 0.85,

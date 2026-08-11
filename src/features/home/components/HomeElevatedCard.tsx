@@ -13,19 +13,14 @@ type Props = {
  * Crisp white card on the white screen canvas.
  * Border + shadow keep the surface readable without relying on off-white backgrounds.
  */
-export function HomeElevatedCard({
-  children,
-  padded = true,
-  style,
-  contentStyle,
-}: Props) {
-  const { colors, radius, inset, shadows, layout } = useTheme();
+export function HomeElevatedCard({ children, padded = true, style, contentStyle }: Props) {
+  const { colors, radius, inset, surfaceShadow, layout } = useTheme();
 
   return (
     <View
       style={[
         styles.shell,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,

@@ -5,7 +5,7 @@ import { useMyGuardiansAsTrainee } from '@/features/guardian/hooks/useGuardian';
 import { useTheme } from '@/shared/theme';
 
 export function MyGuardiansCard() {
-  const { colors, typography, radius, shadows, layout } = useTheme();
+  const { colors, typography, radius, surfaceShadow, layout } = useTheme();
   const guardiansQuery = useMyGuardiansAsTrainee();
   const guardians = guardiansQuery.data ?? [];
 
@@ -15,7 +15,7 @@ export function MyGuardiansCard() {
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,

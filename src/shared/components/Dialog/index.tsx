@@ -1,11 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import {
-  useDialogStore,
-  type DialogButton,
-  type DialogConfig,
-} from '@/stores/useDialogStore';
+import { useDialogStore, type DialogButton, type DialogConfig } from '@/stores/useDialogStore';
 import { AppBottomSheet, AppBottomSheetButton } from '@/shared/components/AppBottomSheet';
 import { triggerLightImpact, triggerMediumImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -18,9 +14,7 @@ function iconForConfig(config: DialogConfig): keyof typeof Ionicons.glyphMap {
 }
 
 function sortButtons(buttons: DialogButton[]): DialogButton[] {
-  const primary = buttons.find(
-    (btn) => btn.variant === 'primary' || btn.variant === 'destructive',
-  );
+  const primary = buttons.find((btn) => btn.variant === 'primary' || btn.variant === 'destructive');
   const others = buttons.filter((btn) => btn !== primary);
   return primary ? [primary, ...others] : buttons;
 }
@@ -65,15 +59,18 @@ export function DialogProvider() {
     }
   }, [_afterHide, hide]);
 
-  const handleButtonPress = useCallback((btn: DialogButton) => {
-    const variant = btn.variant ?? 'primary';
-    if (variant === 'destructive') triggerMediumImpact();
-    else triggerLightImpact();
+  const handleButtonPress = useCallback(
+    (btn: DialogButton) => {
+      const variant = btn.variant ?? 'primary';
+      if (variant === 'destructive') triggerMediumImpact();
+      else triggerLightImpact();
 
-    pendingActionRef.current = btn.onPress;
-    hide();
-    setSheetVisible(false);
-  }, [hide]);
+      pendingActionRef.current = btn.onPress;
+      hide();
+      setSheetVisible(false);
+    },
+    [hide],
+  );
 
   if (!localConfig) return null;
 
@@ -144,7 +141,9 @@ function DialogSheetContent({
         <AppBottomSheetButton
           key={`${btn.label}-${index}`}
           label={btn.label}
-          variant={btn.variant === 'primary' || btn.variant === 'destructive' ? btn.variant : 'secondary'}
+          variant={
+            btn.variant === 'primary' || btn.variant === 'destructive' ? btn.variant : 'secondary'
+          }
           onPress={() => onButtonPress(btn)}
         />
       ))}

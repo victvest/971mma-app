@@ -1,7 +1,7 @@
 import { MbError } from './errors.ts';
 import { userClient } from './supabase.ts';
 
-export type UserRole = 'member' | 'coach' | 'admin' | 'gate';
+export type UserRole = 'member' | 'coach' | 'admin';
 
 export type AuthUser = {
   userId: string;
@@ -10,7 +10,7 @@ export type AuthUser = {
 };
 
 function normalizeRole(value: unknown): UserRole {
-  if (value === 'coach' || value === 'admin' || value === 'gate') return value;
+  if (value === 'coach' || value === 'admin') return value;
   return 'member';
 }
 

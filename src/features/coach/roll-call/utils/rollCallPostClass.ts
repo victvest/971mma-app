@@ -1,6 +1,9 @@
 import { isGymToday, isClassEarly, isClassUpcoming } from '@/core/time/gymTime';
 import type { RollCallSessionView } from '@/features/coach/roll-call/types';
-import { isRollCallSessionCompleted, isRollCallSessionInProgress } from '@/features/coach/roll-call/utils/rollCallSession';
+import {
+  isRollCallSessionCompleted,
+  isRollCallSessionInProgress,
+} from '@/features/coach/roll-call/utils/rollCallSession';
 
 /** Attendance edits allowed through end of the class gym day (Asia/Dubai). */
 export function canCorrectRollCallOnGymDay(classStartsAt: string, now = new Date()): boolean {

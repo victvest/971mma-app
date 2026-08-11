@@ -48,7 +48,10 @@ export const AppBottomSheet = memo(function AppBottomSheet({
   }, [onDismiss]);
 
   const playExit = useCallback(() => {
-    backdropOpacity.value = withTiming(0, { duration: EXIT_DURATION, easing: Easing.in(Easing.quad) });
+    backdropOpacity.value = withTiming(0, {
+      duration: EXIT_DURATION,
+      easing: Easing.in(Easing.quad),
+    });
     sheetTranslateY.value = withTiming(
       48,
       { duration: EXIT_DURATION, easing: Easing.in(Easing.quad) },
@@ -90,7 +93,13 @@ export const AppBottomSheet = memo(function AppBottomSheet({
   if (!mounted) return null;
 
   return (
-    <Modal transparent statusBarTranslucent visible={mounted} animationType="none" onRequestClose={handleBackdropPress}>
+    <Modal
+      transparent
+      statusBarTranslucent
+      visible={mounted}
+      animationType="none"
+      onRequestClose={handleBackdropPress}
+    >
       <View style={styles.overlay}>
         <Animated.View style={[StyleSheet.absoluteFill, backdropStyle]}>
           <Pressable
@@ -138,11 +147,7 @@ export const AppBottomSheetButton = memo(function AppBottomSheetButton({
 
   if (variant === 'secondary') {
     return (
-      <Pressable
-        accessibilityRole="button"
-        onPress={onPress}
-        style={styles.textButton}
-      >
+      <Pressable accessibilityRole="button" onPress={onPress} style={styles.textButton}>
         <Text style={[typography.textPresets.button, { color: colors.text.secondary }]}>
           {label}
         </Text>
@@ -150,10 +155,8 @@ export const AppBottomSheetButton = memo(function AppBottomSheetButton({
     );
   }
 
-  const backgroundColor =
-    variant === 'destructive' ? colors.status.error : colors.accent.default;
-  const foregroundColor =
-    variant === 'destructive' ? colors.text.inverse : colors.accent.onAccent;
+  const backgroundColor = variant === 'destructive' ? colors.status.error : colors.accent.default;
+  const foregroundColor = variant === 'destructive' ? colors.text.inverse : colors.accent.onAccent;
 
   return (
     <Pressable

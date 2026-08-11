@@ -20,6 +20,13 @@ import {
 import { computeClassRosterAttendance } from '@/services/database/coach.repository';
 import { isDemoCoachClassId } from '@/features/coach/demo/coachDemoMode';
 import { isEligibleForRollCallDeck } from '@/features/coach/roll-call/utils/mergeRosterWithMarks';
+import { mergeLocalTempSeedIntoDeck } from '@/features/coach/roll-call/fixtures/rollCallLocalTempSeed';
+import type {
+  AddRollCallClassMemberResponse,
+  RemoveRollCallClassMemberResponse,
+  RollCallMemberPreview,
+  RollCallPreviewResult,
+} from '@/features/coach/roll-call/types';
 
 type DemoSessionStore = {
   session: RollCallSessionView | null;
@@ -36,7 +43,8 @@ function getStore(classId: string): DemoSessionStore {
   const created: DemoSessionStore = {
     session: null,
     marksByDeckKey: new Map(),
-    deck: getDemoRollCallDeck(),
+    // Product: class list starts empty and grows only via QR confirm / manual add.
+    deck: [],
   };
   stores.set(classId, created);
   return created;
@@ -55,7 +63,10 @@ function applyMarksToDeck(
 function buildDemoRollCallState(classId: string): RollCallState {
   const classItem = getDemoCoachClassById(classId);
   const store = getStore(classId);
-  const deck = applyMarksToDeck(store.deck, store.marksByDeckKey).filter(isEligibleForRollCallDeck);
+  const deck = mergeLocalTempSeedIntoDeck(
+    classId,
+    applyMarksToDeck(store.deck, store.marksByDeckKey).filter(isEligibleForRollCallDeck),
+  );
   const marks = deck
     .map((member) => member.mark)
     .filter((value): value is RollCallMemberMark => value !== null);
@@ -113,9 +124,7 @@ export function demoRecordRollCallMark(
     throw new Error('Start roll call before marking attendance.');
   }
 
-  const deckKey =
-    input.userId ??
-    (input.mindbodyClientId ? `mb:${input.mindbodyClientId}` : null);
+  const deckKey = input.userId ?? (input.mindbodyClientId ? `mb:${input.mindbodyClientId}` : null);
   if (!deckKey) {
     throw new Error('Member id is required.');
   }
@@ -160,10 +169,97 @@ export function demoAbandonRollCall(sessionId: string): AbandonRollCallResponse 
     if (store.session?.id === sessionId) {
       store.session = null;
       store.marksByDeckKey.clear();
+      // Persistent class list is NOT cleared on abandon.
       return { classId };
     }
   }
   throw new Error('Demo roll call session not found.');
+}
+
+export function demoAddRollCallClassMember(
+  classId: string,
+  userId: string,
+  preview?: Partial<RollCallMemberPreview>,
+): AddRollCallClassMemberResponse {
+  const store = getStore(classId);
+  const fromFixture = getDemoRollCallDeck().find((row) => row.userId === userId);
+  const displayName = preview?.fullName ?? fromFixture?.displayName ?? 'Member';
+  const avatarUrl = preview?.avatarUrl ?? fromFixture?.avatarUrl ?? null;
+  const existing = store.deck.find((row) => row.userId === userId);
+  if (!existing) {
+    store.deck.push({
+      deckKey: userId,
+      displayName,
+      avatarUrl,
+      beltRank: preview?.beltRank ?? fromFixture?.beltRank ?? null,
+      beltStripes: preview?.beltStripes ?? fromFixture?.beltStripes ?? 0,
+      userId,
+      mindbodyClientId: preview?.mindbodyClientId ?? fromFixture?.mindbodyClientId ?? '',
+      mark: null,
+      isOnApp: true,
+      isBookedOnRoster: false,
+      hasFacilityCheckInToday: false,
+      isWalkIn: false,
+      isGuest: false,
+      presentedBy: null,
+      membershipStatus: preview?.membershipStatus ?? fromFixture?.membershipStatus ?? 'active',
+      membershipActive: preview?.membershipActive ?? fromFixture?.membershipActive ?? true,
+      addedAt: new Date().toISOString(),
+    });
+  } else {
+    existing.displayName = displayName;
+    existing.avatarUrl = avatarUrl;
+  }
+
+  return {
+    id: `demo-roster-${userId}`,
+    listKey: `demo-${classId}`,
+    userId,
+    displayName,
+    avatarUrl,
+    addedAt: new Date().toISOString(),
+  };
+}
+
+export function demoRemoveRollCallClassMember(
+  classId: string,
+  userId: string,
+): RemoveRollCallClassMemberResponse {
+  const store = getStore(classId);
+  const before = store.deck.length;
+  store.deck = store.deck.filter((row) => row.userId !== userId);
+  store.marksByDeckKey.delete(userId);
+  return {
+    removed: store.deck.length < before,
+    listKey: `demo-${classId}`,
+    userId,
+  };
+}
+
+export function demoGetRollCallMemberPreview(userId: string): RollCallPreviewResult {
+  const fromFixture = getDemoRollCallDeck().find((row) => row.userId === userId);
+  if (!fromFixture?.userId) {
+    return {
+      ok: false,
+      code: 'UNKNOWN_MEMBER',
+      message: 'We could not find this member in the academy app.',
+    };
+  }
+  return {
+    ok: true,
+    code: 'OK',
+    member: {
+      userId: fromFixture.userId,
+      fullName: fromFixture.displayName,
+      avatarUrl: fromFixture.avatarUrl,
+      membershipStatus: fromFixture.membershipStatus ?? 'active',
+      membershipActive: fromFixture.membershipActive ?? true,
+      isLinked: true,
+      mindbodyClientId: fromFixture.mindbodyClientId || undefined,
+      beltRank: fromFixture.beltRank,
+      beltStripes: fromFixture.beltStripes,
+    },
+  };
 }
 
 export function demoSearchMembersForRollCall(
@@ -173,8 +269,9 @@ export function demoSearchMembersForRollCall(
   const normalized = query.trim().toLowerCase();
   const state = buildDemoRollCallState(classId);
   const onDeck = new Set(state.deck.map((member) => member.deckKey));
+  const catalog = getDemoRollCallDeck();
 
-  return state.deck
+  return catalog
     .filter((member) => member.displayName.toLowerCase().includes(normalized))
     .slice(0, 20)
     .map((member) => ({
@@ -192,4 +289,19 @@ export function demoSearchMembersForRollCall(
 
 export function shouldUseDemoRollCall(classId: string): boolean {
   return isDemoCoachClassId(classId);
+}
+
+export function demoUpdateMemberRank(
+  userId: string,
+  beltRank: string | null,
+  beltStripes: number,
+): void {
+  for (const store of stores.values()) {
+    for (const member of store.deck) {
+      if (member.userId === userId) {
+        member.beltRank = beltRank;
+        member.beltStripes = beltStripes;
+      }
+    }
+  }
 }

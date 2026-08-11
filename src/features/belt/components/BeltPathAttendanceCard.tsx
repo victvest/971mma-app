@@ -125,7 +125,9 @@ export function BeltPathAttendanceCard({
 
   return (
     <BeltPathSurfaceCard style={{ gap: gap.lg, marginBottom: gap.lg }}>
-      <Text style={[typography.textPresets.subtitle, styles.cardTitle, { color: colors.text.primary }]}>
+      <Text
+        style={[typography.textPresets.subtitle, styles.cardTitle, { color: colors.text.primary }]}
+      >
         Attendance
       </Text>
 
@@ -138,8 +140,12 @@ export function BeltPathAttendanceCard({
           progressColor={colors.accent.default}
         >
           <View style={styles.ringCenter}>
-            <Text style={[styles.ringCount, { color: colors.text.primary }]}>{trainingDays30d}</Text>
-            <Text style={[styles.ringSub, { color: colors.text.tertiary }]}>/ {ATTENDANCE_WINDOW_DAYS}D</Text>
+            <Text style={[styles.ringCount, { color: colors.text.primary }]}>
+              {trainingDays30d}
+            </Text>
+            <Text style={[styles.ringSub, { color: colors.text.tertiary }]}>
+              / {ATTENDANCE_WINDOW_DAYS}D
+            </Text>
           </View>
         </AnimatedProgressRing>
 
@@ -169,7 +175,9 @@ export function BeltPathAttendanceCard({
           },
         ]}
       >
-        <Text style={[styles.consistencyKicker, { color: colors.text.tertiary }]}>LAST 8 WEEKS</Text>
+        <Text style={[styles.consistencyKicker, { color: colors.text.tertiary }]}>
+          LAST 8 WEEKS
+        </Text>
         <WeekActivityBars
           counts={weekCounts}
           currentColor={colors.accent.default}

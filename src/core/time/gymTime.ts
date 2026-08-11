@@ -1,4 +1,3 @@
-
 export const GYM_TIME_ZONE = 'Asia/Dubai';
 
 const dateTimeFormatter = new Intl.DateTimeFormat('en-CA', {
@@ -123,8 +122,7 @@ export function formatLocalDisplay(iso: string): string {
 }
 
 export function isGymToday(iso: string, now = new Date()): boolean {
-  const day = (d: Date) =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(d);
+  const day = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(d);
   return day(new Date(iso)) === day(now);
 }
 
@@ -134,8 +132,7 @@ export function isGymTomorrow(iso: string, now = new Date()): boolean {
     `${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`,
   ).getTime();
   const tomorrow = gymParts(new Date(todayNoonMs + 24 * 60 * 60 * 1000));
-  const day = (d: Date) =>
-    new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(d);
+  const day = (d: Date) => new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(d);
   return day(new Date(iso)) === `${tomorrow.year}-${tomorrow.month}-${tomorrow.day}`;
 }
 
@@ -155,21 +152,13 @@ export function isClassUpcoming(startsAt: string, now = new Date()): boolean {
 }
 
 /** True when class end time has passed (L9 post-class corrections). */
-export function isClassEnded(
-  startsAt: string,
-  durationMinutes: number,
-  now = new Date(),
-): boolean {
+export function isClassEnded(startsAt: string, durationMinutes: number, now = new Date()): boolean {
   const endMs = new Date(startsAt).getTime() + durationMinutes * 60_000;
   return now.getTime() > endMs;
 }
 
 /** True when class starts more than `thresholdMinutes` from now (L8). */
-export function isClassEarly(
-  startsAt: string,
-  thresholdMinutes = 15,
-  now = new Date(),
-): boolean {
+export function isClassEarly(startsAt: string, thresholdMinutes = 15, now = new Date()): boolean {
   const startMs = new Date(startsAt).getTime();
   return startMs - now.getTime() > thresholdMinutes * 60_000;
 }
@@ -201,7 +190,9 @@ export function gymTodayRange(now = new Date()): { startDate: string; endDate: s
 
 /** Gym-local tomorrow as Mindbody `startDate` / `endDate` strings. */
 export function gymTomorrowRange(now = new Date()): { startDate: string; endDate: string } {
-  const todayMs = new Date(`${gymParts(now).year}-${gymParts(now).month}-${gymParts(now).day}T12:00:00+04:00`).getTime();
+  const todayMs = new Date(
+    `${gymParts(now).year}-${gymParts(now).month}-${gymParts(now).day}T12:00:00+04:00`,
+  ).getTime();
   const tomorrowMs = todayMs + 24 * 60 * 60 * 1000;
   const tomorrow = gymParts(new Date(tomorrowMs));
   const start = new Date(`${tomorrow.year}-${tomorrow.month}-${tomorrow.day}T00:00:00+04:00`);
@@ -219,12 +210,16 @@ export function gymTomorrowRange(now = new Date()): { startDate: string; endDate
  */
 export function gymTodayTomorrowRange(now = new Date()): { startDate: string; endDate: string } {
   const todayParts = gymParts(now);
-  const todayNoonMs = new Date(`${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`).getTime();
+  const todayNoonMs = new Date(
+    `${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`,
+  ).getTime();
   const tomorrowNoonMs = todayNoonMs + 24 * 60 * 60 * 1000;
   const tomorrowParts = gymParts(new Date(tomorrowNoonMs));
 
   const start = new Date(`${todayParts.year}-${todayParts.month}-${todayParts.day}T00:00:00+04:00`);
-  const end = new Date(`${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}T23:59:59+04:00`);
+  const end = new Date(
+    `${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}T23:59:59+04:00`,
+  );
 
   return {
     startDate: formatGymDateTime(start),
@@ -243,12 +238,18 @@ export function gymWeekRange(now = new Date()): { startDate: string; endDate: st
  */
 export function gymRangeIso(now = new Date()): { fromISO: string; toISO: string } {
   const todayParts = gymParts(now);
-  const todayNoonMs = new Date(`${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`).getTime();
+  const todayNoonMs = new Date(
+    `${todayParts.year}-${todayParts.month}-${todayParts.day}T12:00:00+04:00`,
+  ).getTime();
   const tomorrowNoonMs = todayNoonMs + 24 * 60 * 60 * 1000;
   const tomorrowParts = gymParts(new Date(tomorrowNoonMs));
 
-  const fromISO = new Date(`${todayParts.year}-${todayParts.month}-${todayParts.day}T00:00:00+04:00`).toISOString();
-  const toISO = new Date(`${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}T23:59:59.999+04:00`).toISOString();
+  const fromISO = new Date(
+    `${todayParts.year}-${todayParts.month}-${todayParts.day}T00:00:00+04:00`,
+  ).toISOString();
+  const toISO = new Date(
+    `${tomorrowParts.year}-${tomorrowParts.month}-${tomorrowParts.day}T23:59:59.999+04:00`,
+  ).toISOString();
 
   return { fromISO, toISO };
 }

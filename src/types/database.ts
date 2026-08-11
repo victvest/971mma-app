@@ -1,9 +1,7 @@
-
-
 export type MembershipTier = 'standard' | 'pro' | 'elite';
 export type MembershipStatus = 'active' | 'paused' | 'expired';
 export type BookingStatus = 'booked' | 'waitlisted' | 'cancelled' | 'attended';
-export type UserRole = 'member' | 'coach' | 'admin' | 'gate' | 'guest';
+export type UserRole = 'member' | 'coach' | 'admin' | 'guest';
 export type LinkMethod = 'matched_email' | 'matched_phone' | 'created' | 'manual';
 export type RequirementType = 'attendance' | 'skill' | 'assessment';
 export type RequirementStatus = 'locked' | 'now' | 'done';
@@ -24,26 +22,12 @@ export type RedemptionStatus = 'pending' | 'fulfilled' | 'cancelled' | 'refunded
 export type CheckInSource = 'supabase' | 'mindbody';
 
 /** Facility visit recording method (`check_ins.method`). */
-export type CheckInMethod =
-  | 'qr_scan'
-  | 'qr_self'
-  | 'coach_roster'
-  | 'gate_scan'
-  | 'mindbody_visit';
+export type CheckInMethod = 'qr_scan' | 'qr_self' | 'coach_roster' | 'gate_scan' | 'mindbody_visit';
 export type GuardianLinkStatus = 'pending' | 'approved' | 'rejected' | 'revoked';
 
-export type RollCallMemberStatus =
-  | 'present'
-  | 'absent'
-  | 'late'
-  | 'left_early'
-  | 'guest';
+export type RollCallMemberStatus = 'present' | 'absent' | 'late' | 'left_early' | 'guest';
 
-export type RollCallMarkMethod =
-  | 'roll_call'
-  | 'walk_in'
-  | 'qr_scan'
-  | 'roster_list';
+export type RollCallMarkMethod = 'roll_call' | 'walk_in' | 'qr_scan' | 'roster_list';
 
 export type RollCallSessionStatus = 'draft' | 'in_progress' | 'completed';
 
@@ -160,16 +144,6 @@ export interface CheckInRow {
   } | null;
 }
 
-export interface GateTokenRow {
-  id: string;
-  jti: string;
-  location_id: string;
-  expires_at: string;
-  issued_by_user_id: string | null;
-  device_label: string | null;
-  created_at: string;
-}
-
 export interface MindbodyLinkRow {
   user_id: string;
   mindbody_client_id: string;
@@ -192,6 +166,7 @@ export interface ProgramRow {
 
 export interface CoachRow {
   id: string;
+  user_id: string | null;
   mindbody_staff_id: string | null;
   name: string;
   specialty: string | null;
@@ -202,10 +177,17 @@ export interface CoachRow {
   is_head_coach: boolean;
   coaching_philosophy: string | null;
   years_experience: number | null;
+  years_martial_arts: number | null;
+  years_coaching: number | null;
   fight_record: string | null;
   titles: unknown;
   certifications: unknown;
   languages: string[] | null;
+  nickname: string | null;
+  status_achievements: unknown;
+  experience_highlights: unknown;
+  coaching_style: unknown;
+  invite_blurb: string | null;
   sort_order: number;
   last_synced_at: string | null;
   created_at: string;
@@ -312,6 +294,8 @@ export interface RewardRow {
   name: string;
   category: RewardCategory;
   cost_points: number;
+  price_aed?: number | null;
+  image_url?: string | null;
   active: boolean;
   unlock_rule: Record<string, unknown>;
   fulfillment: RewardFulfillment;

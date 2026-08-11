@@ -15,7 +15,12 @@ export function HomeDashboardSkeleton() {
 
       <SkeletonRect height={228} borderRadius={radius.card} />
 
-      <View style={[styles.disciplineCard, { borderRadius: radius.card, gap: gap.md, padding: inset.md }]}>
+      <View
+        style={[
+          styles.disciplineCard,
+          { borderRadius: radius.card, gap: gap.md, padding: inset.md },
+        ]}
+      >
         <SkeletonRect width="32%" height={12} borderRadius={radii.sm} />
         <View style={styles.disciplineRow}>
           <View style={{ flex: 1, gap: gap.sm }}>
@@ -44,7 +49,9 @@ export function HomeDashboardSkeleton() {
         </View>
       </View>
 
-      <View style={[styles.beltCard, { borderRadius: radius.card, gap: gap.md, padding: inset.md }]}>
+      <View
+        style={[styles.beltCard, { borderRadius: radius.card, gap: gap.md, padding: inset.md }]}
+      >
         <View style={styles.beltRow}>
           <View style={{ flex: 1, gap: gap.sm }}>
             <SkeletonRect width="35%" height={12} borderRadius={radii.sm} />

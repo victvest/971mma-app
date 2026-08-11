@@ -33,9 +33,8 @@ import {
   getCoachSpecialtyLabel,
   RatingPill,
 } from '@/features/coaches/components/CoachVisuals';
-import {
-  useCoaches,
-} from '@/features/coaches/hooks/useCoaches';
+import { useCoaches } from '@/features/coaches/hooks/useCoaches';
+import { useCoachScheduleFocusSync } from '@/features/coach/hooks/useCoachScheduleFocusSync';
 import { useCoachDirectoryImagePrefetch } from '@/features/coaches/hooks/useCoachDirectoryImagePrefetch';
 import { HomeElevatedCard } from '@/features/home/components/HomeElevatedCard';
 import { HomeSectionTitle } from '@/features/home/components/HomeSectionTitle';
@@ -54,6 +53,7 @@ import { animations } from '@/shared/theme/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { TabHeroTitle, AcademyEyebrow } from '@/shared/components/brand';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 import type { CoachItem } from '@/types/domain';
 
@@ -181,7 +181,7 @@ const FeaturedCoachCard = memo(function FeaturedCoachCard({
   height,
   onPressId,
 }: FeaturedCoachCardProps) {
-  const { colors, typography, inset, gap, radius, shadows } = useTheme();
+  const { colors, typography, inset, gap, radius, surfaceShadow } = useTheme();
   const rating = getCoachRatingLabel(coach);
   const handlePress = useCallback(() => onPressId(coach.id), [coach.id, onPressId]);
 
@@ -190,7 +190,11 @@ const FeaturedCoachCard = memo(function FeaturedCoachCard({
       onPress={handlePress}
       accessibilityLabel={`View ${coach.name}`}
       scaleTo={0.98}
-      style={[styles.featuredShadowWrap, shadows.mediaHero, { borderRadius: radius.cardLarge }]}
+      style={[
+        styles.featuredShadowWrap,
+        surfaceShadow('mediaHero'),
+        { borderRadius: radius.cardLarge },
+      ]}
     >
       <View style={[styles.featuredCard, { height, borderRadius: radius.cardLarge }]}>
         <Image
@@ -219,13 +223,21 @@ const FeaturedCoachCard = memo(function FeaturedCoachCard({
               <Text
                 numberOfLines={1}
                 adjustsFontSizeToFit
-                style={[typography.textPresets.title, styles.featuredName, { color: colors.text.inverse }]}
+                style={[
+                  typography.textPresets.title,
+                  styles.featuredName,
+                  { color: colors.text.inverse },
+                ]}
               >
                 {coach.name}
               </Text>
               <Text
                 numberOfLines={1}
-                style={[typography.textPresets.body, styles.featuredSpecialty, { color: colors.text.inverse }]}
+                style={[
+                  typography.textPresets.body,
+                  styles.featuredSpecialty,
+                  { color: colors.text.inverse },
+                ]}
               >
                 {getCoachSpecialtyLabel(coach)}
               </Text>
@@ -244,10 +256,7 @@ function FeaturedCoachLoadingCard({ height }: { height: number }) {
   const { colors } = useTheme();
 
   return (
-    <HomeElevatedCard
-      style={{ height, width: '100%' }}
-      contentStyle={styles.featuredLoadingCard}
-    >
+    <HomeElevatedCard style={{ height, width: '100%' }} contentStyle={styles.featuredLoadingCard}>
       <ActivityIndicator size="large" color={colors.accent.default} />
     </HomeElevatedCard>
   );
@@ -266,7 +275,7 @@ const CoachGridCard = memo(function CoachGridCard({
   entranceSignal,
   onPressId,
 }: CoachGridCardProps) {
-  const { colors, typography, inset, gap, radius, shadows } = useTheme();
+  const { colors, typography, inset, gap, radius, surfaceShadow } = useTheme();
   const rating = getCoachRatingLabel(item);
   const handlePress = useCallback(() => onPressId(item.id), [item.id, onPressId]);
 
@@ -290,7 +299,7 @@ const CoachGridCard = memo(function CoachGridCard({
           <View
             style={[
               styles.gridImageFrame,
-              shadows.card,
+              surfaceShadow('card'),
               {
                 borderRadius: radius.cardLarge,
                 backgroundColor: colors.surface.secondary,
@@ -329,7 +338,11 @@ const CoachGridCard = memo(function CoachGridCard({
               </Text>
               <Text
                 numberOfLines={1}
-                style={[typography.textPresets.caption, styles.gridSpecialty, { color: colors.text.inverse }]}
+                style={[
+                  typography.textPresets.caption,
+                  styles.gridSpecialty,
+                  { color: colors.text.inverse },
+                ]}
               >
                 {getCoachSpecialtyLabel(item)}
               </Text>
@@ -346,12 +359,13 @@ import { useAuthStore } from '@/stores/useAuthStore';
 export default function CoachesScreen() {
   const { colors, inset, gap, layout } = useTheme();
   usePerfRouteMount(PerfMark.routeCoachesMount);
+  useCoachScheduleFocusSync();
   const { width } = useWindowDimensions();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
   const coachesQuery = useCoaches();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
-  const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
+  const { entranceSignal } = useTabEntrance();
 
   const handleRefresh = useCallback(async () => {
     await coachesQuery.refetch();
@@ -367,13 +381,14 @@ export default function CoachesScreen() {
     () => (featuredCoach ? coaches.filter((coach) => coach.id !== featuredCoach.id) : coaches),
     [coaches, featuredCoach],
   );
-  const errorMessage =
-    coachesQuery.error instanceof Error ? coachesQuery.error.message : null;
+  const errorMessage = coachesQuery.error
+    ? toUserFacingErrorMessage(coachesQuery.error, { fallback: USER_FACING_LOAD_ERROR })
+    : null;
 
   const loading =
     isQueryActivelyLoading(coachesQuery.isLoading, coachesQuery.isFetching) && !coachesQuery.data;
   const hasError = !!errorMessage;
-  const hasData = coaches.length > 0;
+  const hasData = coachesQuery.data !== undefined;
   const isOfflineBlocked = isOfflineWithoutCache({
     networkStatusKnown,
     isOnline,
@@ -427,14 +442,14 @@ export default function CoachesScreen() {
               kind="error"
               title="Coaches unavailable"
               message={errorMessage}
-            actionLabel="Retry"
-            onAction={handleRefresh}
-            offlineAwareRetry
-          />
-        </View>
-      ) : null}
+              actionLabel="Retry"
+              onAction={handleRefresh}
+              offlineAwareRetry
+            />
+          </View>
+        ) : null}
 
-        <CoachesAnimatedSection index={0} replayKey={entranceReplayKey} motion="title">
+        <CoachesAnimatedSection index={0} entranceSignal={entranceSignal} motion="title">
           <View style={{ gap: gap.xs, marginBottom: inset.md }}>
             <AcademyEyebrow label="The team" accent showFlag={false} />
             <TabHeroTitle
@@ -446,7 +461,7 @@ export default function CoachesScreen() {
         {featuredCoach ? (
           <CoachesAnimatedSection
             index={1}
-            replayKey={entranceReplayKey}
+            entranceSignal={entranceSignal}
             motion="featured"
             style={{ marginBottom: layout.coachSectionTopGap }}
           >
@@ -459,7 +474,7 @@ export default function CoachesScreen() {
         ) : loading ? (
           <CoachesAnimatedSection
             index={1}
-            replayKey={entranceReplayKey}
+            entranceSignal={entranceSignal}
             motion="featured"
             style={{ marginBottom: layout.coachSectionTopGap }}
           >
@@ -468,14 +483,14 @@ export default function CoachesScreen() {
         ) : null}
 
         {gridCoaches.length > 0 ? (
-          <CoachesAnimatedSection index={2} replayKey={entranceReplayKey}>
+          <CoachesAnimatedSection index={2} entranceSignal={entranceSignal}>
             <HomeSectionTitle title="All coaches" />
           </CoachesAnimatedSection>
         ) : null}
       </View>
     ),
     [
-      entranceReplayKey,
+      entranceSignal,
       errorMessage,
       featuredCoach,
       gap.xs,

@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { ensureMindbodyLink, type MindbodyLinkResult } from '../services/linkMindbody';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { getSupabaseClient } from '@/services/supabase/client';
 import type { MindbodyLinkRow } from '@/types/database';
 
@@ -22,7 +23,10 @@ export type MindbodyLinkState = {
 
 export const mindbodyLinkKey = (userId: string | undefined) => ['mindbody-link', userId] as const;
 
-async function readMindbodyLink(userId: string, queryClient: QueryClient): Promise<MindbodyLinkState> {
+async function readMindbodyLink(
+  userId: string,
+  queryClient: QueryClient,
+): Promise<MindbodyLinkState> {
   const { data, error } = await getSupabaseClient()
     .from('mindbody_links')
     .select('mindbody_client_id, mindbody_unique_id, link_method, linked_at')
@@ -113,7 +117,7 @@ export function useEnsureMindbodyLink(userId: string | undefined) {
         linkMethod: 'manual',
         linkedAt: '',
         status,
-        error: (err.message as string) || 'Linking failed.',
+        error: toUserFacingErrorMessage(error, { fallback: 'Linking failed.' }),
       });
       await queryClient.invalidateQueries({ queryKey: mindbodyLinkKey(userId) });
     },

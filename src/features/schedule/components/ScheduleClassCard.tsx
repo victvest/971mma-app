@@ -5,6 +5,7 @@ import { ClassCardTimeOverlay } from '@/features/schedule/components/ClassCardTi
 import {
   classStatusMeta,
   formatDisciplineLabel,
+  isGymUsageClass,
   plainClassDescription,
 } from '@/features/schedule/utils/classDisplay';
 import { useTheme } from '@/shared/theme';
@@ -14,7 +15,6 @@ import { resolveClassImage } from '../utils/classImages';
 type ScheduleClassCardProps = {
   item: ClassItem;
   embedded?: boolean;
-  isEnrolled?: boolean;
 };
 
 function plainDescription(value: string | null): string | null {
@@ -32,8 +32,7 @@ function DisciplineDots({ activeCount = 2 }: { activeCount?: number }) {
           style={[
             styles.dot,
             {
-              backgroundColor:
-                index < activeCount ? colors.accent.default : colors.fill.secondary,
+              backgroundColor: index < activeCount ? colors.accent.default : colors.fill.secondary,
             },
           ]}
         />
@@ -45,13 +44,14 @@ function DisciplineDots({ activeCount = 2 }: { activeCount?: number }) {
 export const ScheduleClassCard = memo(function ScheduleClassCard({
   item,
   embedded = false,
-  isEnrolled = false,
 }: ScheduleClassCardProps) {
   const { colors, typography, radius } = useTheme();
   const imageSource = resolveClassImage(item.discipline, item.imageUrl, item.title);
   const description = plainDescription(item.description);
   const spots =
     item.capacity > 0 ? `${item.bookedCount}/${item.capacity} spots` : `${item.bookedCount} booked`;
+  const gymUsage = isGymUsageClass(item);
+  const footerMeta = gymUsage ? spots : `Coach ${item.coachName} · ${spots}`;
   const dotCount = item.isAvailable ? 2 : item.isCancelled ? 0 : 1;
   const status = classStatusMeta(item);
 
@@ -77,7 +77,13 @@ export const ScheduleClassCard = memo(function ScheduleClassCard({
           },
         ]}
       >
-        <Image source={imageSource} style={styles.image} contentFit="cover" cachePolicy="memory-disk" transition={0} />
+        <Image
+          source={imageSource}
+          style={styles.image}
+          contentFit="cover"
+          cachePolicy="memory-disk"
+          transition={0}
+        />
         {item.isCancelled ? (
           <View style={[styles.cancelledBadge, { backgroundColor: colors.status.error }]}>
             <Text style={styles.cancelledBadgeText}>CANCELLED</Text>
@@ -96,11 +102,6 @@ export const ScheduleClassCard = memo(function ScheduleClassCard({
           >
             {item.isCancelled ? status.label.toUpperCase() : formatDisciplineLabel(item)}
           </Text>
-          {isEnrolled && !item.isCancelled ? (
-            <View style={[styles.enrolledBadge, { backgroundColor: colors.status.success + '15', borderColor: colors.status.success + '40' }]}>
-              <Text style={[styles.enrolledText, { color: colors.status.success }]}>INCLUDED</Text>
-            </View>
-          ) : null}
           {!item.isCancelled ? <DisciplineDots activeCount={dotCount} /> : null}
         </View>
 
@@ -135,7 +136,7 @@ export const ScheduleClassCard = memo(function ScheduleClassCard({
         ) : null}
 
         <Text numberOfLines={1} style={[styles.footer, { color: colors.text.tertiary }]}>
-          {item.isCancelled ? 'Removed from the gym timetable' : `Coach ${item.coachName} · ${spots}`}
+          {item.isCancelled ? 'Removed from the gym timetable' : footerMeta}
         </Text>
       </View>
     </View>
@@ -195,18 +196,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     letterSpacing: 0.8,
     textTransform: 'uppercase',
-  },
-  enrolledBadge: {
-    borderRadius: 4,
-    borderWidth: 1,
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    marginRight: 8,
-  },
-  enrolledText: {
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 0.4,
   },
   dots: {
     alignItems: 'center',

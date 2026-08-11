@@ -6,8 +6,11 @@ import { useTheme } from '@/shared/theme';
 
 type Props = {
   token: string | null | undefined;
+  expiresAt?: string | null;
+  memberId?: string | null;
   loading: boolean;
   checkedInToday: boolean;
+  checkedInAt?: string | null;
   memberName: string;
   canShowActiveQr: boolean;
   expiryDate?: string | null;
@@ -22,6 +25,8 @@ function LockedQrCard({ name }: { name: string }) {
 
   return (
     <View
+      accessibilityRole="summary"
+      accessibilityLabel={`${name}. Pass must be shown from their own device.`}
       style={[
         styles.lockedCard,
         {
@@ -35,8 +40,14 @@ function LockedQrCard({ name }: { name: string }) {
       ]}
     >
       <Ionicons name="phone-portrait-outline" size={34} color={colors.accent.default} />
-      <Text style={[typography.textPresets.title, { color: colors.text.primary }]} numberOfLines={2}>
+      <Text
+        style={[typography.textPresets.title, { color: colors.text.primary, textAlign: 'center' }]}
+        numberOfLines={2}
+      >
         {name}
+      </Text>
+      <Text style={[typography.textPresets.body, { color: colors.text.secondary, textAlign: 'center' }]}>
+        This trainee’s gate pass must be shown from their own device.
       </Text>
     </View>
   );
@@ -44,8 +55,11 @@ function LockedQrCard({ name }: { name: string }) {
 
 export function FamilyQrPager({
   token,
+  expiresAt,
+  memberId,
   loading,
   checkedInToday,
+  checkedInAt,
   memberName,
   canShowActiveQr,
   expiryDate,
@@ -61,8 +75,11 @@ export function FamilyQrPager({
   return (
     <QrPassCard
       token={token}
+      expiresAt={expiresAt}
+      memberId={memberId}
       loading={loading}
       checkedInToday={checkedInToday}
+      checkedInAt={checkedInAt}
       memberName={memberName}
       expiryDate={expiryDate}
       expiryLoading={expiryLoading}

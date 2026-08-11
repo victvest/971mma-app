@@ -1,16 +1,16 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import type {
-  RollCallDeckMember,
-  RollCallSearchResult,
-} from '@/features/coach/roll-call/types';
+import type { RollCallDeckMember, RollCallSearchResult } from '@/features/coach/roll-call/types';
 import { useRollCallMemberSearch } from '@/features/coach/roll-call/hooks/useRollCall';
 import { searchResultToDeckMember } from '@/features/coach/roll-call/utils/rollCallSearchUtils';
 import { MotiPressable } from '@/shared/animations/MotiPressable';
+import { AppBottomSheet } from '@/shared/components/AppBottomSheet';
 import { FlashListScrollComponent, TextField } from '@/shared/components/ui';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import {
+  FLASH_LIST_ESTIMATES,
+  flashListOverrideItemLayout,
+} from '@/shared/constants/flashListEstimates';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -84,8 +84,7 @@ export const RollCallAddLateSheet = memo(function RollCallAddLateSheet({
   onMarkLate,
   onError,
 }: Props) {
-  const { colors, inset, radius, typography, gap } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, radius, typography, gap } = useTheme();
   const [query, setQuery] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const searchQuery = useRollCallMemberSearch(classId, query);
@@ -148,82 +147,52 @@ export const RollCallAddLateSheet = memo(function RollCallAddLateSheet({
     if (searchQuery.isLoading) {
       return <StateBlock kind="loading" title="Searching members" />;
     }
-    return (
-      <StateBlock kind="empty" title="No matches" message="Try another name or email." />
-    );
+    return <StateBlock kind="empty" title="No matches" message="Try another name or email." />;
   }, [query, searchQuery.isLoading]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={styles.overlay}>
-        <Pressable
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background.overlay }]}
-          onPress={onClose}
-          accessibilityLabel="Close add late search"
+    <AppBottomSheet
+      visible={visible}
+      onDismiss={onClose}
+      dismissOnBackdropPress={!isSubmitting}
+      contentStyle={[styles.sheet, { backgroundColor: colors.background.primary, gap: gap.md }]}
+    >
+      <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
+        Add late arrival
+      </Text>
+      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+        Search for a member who was not on the roster or needs a late mark.
+      </Text>
+
+      <TextField
+        label="Search"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Name or email"
+        autoCapitalize="none"
+        autoCorrect={false}
+        icon="search-outline"
+      />
+
+      <View style={[styles.listWrap, { borderRadius: radius.card }]}>
+        <FlashList
+          data={results}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSearchRow)}
+          ItemSeparatorComponent={SearchSeparator}
+          renderScrollComponent={FlashListScrollComponent}
+          ListEmptyComponent={listEmpty}
+          keyboardShouldPersistTaps="handled"
         />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.background.primary,
-              borderTopLeftRadius: radius.modal,
-              borderTopRightRadius: radius.modal,
-              paddingTop: inset.lg,
-              paddingBottom: insets.bottom + inset.lg,
-              paddingHorizontal: inset.lg,
-              gap: gap.md,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
-          <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
-            Add late arrival
-          </Text>
-          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-            Search for a member who was not on the roster or needs a late mark.
-          </Text>
-
-          <TextField
-            label="Search"
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Name or email"
-            autoCapitalize="none"
-            autoCorrect={false}
-            icon="search-outline"
-          />
-
-          <View style={[styles.listWrap, { borderRadius: radius.card }]}>
-            <FlashList
-              data={results}
-              renderItem={renderItem}
-              keyExtractor={keyExtractor}
-              overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSearchRow)}
-              ItemSeparatorComponent={SearchSeparator}
-              renderScrollComponent={FlashListScrollComponent}
-              ListEmptyComponent={listEmpty}
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
-        </View>
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 });
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   sheet: {
     height: '78%',
-  },
-  handle: {
-    alignSelf: 'center',
-    borderRadius: 999,
-    height: 4,
-    width: 40,
   },
   listWrap: {
     flex: 1,

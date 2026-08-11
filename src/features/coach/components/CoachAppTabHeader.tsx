@@ -22,7 +22,9 @@ export function CoachAppTabHeader({ floating = true, blurTargetRef }: CoachAppTa
 
   const activeTab =
     (segments as string[]).filter((segment) => !segment.startsWith('(')).at(-1) || 'index';
-  const isMainTab = COACH_MAIN_TAB_NAMES.includes(activeTab as (typeof COACH_MAIN_TAB_NAMES)[number]);
+  const isMainTab = COACH_MAIN_TAB_NAMES.includes(
+    activeTab as (typeof COACH_MAIN_TAB_NAMES)[number],
+  );
 
   if (!isMainTab) return null;
 

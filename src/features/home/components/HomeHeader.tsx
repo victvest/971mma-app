@@ -1,6 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { Ionicons } from '@expo/vector-icons';
 import { triggerLightImpact } from '@/shared/haptics';
 import { GlassNavChrome } from './navigation/GlassNavChrome';
@@ -17,6 +18,9 @@ export type HomeHeaderProps = {
   floating?: boolean;
   showBackButton?: boolean;
   onBackPress?: () => void;
+  showNotifications?: boolean;
+  isManagedChild?: boolean;
+  onLogoutChild?: () => void;
 };
 
 /**
@@ -33,8 +37,12 @@ export function HomeHeader({
   floating = true,
   showBackButton = false,
   onBackPress,
+  showNotifications = true,
+  isManagedChild = false,
+  onLogoutChild,
 }: HomeHeaderProps) {
   const topInset = useAppTopInset();
+  const offlineBannerVisible = useOfflineBannerVisible();
 
   const handleLeftPress = () => {
     triggerLightImpact();
@@ -45,7 +53,8 @@ export function HomeHeader({
     onOpenDrawer?.();
   };
 
-  const top = topInset + NAV_CHROME.topInset;
+  // Offline banner already owns the status-bar region — sit flush under it.
+  const top = offlineBannerVisible ? 0 : topInset + NAV_CHROME.topInset;
   const positioning = floating
     ? {
         position: 'absolute' as const,
@@ -76,40 +85,62 @@ export function HomeHeader({
       </GlassNavChrome>
 
       <GlassNavChrome
-        accessibilityLabel="Account and notifications"
+        accessibilityLabel={showNotifications ? 'Account and notifications' : 'Account'}
         layout="bar"
         style={styles.actionCapsule}
         contentStyle={styles.actionCapsuleContent}
         borderRadius={NAV_CHROME.glassRadius}
       >
-        <Pressable
-          onPress={() => {
-            triggerLightImpact();
-            onOpenNotifications();
-          }}
-          accessibilityRole="button"
-          accessibilityLabel={
-            unreadCount > 0
-              ? `Open notifications, ${unreadCount} unread`
-              : 'Open notifications'
-          }
-          hitSlop={4}
-          style={({ pressed }) => [styles.actionCell, pressed && styles.pressed]}
-        >
-          <Ionicons name="notifications-outline" size={NAV_CHROME.iconSize} color={UAE.ink} />
-          {unreadCount > 0 ? (
-            <View style={styles.badge}>
-              <View style={styles.badgeDot} />
-            </View>
-          ) : null}
-        </Pressable>
+        {showNotifications ? (
+          <>
+            <Pressable
+              onPress={() => {
+                triggerLightImpact();
+                onOpenNotifications();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel={
+                unreadCount > 0 ? `Open notifications, ${unreadCount} unread` : 'Open notifications'
+              }
+              hitSlop={4}
+              style={({ pressed }) => [styles.actionCell, pressed && styles.pressed]}
+            >
+              <Ionicons name="notifications-outline" size={NAV_CHROME.iconSize} color={UAE.ink} />
+              {unreadCount > 0 ? (
+                <View style={styles.badge}>
+                  <View style={styles.badgeDot} />
+                </View>
+              ) : null}
+            </Pressable>
 
-        <View style={styles.actionDivider} />
+            <View style={styles.actionDivider} />
+          </>
+        ) : null}
+
+        {isManagedChild ? (
+          <>
+            <Pressable
+              onPress={() => {
+                triggerLightImpact();
+                onLogoutChild?.();
+              }}
+              accessibilityRole="button"
+              accessibilityLabel="Switch back to parent profile"
+              hitSlop={8}
+              style={({ pressed }) => [styles.actionCell, pressed && styles.pressed]}
+            >
+              <Ionicons name="log-out-outline" size={NAV_CHROME.iconSize} color={UAE.ink} />
+            </Pressable>
+
+            <View style={styles.actionDivider} />
+          </>
+        ) : null}
 
         <GlassProfileControl
           label={avatarLabel}
           avatarUrl={avatarUrl}
           onOpenProfile={onOpenProfile}
+          disabled={isManagedChild}
         />
       </GlassNavChrome>
     </View>

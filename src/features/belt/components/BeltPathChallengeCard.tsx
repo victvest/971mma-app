@@ -3,7 +3,10 @@ import { StyleSheet, Text, View, type ImageSourcePropType } from 'react-native';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { BeltPathIconBadge } from '@/features/belt/components/BeltPathIconBadge';
-import { BeltPathStatusBadge, type BeltPathBadgeStatus } from '@/features/belt/components/BeltPathStatusBadge';
+import {
+  BeltPathStatusBadge,
+  type BeltPathBadgeStatus,
+} from '@/features/belt/components/BeltPathStatusBadge';
 import { useTheme } from '@/shared/theme';
 
 export type BeltChallengeItem = {
@@ -26,7 +29,7 @@ function getChallengeIcon(status: BeltPathBadgeStatus): keyof typeof Ionicons.gl
 }
 
 export const BeltPathChallengeCard = React.memo(function BeltPathChallengeCard({ item }: Props) {
-  const { colors, typography, radius, shadows, inset, gap } = useTheme();
+  const { colors, typography, radius, surfaceShadow, inset, gap } = useTheme();
   const isActive = item.status !== 'locked';
   const iconName = getChallengeIcon(item.status);
   const iconColor = isActive ? colors.accent.default : colors.text.tertiary;
@@ -35,7 +38,7 @@ export const BeltPathChallengeCard = React.memo(function BeltPathChallengeCard({
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderRadius: radius.cardLarge,
@@ -47,7 +50,12 @@ export const BeltPathChallengeCard = React.memo(function BeltPathChallengeCard({
     >
       <View style={styles.row}>
         {item.imageSource ? (
-          <View style={[styles.thumbnailWrap, { borderRadius: radius.thumbnail, opacity: isActive ? 1 : 0.55 }]}>
+          <View
+            style={[
+              styles.thumbnailWrap,
+              { borderRadius: radius.thumbnail, opacity: isActive ? 1 : 0.55 },
+            ]}
+          >
             <Image
               source={item.imageSource}
               style={[styles.thumbnail, { borderRadius: radius.thumbnail }]}

@@ -7,8 +7,7 @@ export const ACADEMY_STATS = [
   { value: '10+', label: 'Years of excellence' },
 ] as const;
 
-export const PHILOSOPHY_QUOTE =
-  'The approach to combat and everyday life should be the same.';
+export const PHILOSOPHY_QUOTE = 'The approach to combat and everyday life should be the same.';
 
 export const PHILOSOPHY_ATTRIBUTION = 'MIYAMOTO MUSASHI';
 
@@ -34,19 +33,16 @@ export const OUR_STORY_AIM =
 export const MISSION_BLOCKS = [
   {
     title: 'Our Mission',
-    body:
-      'To be the best Martial Arts and Fitness Academy in the Middle East — empowering members to achieve their optimum level of health, confidence, and fitness, and becoming the hub of the best fighters at national and international level.',
+    body: 'To be the best Martial Arts and Fitness Academy in the Middle East — empowering members to achieve their optimum level of health, confidence, and fitness, and becoming the hub of the best fighters at national and international level.',
     tagline: "A way of life more than a sport. It's a lifestyle.",
   },
   {
     title: 'Our Goal',
-    body:
-      'To create the most supportive, safe, and enjoyable training environment that encourages individuals of all ages to discover and pursue their highest potential in martial arts and fitness.',
+    body: 'To create the most supportive, safe, and enjoyable training environment that encourages individuals of all ages to discover and pursue their highest potential in martial arts and fitness.',
   },
   {
     title: 'Our Vision',
-    body:
-      'To be the top Martial Arts and Fitness Academy in the UAE, committed to building a community where members can achieve their optimum levels of health, confidence, and fitness.',
+    body: 'To be the top Martial Arts and Fitness Academy in the UAE, committed to building a community where members can achieve their optimum levels of health, confidence, and fitness.',
   },
 ] as const;
 

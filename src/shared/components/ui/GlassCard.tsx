@@ -102,7 +102,8 @@ export function GlassCard({
           style={[
             styles.specular,
             {
-              backgroundColor: variant === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.55)',
+              backgroundColor:
+                variant === 'dark' ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.55)',
               borderTopLeftRadius: resolvedRadius,
               borderTopRightRadius: resolvedRadius,
             },
@@ -139,11 +140,7 @@ export function GlassMediaChip({
     );
   }
 
-  return (
-    <View style={[styles.chip, styles.chipFallback, style]}>
-      {children}
-    </View>
-  );
+  return <View style={[styles.chip, styles.chipFallback, style]}>{children}</View>;
 }
 
 const styles = StyleSheet.create({

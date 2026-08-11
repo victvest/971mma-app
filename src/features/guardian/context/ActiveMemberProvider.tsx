@@ -115,14 +115,11 @@ export function ActiveMemberProvider({ children }: { children: React.ReactNode }
     return [selfOption, ...childOptions];
   }, [approvedGuardianLinks, summaries, user]);
 
-  const requestedChildId =
-    activeUserId && activeUserId !== authUserId ? activeUserId : null;
+  const requestedChildId = activeUserId && activeUserId !== authUserId ? activeUserId : null;
 
   const activeGuardianLink = useMemo(() => {
     if (!requestedChildId) return null;
-    return (
-      approvedGuardianLinks.find((link) => link.traineeUserId === requestedChildId) ?? null
-    );
+    return approvedGuardianLinks.find((link) => link.traineeUserId === requestedChildId) ?? null;
   }, [approvedGuardianLinks, requestedChildId]);
 
   const activeMemberId = activeGuardianLink?.traineeUserId ?? authUserId;
@@ -184,11 +181,7 @@ export function ActiveMemberProvider({ children }: { children: React.ReactNode }
     ],
   );
 
-  return (
-    <ActiveMemberContext.Provider value={value}>
-      {children}
-    </ActiveMemberContext.Provider>
-  );
+  return <ActiveMemberContext.Provider value={value}>{children}</ActiveMemberContext.Provider>;
 }
 
 export function useActiveMemberId(): string {

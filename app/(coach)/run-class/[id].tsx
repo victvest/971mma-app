@@ -18,15 +18,17 @@ import {
 } from '@/features/coach/roll-call/hooks/useRollCall';
 import { getRollCallState } from '@/services/database/rollCall.repository';
 import {
-  COACH_HOME_PATH,
-  rollCallDeckPath,
+  exitRunClassHub,
+  openRollCallPrimary,
+  openRollCallScanner,
+  openRollCallSummary,
   rollCallPrimaryLabel,
-  rollCallSummaryPath,
 } from '@/features/coach/roll-call/utils/rollCallNavigation';
 import { isRollCallSessionCompleted } from '@/features/coach/roll-call/utils/rollCallSession';
 import { useCoachClass } from '@/features/coach/hooks/useCoachMode';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 
 /** Coach-only run-class screen — roll call is the primary attendance path. */
 export default function CoachRunClassScreen() {
@@ -43,33 +45,32 @@ export default function CoachRunClassScreen() {
 
   const openRollCall = useCallback(() => {
     if (!id || isRollCallCompleted) return;
-    router.push(rollCallDeckPath(id));
-  }, [id, isRollCallCompleted, router]);
+    const markedCount = rollCallSummary?.totalMarked ?? 0;
+    const totalOnDeck = rollCallSummary?.totalOnDeck ?? 0;
+    openRollCallPrimary(id, rollCallSession, markedCount, totalOnDeck);
+  }, [id, isRollCallCompleted, rollCallSession, rollCallSummary]);
 
   const openAttendanceHistory = useCallback(() => {
     if (!id) return;
-    router.push(rollCallSummaryPath(id));
-  }, [id, router]);
+    openRollCallSummary(id);
+  }, [id]);
 
   const openScanner = useCallback(() => {
     if (!id) return;
     prefetchRollCallState(queryClient, id, () => getRollCallState(id));
-    router.push(`/(coach)/scanner?classId=${id}`);
-  }, [id, queryClient, router]);
+    openRollCallScanner(id, 'run_class');
+  }, [id, queryClient]);
 
   const handleBackPress = useCallback(() => {
-    if (isRollCallCompleted) {
-      router.replace(COACH_HOME_PATH);
-      return;
-    }
-    router.back();
-  }, [isRollCallCompleted, router]);
+    exitRunClassHub({ forceHome: isRollCallCompleted });
+  }, [isRollCallCompleted]);
 
   const rollCallActions = useMemo(() => {
     const markedCount = rollCallSummary?.totalMarked ?? 0;
+    const totalOnDeck = rollCallSummary?.totalOnDeck ?? 0;
 
     return {
-      rollCallButtonLabel: rollCallPrimaryLabel(rollCallSession, markedCount),
+      rollCallButtonLabel: rollCallPrimaryLabel(rollCallSession, markedCount, totalOnDeck),
     };
   }, [rollCallSession, rollCallSummary]);
 
@@ -101,11 +102,9 @@ export default function CoachRunClassScreen() {
             <StateBlock
               kind="error"
               title="Could not load class"
-              message={
-                classQuery.error instanceof Error
-                  ? classQuery.error.message
-                  : 'Please check your connection.'
-              }
+              message={toUserFacingErrorMessage(classQuery.error, {
+                fallback: USER_FACING_LOAD_ERROR,
+              })}
               actionLabel="Retry"
               onAction={() => classQuery.refetch()}
             />

@@ -25,7 +25,7 @@ export const CoachBeltReviewMemberHero = memo(function CoachBeltReviewMemberHero
   recentCheckIns,
   percent,
 }: Props) {
-  const { colors, typography, inset, gap, radius, shadows } = useTheme();
+  const { colors, typography, inset, gap, radius, surfaceShadow } = useTheme();
 
   const photoUrl = useMemo(
     () => resolveRollCallMemberAvatar({ avatarUrl, displayName: fullName }),
@@ -37,7 +37,7 @@ export const CoachBeltReviewMemberHero = memo(function CoachBeltReviewMemberHero
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderRadius: radius.cardLarge,

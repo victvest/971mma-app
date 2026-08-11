@@ -1,12 +1,7 @@
 import { getMyProfile, updateMyProfile, getMembershipSummary } from '@/services/database';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { parseMemberQrToken } from '@/services/qr/token';
-import type {
-  MemberProfile,
-  MemberRef,
-  Membership,
-  ProfilePatch,
-} from '@/types/domain';
+import type { MemberProfile, MemberRef, Membership, ProfilePatch } from '@/types/domain';
 import type { IntegrationProvider, ProviderSource } from './types';
 
 export class SupabaseProvider implements IntegrationProvider {

@@ -4,7 +4,7 @@
  *
  * Discovers every `*.test.mjs` under tests/mobile-app and tests/admin, runs them
  * sequentially against the LIVE linked Supabase project using a single shared auth
- * session whose role is flipped (member ↔ coach ↔ gate ↔ admin) as each scenario
+ * session whose role is flipped (member ↔ coach ↔ admin) as each scenario
  * requires, then writes JSON + Markdown reports and exits non-zero on any failure.
  *
  * Usage:
@@ -206,8 +206,7 @@ async function main() {
     }
   }
   try {
-    // Restore the shared test user to the role it had at sign-in (it is an admin
-    // account deliberately used so role-flipping can exercise every role).
+    // Restore the shared test user to the role it had at sign-in.
     await h.admin.from('profiles').update({ role: h.originalRole }).eq('id', h.userId);
     await h.supabase.auth.signOut();
   } catch {

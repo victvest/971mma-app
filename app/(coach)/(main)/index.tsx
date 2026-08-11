@@ -3,9 +3,8 @@ import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { CoachDashboardSkeleton } from '@/shared/animations';
-import { useTabEntranceReplay } from '@/shared/navigation/useTabEntranceReplay';
+import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
 import { CoachNowTeachingCard } from '@/features/coach/components/home/CoachNowTeachingCard';
-import { CoachGroupsPreview } from '@/features/coach/components/home/CoachGroupsPreview';
 import { CoachTodayClassRow } from '@/features/coach/components/home/CoachTodayClassRow';
 import {
   useCoachClasses,
@@ -21,16 +20,15 @@ import { HomeSectionTitle } from '@/features/home/components/HomeSectionTitle';
 import { HomeSyncBanner } from '@/features/home/components/HomeSyncBanner';
 import { isGymToday } from '@/core/time/gymTime';
 import { useRollCallState } from '@/features/coach/roll-call/hooks/useRollCall';
-import { coachHeroAttendanceStats } from '@/features/coach/roll-call/utils/rollCallNavigation';
+import { coachHeroAttendanceStats, openRunClassHub } from '@/features/coach/roll-call/utils/rollCallNavigation';
 import { triggerLightImpact } from '@/shared/haptics';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
 
-const COACH_TITLE_LINES = [
-  [{ text: 'Run class ' }, { text: 'in seconds.', accent: true }],
-];
+const COACH_TITLE_LINES = [[{ text: 'Run class ' }, { text: 'in seconds.', accent: true }]];
 
 export default function CoachHomeScreen() {
   const { colors, inset, layout, gap } = useTheme();
@@ -44,7 +42,7 @@ export default function CoachHomeScreen() {
   const classesQuery = useCoachClasses();
 
   const [refreshing, setRefreshing] = useState(false);
-  const entranceReplayKey = useTabEntranceReplay();
+  const { entranceSignal } = useTabEntrance();
 
   const todayClasses = useMemo(
     () => (classesQuery.data ?? []).filter((item) => isGymToday(item.startsAt)),
@@ -75,37 +73,28 @@ export default function CoachHomeScreen() {
 
   const openHeroClass = useCallback(() => {
     if (!heroClass) return;
-    router.push(`/(coach)/run-class/${heroClass.id}`);
-  }, [heroClass, router]);
+    openRunClassHub(heroClass.id);
+  }, [heroClass]);
 
   const promoteCount = statsQuery.data?.promotionCandidateCount ?? 0;
 
   const hasError = statsQuery.isError || classesQuery.isError;
   const hasData =
-    statsQuery.data !== undefined ||
-    classesQuery.data !== undefined ||
-    todayClasses.length > 0;
+    statsQuery.data !== undefined || classesQuery.data !== undefined || todayClasses.length > 0;
 
   const isInitialLoading = !hasData && (statsQuery.isLoading || classesQuery.isLoading);
 
   usePerfOnceReady(PerfMark.routeCoachHomeFirstContent, !isInitialLoading && (hasData || hasError));
 
-  const errorMessage =
-    statsQuery.error instanceof Error
-      ? statsQuery.error.message
-      : classesQuery.error instanceof Error
-        ? classesQuery.error.message
-        : 'Please check your connection.';
+  const errorMessage = toUserFacingErrorMessage(statsQuery.error ?? classesQuery.error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
 
   const handleRefresh = useCallback(async () => {
     triggerLightImpact();
     setRefreshing(true);
     try {
-      await Promise.all([
-        statsQuery.refetch(),
-        classesQuery.refetch(),
-        rollCallQuery.refetch(),
-      ]);
+      await Promise.all([statsQuery.refetch(), classesQuery.refetch(), rollCallQuery.refetch()]);
     } finally {
       setRefreshing(false);
     }
@@ -168,7 +157,7 @@ export default function CoachHomeScreen() {
       >
         {hasError && hasData ? <HomeSyncBanner onRetry={handleRefresh} /> : null}
 
-        <HomeAnimatedSection index={0} replayKey={entranceReplayKey} motion="heroCopy">
+        <HomeAnimatedSection index={0} entranceSignal={entranceSignal} motion="heroCopy">
           <HomeScreenHeader
             eyebrowLabel="Coach mode"
             showFlag={false}
@@ -177,7 +166,7 @@ export default function CoachHomeScreen() {
           />
         </HomeAnimatedSection>
 
-        <HomeAnimatedSection index={1} replayKey={entranceReplayKey} motion="heroCard">
+        <HomeAnimatedSection index={1} entranceSignal={entranceSignal} motion="heroCard">
           <CoachNowTeachingCard
             classItem={heroClass}
             presentCount={heroAttendance.presentCount}
@@ -189,11 +178,7 @@ export default function CoachHomeScreen() {
           />
         </HomeAnimatedSection>
 
-        <HomeAnimatedSection index={2} replayKey={entranceReplayKey}>
-          <CoachGroupsPreview />
-        </HomeAnimatedSection>
-
-        <HomeAnimatedSection index={3} replayKey={entranceReplayKey}>
+        <HomeAnimatedSection index={2} entranceSignal={entranceSignal}>
           <HomeSectionTitle
             title="Today's schedule"
             actionLabel="See all →"
@@ -205,11 +190,9 @@ export default function CoachHomeScreen() {
             <StateBlock
               kind="error"
               title="Could not load classes"
-              message={
-                classesQuery.error instanceof Error
-                  ? classesQuery.error.message
-                  : 'Please check your connection.'
-              }
+              message={toUserFacingErrorMessage(classesQuery.error, {
+                fallback: USER_FACING_LOAD_ERROR,
+              })}
               actionLabel="Retry"
               onAction={() => classesQuery.refetch()}
             />
@@ -220,13 +203,15 @@ export default function CoachHomeScreen() {
               message="Your schedule will appear here."
             />
           ) : (
-            todayClasses.slice(0, 5).map((item) => (
-              <CoachTodayClassRow
-                key={item.id}
-                item={item}
-                onPress={() => router.push(`/(coach)/run-class/${item.id}`)}
-              />
-            ))
+            todayClasses
+              .slice(0, 5)
+              .map((item) => (
+                <CoachTodayClassRow
+                  key={item.id}
+                  item={item}
+                  onPress={() => openRunClassHub(item.id)}
+                />
+              ))
           )}
         </HomeAnimatedSection>
       </AnimatedAppScrollView>

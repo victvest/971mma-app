@@ -1,9 +1,10 @@
 import { getSupabaseClient } from '@/services/supabase/client';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import type { ApiError } from '@/lib/apiError';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { formatAuthError, normalizeEmail } from './authValidation';
 import { continueWithApple } from './appleAuth';
-import { continueWithGoogle } from './googleAuth';
+import { continueWithGoogle, signOutGoogleQuietly } from './googleAuth';
 import type { AuthService } from '../types';
 
 type AuthSignInResponse = {
@@ -199,16 +200,25 @@ export const supabaseAuthService: AuthService = {
 
   async signOut() {
     await getSupabaseClient().auth.signOut();
+    await signOutGoogleQuietly();
   },
 
   async signOutOtherDevices() {
     try {
-      await invokeEdge<{ ok: boolean }>('auth-sign-out-others');
+      const { error } = await getSupabaseClient().auth.signOut({ scope: 'others' });
+      if (error) {
+        return {
+          error: toUserFacingErrorMessage(error, {
+            fallback: 'Unable to sign out other devices.',
+          }),
+        };
+      }
       return { error: null };
     } catch (error) {
-      const apiError = error as ApiError;
       return {
-        error: apiError.message || 'Unable to sign out other devices.',
+        error: toUserFacingErrorMessage(error, {
+          fallback: 'Unable to sign out other devices.',
+        }),
       };
     }
   },

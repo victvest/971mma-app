@@ -9,12 +9,7 @@ type SkeletonRectProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-export function SkeletonRect({
-  width = '100%',
-  height,
-  borderRadius,
-  style,
-}: SkeletonRectProps) {
+export function SkeletonRect({ width = '100%', height, borderRadius, style }: SkeletonRectProps) {
   const { mode } = useTheme();
   const resolvedRadius = borderRadius ?? radii.sm;
   const baseColor = mode === 'dark' ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.07)';
@@ -40,14 +35,7 @@ type SkeletonCircleProps = {
 };
 
 export function SkeletonCircle({ size, style }: SkeletonCircleProps) {
-  return (
-    <SkeletonRect
-      width={size}
-      height={size}
-      borderRadius={size / 2}
-      style={style}
-    />
-  );
+  return <SkeletonRect width={size} height={size} borderRadius={size / 2} style={style} />;
 }
 
 type SkeletonLoaderProps = {

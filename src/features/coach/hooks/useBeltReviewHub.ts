@@ -1,15 +1,29 @@
 import { useMemo } from 'react';
+import { useQueries } from '@tanstack/react-query';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import {
   useClassRoster,
   useCurrentCoachClass,
   usePromotionCandidates,
+  useCoachClasses,
 } from '@/features/coach/hooks/useCoachMode';
 import type { RankDisciplineSlug } from '@/features/coach/hooks/useCoachAssignedDisciplines';
-import { useRollCallState } from '@/features/coach/roll-call/hooks/useRollCall';
+import { useRollCallState, rollCallKey } from '@/features/coach/roll-call/hooks/useRollCall';
+import { getRollCallState } from '@/services/database/rollCall.repository';
 import type { PromotionCandidateItem } from '@/types/domain';
 
 export type BeltReviewHubMember = PromotionCandidateItem & {
   signedInToday: boolean;
+};
+
+export type ScannedMember = {
+  userId: string;
+  fullName: string;
+  beltRank: string | null;
+  beltStripes: number;
+  avatarUrl: string | null;
+  classCount: number;
+  classNames: string[];
 };
 
 function compareHubMembers(a: BeltReviewHubMember, b: BeltReviewHubMember): number {
@@ -83,6 +97,63 @@ export function useBeltReviewHub(discipline: RankDisciplineSlug | null) {
     [candidates],
   );
 
+  const classesQuery = useCoachClasses();
+  const classes = classesQuery.data ?? [];
+
+  const rollCallQueries = useQueries({
+    queries: classes.map((c) => ({
+      queryKey: rollCallKey(c.id),
+      queryFn: () => getRollCallState(c.id),
+      enabled: Boolean(c.id),
+      staleTime: 60 * 1000,
+    })),
+  });
+
+  const decksFingerprint = JSON.stringify(
+    rollCallQueries.map((q) => q.data?.deck?.map((m) => `${m.userId}-${m.beltRank}-${m.beltStripes}`).join(','))
+  );
+
+  const scannedMembers = useMemo<ScannedMember[]>(() => {
+    // Map userId -> accumulated metadata
+    const byId = new Map<
+      string,
+      { userId: string; fullName: string; beltRank: string | null; beltStripes: number; avatarUrl: string | null; classNames: Set<string> }
+    >();
+
+    rollCallQueries.forEach((q, idx) => {
+      if (!q.data) return;
+      const className = classes[idx]?.title ?? '';
+      for (const deckMember of q.data.deck ?? []) {
+        if (!deckMember.userId || deckMember.isGuest) continue;
+        const existing = byId.get(deckMember.userId);
+        if (existing) {
+          if (className) existing.classNames.add(className);
+        } else {
+          byId.set(deckMember.userId, {
+            userId: deckMember.userId,
+            fullName: deckMember.displayName,
+            beltRank: deckMember.beltRank,
+            beltStripes: deckMember.beltStripes,
+            avatarUrl: deckMember.avatarUrl ?? null,
+            classNames: new Set(className ? [className] : []),
+          });
+        }
+      }
+    });
+
+    return Array.from(byId.values())
+      .map((m) => ({
+        userId: m.userId,
+        fullName: m.fullName,
+        beltRank: m.beltRank,
+        beltStripes: m.beltStripes,
+        avatarUrl: m.avatarUrl,
+        classCount: m.classNames.size,
+        classNames: Array.from(m.classNames),
+      }))
+      .sort((a, b) => a.fullName.localeCompare(b.fullName));
+  }, [decksFingerprint, classes]);
+
   const signedInToday = useMemo(() => {
     const seen = new Set<string>();
     const members: BeltReviewHubMember[] = [];
@@ -139,27 +210,34 @@ export function useBeltReviewHub(discipline: RankDisciplineSlug | null) {
       .sort(compareHubMembers);
   }, [candidates, signedInToday]);
 
+  const isRollCallQueriesLoading = rollCallQueries.some((q) => q.isLoading);
   const isLoading =
-    candidatesQuery.isLoading || rollCallQuery.isLoading || rosterQuery.isLoading;
+    candidatesQuery.isLoading ||
+    rollCallQuery.isLoading ||
+    rosterQuery.isLoading ||
+    classesQuery.isLoading ||
+    isRollCallQueriesLoading;
 
   return {
     heroClass,
     signedInToday,
     readyToPromote,
+    scannedMembers,
     candidatesQuery,
     rollCallQuery,
     rosterQuery,
     isLoading,
     hasError: Boolean(candidatesQuery.error),
-    errorMessage:
-      candidatesQuery.error instanceof Error
-        ? candidatesQuery.error.message
-        : 'Please check your connection.',
+    errorMessage: toUserFacingErrorMessage(candidatesQuery.error, {
+      fallback: USER_FACING_LOAD_ERROR,
+    }),
     refetch: () =>
       Promise.all([
         candidatesQuery.refetch(),
         rollCallQuery.refetch(),
         rosterQuery.refetch(),
+        classesQuery.refetch(),
+        ...rollCallQueries.map((q) => q.refetch()),
       ]),
   };
 }

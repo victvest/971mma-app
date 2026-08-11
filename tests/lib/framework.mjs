@@ -2,7 +2,7 @@
  * Minimal sequential test framework for the 971 MMA end-to-end regression suite.
  *
  * Why custom (not jest): every test runs against the LIVE linked Supabase project
- * and shares ONE auth session whose role is flipped between member/coach/gate/admin.
+ * and shares ONE auth session whose role is flipped between member/coach/admin.
  * That demands strict sequential execution and a shared context object — exactly
  * what jest's parallel/isolated model fights against. This file is ~150 lines and
  * does precisely what the suite needs.
@@ -38,7 +38,7 @@ export function suite(name, fn) {
  * Register a test case.
  * @param {string} name
  * @param {(ctx: import('./harness.mjs').TestContext) => Promise<any>} fn
- * @param {{ role?: 'member'|'coach'|'gate'|'admin', multiRole?: boolean, tags?: string[] }} [opts]
+ * @param {{ role?: 'member'|'coach'|'admin', multiRole?: boolean, tags?: string[] }} [opts]
  */
 export function test(name, fn, opts = {}) {
   registry.push({

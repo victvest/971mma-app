@@ -1,18 +1,8 @@
 import type { NotificationItem } from '@/types/domain';
 
-export type NotificationCategory =
-  | 'announcement'
-  | 'milestone'
-  | 'reminder'
-  | 'reward'
-  | 'other';
+export type NotificationCategory = 'announcement' | 'milestone' | 'reminder' | 'reward' | 'other';
 
-export type NotificationFilterId =
-  | 'all'
-  | 'announcement'
-  | 'milestone'
-  | 'reminder'
-  | 'reward';
+export type NotificationFilterId = 'all' | 'announcement' | 'milestone' | 'reminder' | 'reward';
 
 export type NotificationChipMetrics = {
   counts: Record<NotificationFilterId, number>;
@@ -26,9 +16,10 @@ export function getNotificationCategory(item: NotificationItem): NotificationCat
 
   if (
     t === 'announcement' ||
-    t === 'community' ||
     t.includes('announcement') ||
-    t.includes('community') ||
+    t === 'feed_like' ||
+    t === 'feed_comment' ||
+    t.includes('feed') ||
     title.includes('announcement')
   ) {
     return 'announcement';
@@ -74,18 +65,14 @@ export function matchesNotificationFilter(
   const category = getNotificationCategory(item);
   if (filter === 'reminder') {
     return (
-      category === 'reminder' ||
-      category === 'other' ||
-      item.type.toLowerCase().includes('class')
+      category === 'reminder' || category === 'other' || item.type.toLowerCase().includes('class')
     );
   }
 
   return category === filter;
 }
 
-export function computeNotificationChipMetrics(
-  items: NotificationItem[],
-): NotificationChipMetrics {
+export function computeNotificationChipMetrics(items: NotificationItem[]): NotificationChipMetrics {
   const counts: NotificationChipMetrics['counts'] = {
     all: items.length,
     announcement: 0,

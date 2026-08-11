@@ -1,0 +1,22 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["TEAMID.com.victvest.ninemma"],
+        "components": [
+          {
+            "/": "/auth/callback",
+            "comment": "OAuth and password recovery callback"
+          },
+          {
+            "/": "/auth/callback/*",
+            "comment": "OAuth callback with path params"
+          }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": ["TEAMID.com.victvest.ninemma"]
+  }
+}

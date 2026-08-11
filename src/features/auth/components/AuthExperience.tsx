@@ -1,20 +1,8 @@
-import React, {
-  createContext,
-  forwardRef,
-  useContext,
-  useEffect,
-  useRef,
-  useState,
-  type ComponentType,
-  type ReactNode,
-  type RefObject,
-} from 'react';
+import React, { forwardRef, useEffect, useState, type ComponentType, type ReactNode } from 'react';
 import {
   ActivityIndicator,
-  KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   Text,
   TextInput,
@@ -24,7 +12,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { OtpInput, type OtpInputRef } from 'react-native-otp-entry';
-import { AppBarBackButton } from '@/shared/components/ui';
+import { AppBarBackButton, AppScrollView } from '@/shared/components/ui';
 import { MotiPressable } from '@/shared/animations';
 import {
   AlertCircle,
@@ -37,6 +25,8 @@ import {
 } from 'lucide-react-native';
 import { type Href } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -60,14 +50,7 @@ import { navigateAuth } from '@/features/auth/navigation/authNavigation';
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
 import authBrandMark from '../../../../assets/brand/logo-notext.png';
 import { GoogleLogo } from '@/features/auth/components/GoogleLogo';
-import { useAuthScrollToField } from '@/features/auth/hooks/useAuthScrollToField';
 import { useKeyboardBottomInset } from '@/shared/hooks';
-
-type AuthScrollContextValue = {
-  scrollFieldIntoView: (fieldRef: RefObject<View | null>) => void;
-};
-
-const AuthScrollContext = createContext<AuthScrollContextValue | null>(null);
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 const AnimatedView = Animated.createAnimatedComponent(View);
@@ -100,26 +83,18 @@ export function AuthScreen({
 }: AuthScreenProps) {
   const { colors, typography, inset, gap, layout, animations } = useTheme();
   const safeInsets = useSafeAreaInsets();
+  const topInset = useAppTopInset();
+  const offlineBannerVisible = useOfflineBannerVisible();
   const keyboardBottomInset = useKeyboardBottomInset();
   const { height: windowHeight } = useWindowDimensions();
-  const scrollRef = useRef<ScrollView>(null);
-  const scrollContentRef = useRef<View>(null);
   const compactHeight = windowHeight < layout.authCompactHeight;
-  const contentPaddingTop = safeInsets.top + (showBackButton ? inset['3xl'] : inset.xl);
+  const contentPaddingTop = topInset + (showBackButton ? inset['3xl'] : inset.xl);
   const scrollPaddingBottom = safeInsets.bottom + (compactHeight ? inset.xl : inset['3xl']);
+  const keyboardScrollPadding =
+    Platform.OS === 'android' && keyboardBottomInset > 0 ? keyboardBottomInset : 0;
   const panelGap = compactHeight ? gap.lg : gap.xl;
   const logoSize =
     layout.authBrandMark * (compactHeight ? AUTH_LOGO_COMPACT_SCALE : AUTH_LOGO_REGULAR_SCALE);
-
-  const { scrollFieldIntoView, onScrollOffsetChange } = useAuthScrollToField(
-    scrollRef,
-    scrollContentRef,
-    {
-      keyboardHeight: keyboardBottomInset,
-      windowHeight,
-      contentPaddingTop,
-    },
-  );
 
   const headerStyle = useAuthEntranceAnimation();
   const bodyStyle = useAuthSlideUpAnimation({ delay: animations.duration.instant });
@@ -128,103 +103,88 @@ export function AuthScreen({
   });
 
   return (
-    <AuthScrollContext.Provider value={{ scrollFieldIntoView }}>
-      <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
-        <AppStatusBar backgroundColor={colors.background.primary} />
-        {showBackButton && onBackPress ? (
-          <View
-            style={[
-              styles.backButtonRoot,
-              {
-                top: safeInsets.top + NAV_CHROME.topInset,
-                left: NAV_CHROME.horizontalInset,
-              },
-            ]}
-            pointerEvents="box-none"
-          >
-            <AppBarBackButton onPress={onBackPress} />
-          </View>
-        ) : null}
-        <KeyboardAvoidingView
-          style={styles.flex}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={0}
+    <View style={[styles.root, { backgroundColor: colors.background.primary }]}>
+      <AppStatusBar backgroundColor={colors.background.primary} />
+      {showBackButton && onBackPress ? (
+        <View
+          style={[
+            styles.backButtonRoot,
+            {
+              top: offlineBannerVisible ? 0 : topInset + NAV_CHROME.topInset,
+              left: NAV_CHROME.horizontalInset,
+            },
+          ]}
+          pointerEvents="box-none"
         >
-          <ScrollView
-            ref={scrollRef}
-            style={styles.flex}
-            automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
-            keyboardShouldPersistTaps="handled"
-            keyboardDismissMode={Platform.OS === 'ios' ? 'interactive' : 'none'}
-            nestedScrollEnabled
-            onScroll={(event) => {
-              onScrollOffsetChange(event.nativeEvent.contentOffset.y);
-            }}
-            scrollEventThrottle={16}
-            contentContainerStyle={[
-              styles.scrollContent,
-              {
-                paddingTop: contentPaddingTop,
-                paddingHorizontal: inset.lg,
-                paddingBottom: scrollPaddingBottom,
-              },
-            ]}
-            showsVerticalScrollIndicator={false}
-          >
-            <View
-              ref={scrollContentRef}
-              style={[
-                styles.panelWrap,
-                {
-                  maxWidth: layout.authContentMaxWidth,
-                  gap: panelGap,
-                },
-              ]}
+          <AppBarBackButton onPress={onBackPress} />
+        </View>
+      ) : null}
+      <AppScrollView
+        style={styles.flex}
+        automaticallyAdjustKeyboardInsets={Platform.OS === 'ios'}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="none"
+        contentContainerStyle={[
+          styles.scrollContent,
+          {
+            paddingTop: contentPaddingTop,
+            paddingHorizontal: inset.lg,
+            paddingBottom: scrollPaddingBottom + keyboardScrollPadding,
+          },
+        ]}
+        showsVerticalScrollIndicator={false}
+      >
+        <View
+          style={[
+            styles.panelWrap,
+            {
+              maxWidth: layout.authContentMaxWidth,
+              gap: panelGap,
+            },
+          ]}
+        >
+          <AuthBrandMark
+            size={logoSize}
+            tintColor={colors.text.primary}
+            animatedStyle={headerStyle}
+          />
+
+          <AnimatedView style={[styles.copyBlock, { gap: gap.sm }, headerStyle]}>
+            <Text
+              style={{
+                ...typography.textPresets.authTitle,
+                fontSize: 34,
+                lineHeight: 38,
+                letterSpacing: 0,
+                color: colors.text.primary,
+                textAlign: 'center',
+              }}
             >
-              <AuthBrandMark
-                size={logoSize}
-                tintColor={colors.text.primary}
-                animatedStyle={headerStyle}
-              />
+              {title}
+            </Text>
+            <Text
+              style={{
+                ...typography.textPresets.body,
+                color: colors.text.secondary,
+                textAlign: 'center',
+              }}
+            >
+              {subtitle}
+            </Text>
+          </AnimatedView>
 
-              <AnimatedView style={[styles.copyBlock, { gap: gap.sm }, headerStyle]}>
-                <Text
-                  style={{
-                    ...typography.textPresets.authTitle,
-                    fontSize: 34,
-                    lineHeight: 38,
-                    letterSpacing: 0,
-                    color: colors.text.primary,
-                    textAlign: 'center',
-                  }}
-                >
-                  {title}
-                </Text>
-                <Text
-                  style={{
-                    ...typography.textPresets.body,
-                    color: colors.text.secondary,
-                    textAlign: 'center',
-                  }}
-                >
-                  {subtitle}
-                </Text>
-              </AnimatedView>
+          <AnimatedView style={[styles.formStack, { gap: gap.md }, bodyStyle]}>
+            {children}
+          </AnimatedView>
 
-              <AnimatedView style={[styles.formStack, { gap: gap.md }, bodyStyle]}>
-                {children}
-              </AnimatedView>
-
-              {footer ? (
-                <AnimatedView style={[styles.footerStack, { gap: gap.sm }, footerStyle]}>
-                  {footer}
-                </AnimatedView>
-              ) : null}
-            </View>
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </View>
-    </AuthScrollContext.Provider>
+          {footer ? (
+            <AnimatedView style={[styles.footerStack, { gap: gap.sm }, footerStyle]}>
+              {footer}
+            </AnimatedView>
+          ) : null}
+        </View>
+      </AppScrollView>
+    </View>
   );
 }
 
@@ -280,9 +240,6 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
   ref,
 ) {
   const { colors, typography, inset, gap, layout, radius } = useTheme();
-  const authScroll = useContext(AuthScrollContext);
-  const keyboardBottomInset = useKeyboardBottomInset();
-  const fieldBlockRef = useRef<View>(null);
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(Boolean(password));
 
@@ -315,16 +272,10 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(function 
   function handleFocus(event: Parameters<NonNullable<TextInputProps['onFocus']>>[0]) {
     setFocused(true);
     onFocus?.(event);
-    authScroll?.scrollFieldIntoView(fieldBlockRef);
   }
 
-  useEffect(() => {
-    if (!focused || keyboardBottomInset === 0) return;
-    authScroll?.scrollFieldIntoView(fieldBlockRef);
-  }, [authScroll, focused, keyboardBottomInset]);
-
   return (
-    <View ref={fieldBlockRef} style={{ gap: gap.xs }}>
+    <View style={{ gap: gap.xs }}>
       <Text
         style={{
           ...typography.textPresets.label,
@@ -864,7 +815,6 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
     width: '100%',
   },
   panelWrap: {

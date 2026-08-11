@@ -36,7 +36,12 @@ export function StateBlock({
         <Text style={[styles.message, { color: colors.text.secondary }]}>{message}</Text>
       ) : null}
       {actionLabel && handleAction ? (
-        <Button label={actionLabel} onPress={handleAction} variant="outline" style={styles.action} />
+        <Button
+          label={actionLabel}
+          onPress={handleAction}
+          variant="outline"
+          style={styles.action}
+        />
       ) : null}
     </View>
   );

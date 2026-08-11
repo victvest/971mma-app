@@ -17,6 +17,7 @@ import {
 } from '@/features/auth/components/AuthExperience';
 import { formatAuthError, validateEmail } from '@/features/auth/services/authValidation';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 export default function LoginScreen() {
   const router = useRouter();
@@ -32,7 +33,7 @@ export default function LoginScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 

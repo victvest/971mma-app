@@ -13,18 +13,14 @@ import {
   filterScheduleByCategory,
   selectScheduleCategories,
 } from '@/features/schedule/utils/scheduleDaySelectors';
-import {
-  fetchScheduleDayClasses,
-  getClassById,
-  getPrograms,
-} from '@/services/database';
+import { fetchScheduleDayClasses, getClassById, getPrograms } from '@/services/database';
 import { getScheduleProvider } from '@/services/integrations';
-import { useCanInvokeProtectedEdge, canInvokeProtectedEdge } from '@/features/auth/utils/canInvokeProtectedEdge';
-import { isApiError } from '@/lib/apiError';
 import {
-  SCHEDULE_MIRROR_STALE_MS,
-  SCHEDULE_PAGE_STALE_MS,
-} from '@/lib/queryCachePolicy';
+  useCanRunMindbodyMirrorSync,
+  canRunMindbodyMirrorSync,
+} from '@/features/auth/utils/canInvokeProtectedEdge';
+import { isApiError } from '@/lib/apiError';
+import { SCHEDULE_MIRROR_STALE_MS, SCHEDULE_PAGE_STALE_MS } from '@/lib/queryCachePolicy';
 import { shouldInvalidateAfterMirrorSync } from '@/lib/queryRefresh';
 
 const PAGE_SIZE = 20;
@@ -101,7 +97,7 @@ async function runScheduleMirrorSync(
   range: { startDate: string; endDate: string },
   force = false,
 ): Promise<ScheduleMirrorResult> {
-  if (!canInvokeProtectedEdge()) {
+  if (!canRunMindbodyMirrorSync()) {
     return EMPTY_SCHEDULE_MIRROR_RESULT;
   }
 
@@ -116,7 +112,7 @@ async function runScheduleMirrorSync(
 }
 
 export function useScheduleRefresh(range = gymTodayTomorrowRange()) {
-  const canSync = useCanInvokeProtectedEdge();
+  const canSync = useCanRunMindbodyMirrorSync();
 
   return useQuery({
     queryKey: scheduleRefreshKey(range),
@@ -148,7 +144,7 @@ export function useScheduleDay(range = gymRangeIso()) {
  */
 export function useScheduleFocusSync(enabled = true) {
   const queryClient = useQueryClient();
-  const canSync = useCanInvokeProtectedEdge();
+  const canSync = useCanRunMindbodyMirrorSync();
   const mirrorEnabled = enabled && canSync;
   const lastSyncRef = useRef(0);
   const lastDayKeyRef = useRef(gymDayKey());
@@ -168,9 +164,7 @@ export function useScheduleFocusSync(enabled = true) {
 
       syncingRef.current = true;
       try {
-        const result = force
-          ? await forceScheduleRefresh()
-          : await refreshScheduleMirror();
+        const result = force ? await forceScheduleRefresh() : await refreshScheduleMirror();
         lastSyncRef.current = Date.now();
         lastDayKeyRef.current = currentDayKey;
         if (shouldInvalidateAfterMirrorSync(result, force)) {
@@ -231,10 +225,7 @@ export function useSchedulePages(category: ScheduleCategory | null) {
     queryKey: schedulePagesKey({ ...range, category }),
     queryFn: async ({ pageParam }) => {
       const day = await ensureScheduleDay(queryClient, range);
-      return filterScheduleByCategory(day, category).slice(
-        pageParam,
-        pageParam + PAGE_SIZE,
-      );
+      return filterScheduleByCategory(day, category).slice(pageParam, pageParam + PAGE_SIZE);
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage, _pages, lastPageParam) =>

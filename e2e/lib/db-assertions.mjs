@@ -48,18 +48,6 @@ export const WORKFLOW_ASSERTIONS = {
     return { tokenIssued: true, activeTokens: tokens[0]?.count ?? 0 };
   },
 
-  async 'checkin.gate-qr-issue'(env) {
-    const gatePersona = getPersona('gate', env);
-    if (!isPersonaConfigured(gatePersona)) {
-      return { skip: true, reason: 'Gate persona not configured (set E2E_GATE_EMAIL/PASSWORD)' };
-    }
-    const supabase = createE2ESupabase(env);
-    const session = await signInPersona(supabase, gatePersona.email, gatePersona.password);
-    const result = await invokeEdge(env, 'gate-qr-issue', session.token, {});
-    if (!result.ok) throw new Error(`gate-qr-issue failed: ${JSON.stringify(result.body)}`);
-    return { gateToken: result.body?.token ?? result.body?.gateToken ?? 'issued' };
-  },
-
   async 'membership.sync'(env) {
     const persona = getPersona('member', env);
     if (!isPersonaConfigured(persona)) return { skip: true, reason: 'Member persona not configured' };

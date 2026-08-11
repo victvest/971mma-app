@@ -24,7 +24,9 @@ function deriveStatuses(
   catalog: MilestoneCatalogRow[],
   trainingDays: number,
 ): Map<string, { status: MilestoneStatus; earnedAt: string | null }> {
-  const sorted = [...catalog].sort((a, b) => a.unlock_days - b.unlock_days || a.name.localeCompare(b.name));
+  const sorted = [...catalog].sort(
+    (a, b) => a.unlock_days - b.unlock_days || a.name.localeCompare(b.name),
+  );
   const nextMilestone = sorted.find((item) => trainingDays < item.unlock_days) ?? null;
   const derived = new Map<string, { status: MilestoneStatus; earnedAt: string | null }>();
 

@@ -1,4 +1,9 @@
-import { formatGymDisplay, formatGymTime12h, gymDayKey, parseGymTime12h } from '@/core/time/gymTime';
+import {
+  formatGymDisplay,
+  formatGymTime12h,
+  gymDayKey,
+  parseGymTime12h,
+} from '@/core/time/gymTime';
 
 /** Coach-facing capacity copy — avoids implying members can book in-app. */
 export function formatCoachRosterCapacity(bookedCount: number, capacity: number): string {
@@ -32,7 +37,10 @@ export type RunClassRosterStat = {
 };
 
 /** Run class stat row — "14" + " /24" */
-export function formatRunClassRosterStat(bookedCount: number, capacity: number): RunClassRosterStat {
+export function formatRunClassRosterStat(
+  bookedCount: number,
+  capacity: number,
+): RunClassRosterStat {
   if (capacity > 0) {
     return { bookedLabel: String(bookedCount), capacitySuffix: ` /${capacity}` };
   }

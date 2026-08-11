@@ -14,7 +14,12 @@ export { getHomeDashboardSummary } from './homeDashboard.repository';
 export type { HomeDashboardSummary } from './homeDashboard.repository';
 export { getPrograms } from './programs.repository';
 export type { ProgramItem } from './programs.repository';
-export { getMyProfile, updateMyProfile, getProfileById, completeOnboarding } from './profiles.repository';
+export {
+  getMyProfile,
+  updateMyProfile,
+  getProfileById,
+  completeOnboarding,
+} from './profiles.repository';
 export {
   getMyGuardianLinks,
   revokeGuardianLink,
@@ -32,7 +37,14 @@ export {
 export { getMemberMemberships, getMembershipSummary } from './membership.repository';
 export { getPointsAccount, getLedgerPage } from './points.repository';
 export { getCatalog, getMyRedemptions, redeem } from './rewards.repository';
-export { getMyReferrals, getMyReferralCode, applyReferralCode, getMyReferralStatus } from './referrals.repository';
+export { getAppSettings } from './appSettings.repository';
+export type { AppSettings } from './appSettings.repository';
+export {
+  getMyReferrals,
+  getMyReferralCode,
+  applyReferralCode,
+  getMyReferralStatus,
+} from './referrals.repository';
 export { getMyMilestones } from './milestones.repository';
 export {
   mapClassRow,

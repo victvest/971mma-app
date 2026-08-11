@@ -12,10 +12,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TabHeroTitle } from '@/shared/components/brand';
-import {
-  AppBottomSheet,
-  AppBottomSheetButton,
-} from '@/shared/components/AppBottomSheet';
+import { AppBottomSheet, AppBottomSheetButton } from '@/shared/components/AppBottomSheet';
 import { Chip, PillSegmentedTabs, TextField } from '@/shared/components/ui';
 import { triggerLightImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -342,11 +339,7 @@ export function CoachCurriculumRequirementEditor({
             )}
           </Pressable>
 
-          <AppBottomSheetButton
-            label="Not now"
-            variant="secondary"
-            onPress={handleDismiss}
-          />
+          <AppBottomSheetButton label="Not now" variant="secondary" onPress={handleDismiss} />
         </View>
       </KeyboardAvoidingView>
     </AppBottomSheet>

@@ -1,8 +1,12 @@
-import React from 'react';
-import { Tabs } from 'expo-router';
+import React, { useEffect, useMemo } from 'react';
+import { Tabs, useRouter, useSegments } from 'expo-router';
 import { APP_TAB_ROUTES, FloatingTabBar } from '@/shared/components/navigation/FloatingTabBar';
 import { triggerSelectionHaptic } from '@/shared/haptics';
+import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { createTabScreenOptions } from '@/shared/navigation/tabScreenOptions';
+import { resolveGuestTabAction } from '@/shared/navigation/guestTabAccess';
+import { useIsViewingChildProfile, useActiveGuardianLink } from '@/hooks/useActiveMemberId';
 
 type TabRoute = {
   key: string;
@@ -30,46 +34,83 @@ type TabBarProps = {
 
 function CustomTabBar({ state, navigation }: TabBarProps) {
   const activeRouteName = state.routes[state.index]?.name;
+  const viewingChild = useIsViewingChildProfile();
+  const activeGuardianLink = useActiveGuardianLink();
+  const { isAnonymousGuest, needsActivation } = useIsGuest();
+  const { prompt, sheet } = useAccountActionSheet();
+  const routes = useMemo(
+    () =>
+      viewingChild
+        ? APP_TAB_ROUTES.filter((route) => route.name === 'index' || route.name === 'checkin')
+        : APP_TAB_ROUTES,
+    [viewingChild],
+  );
 
   return (
-    <FloatingTabBar
-      routes={APP_TAB_ROUTES}
-      activeRouteName={activeRouteName}
-      onRoutePress={(route) => {
-        const target = state.routes.find((item) => item.name === route.name);
-        if (!target) return;
+    <>
+      <FloatingTabBar
+        routes={routes}
+        activeRouteName={activeRouteName}
+        onRoutePress={(route) => {
+          const guestAction = resolveGuestTabAction({
+            routeName: route.name,
+            isAnonymousGuest,
+            needsActivation,
+          });
+          if (guestAction) {
+            triggerSelectionHaptic();
+            prompt(guestAction);
+            return;
+          }
 
-        const event = navigation.emit({
-          type: 'tabPress',
-          target: target.key,
-          canPreventDefault: true,
-        }) as { defaultPrevented?: boolean };
+          const target = state.routes.find((item) => item.name === route.name);
+          if (!target) return;
 
-        if (activeRouteName !== route.name && !event.defaultPrevented) {
-          triggerSelectionHaptic();
-          navigation.navigate(route.name);
-        }
-      }}
-      onRouteLongPress={(route) => {
-        const target = state.routes.find((item) => item.name === route.name);
-        if (!target) return;
+          const event = navigation.emit({
+            type: 'tabPress',
+            target: target.key,
+            canPreventDefault: true,
+          }) as { defaultPrevented?: boolean };
 
-        navigation.emit({
-          type: 'tabLongPress',
-          target: target.key,
-        });
-      }}
-      hideWhenInactive
-    />
+          if (activeRouteName !== route.name && !event.defaultPrevented) {
+            triggerSelectionHaptic();
+            navigation.navigate(route.name);
+          }
+        }}
+        onRouteLongPress={(route) => {
+          const target = state.routes.find((item) => item.name === route.name);
+          if (!target) return;
+
+          navigation.emit({
+            type: 'tabLongPress',
+            target: target.key,
+          });
+        }}
+        hideWhenInactive
+      />
+      {sheet}
+    </>
   );
 }
 
 export default function MainTabsLayout() {
+  const router = useRouter();
+  const segments = useSegments();
+  const viewingChild = useIsViewingChildProfile();
+  const activeTab =
+    (segments as string[]).filter((segment) => !segment.startsWith('(')).at(-1) || 'index';
+
+  const activeGuardianLink = useActiveGuardianLink();
+
+  useEffect(() => {
+    if (!viewingChild) return;
+    if (activeTab === 'schedule' || activeTab === 'coaches' || activeTab === 'feed') {
+      router.replace('/(tabs)');
+    }
+  }, [activeTab, router, viewingChild]);
+
   return (
-    <Tabs
-      tabBar={(props) => <CustomTabBar {...props} />}
-      screenOptions={createTabScreenOptions()}
-    >
+    <Tabs tabBar={(props) => <CustomTabBar {...props} />} screenOptions={createTabScreenOptions()}>
       <Tabs.Screen
         name="index"
         options={{
@@ -79,7 +120,13 @@ export default function MainTabsLayout() {
       <Tabs.Screen
         name="schedule"
         options={{
-          title: 'Schedule',
+          title: 'Classes',
+        }}
+      />
+      <Tabs.Screen
+        name="feed"
+        options={{
+          title: 'Feed',
         }}
       />
       <Tabs.Screen

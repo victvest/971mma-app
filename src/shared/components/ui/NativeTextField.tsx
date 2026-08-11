@@ -55,9 +55,7 @@ export function NativeTextField({
     );
   }
 
-  const borderColor = error
-    ? colors.status.error
-    : colors.border.default;
+  const borderColor = error ? colors.status.error : colors.border.default;
 
   return (
     <View style={[styles.wrap, containerStyle]}>

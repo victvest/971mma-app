@@ -1,7 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, AppState, View } from 'react-native';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { enableFreeze } from 'react-native-screens';
 import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { QueryClientProvider, useQueryClient } from '@tanstack/react-query';
 import Toast from 'react-native-toast-message';
@@ -20,13 +19,7 @@ import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { usePushNotifications } from '@/features/notifications/hooks/usePushNotifications';
 import { StartupBackgroundMonitor } from '@/core/startup/StartupBackgroundMonitor';
-import {
-  exposePerfToolsOnGlobal,
-  PerfMark,
-  perfMarkOnce,
-} from '@/shared/performance';
-
-enableFreeze(true);
+import { exposePerfToolsOnGlobal, PerfMark, perfMarkOnce } from '@/shared/performance';
 
 function RollCallOfflineFlushMonitor() {
   const role = useAuthStore((state) => state.role);
@@ -59,7 +52,14 @@ function FontGate({ children }: { children: React.ReactNode }) {
 
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: colors.background.primary }}>
+      <View
+        style={{
+          flex: 1,
+          justifyContent: 'center',
+          alignItems: 'center',
+          backgroundColor: colors.background.primary,
+        }}
+      >
         <ActivityIndicator size="large" color={colors.accent.default} />
       </View>
     );

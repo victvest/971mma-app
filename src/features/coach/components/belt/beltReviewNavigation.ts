@@ -22,9 +22,8 @@ export function openCoachBeltReviewMember(
       memberEmail: member.email ?? '',
       memberRank: member.beltRank ?? 'Unranked',
       memberStripes: String(member.beltStripes ?? 0),
-      memberAvatarUrl: 'avatarUrl' in member ? member.avatarUrl ?? '' : '',
-      memberRecentCheckIns:
-        'recentCheckIns' in member ? String(member.recentCheckIns ?? 0) : '0',
+      memberAvatarUrl: 'avatarUrl' in member ? (member.avatarUrl ?? '') : '',
+      memberRecentCheckIns: 'recentCheckIns' in member ? String(member.recentCheckIns ?? 0) : '0',
       discipline,
     },
   });

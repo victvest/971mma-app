@@ -1,4 +1,5 @@
 import { queryClient } from '@/lib/queryClient';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import {
   mindbodyLinkKey,
   type MindbodyLinkState,
@@ -61,7 +62,7 @@ export async function runMindbodyLinkOnce(userId: string): Promise<void> {
       linkMethod: 'manual',
       linkedAt: '',
       status,
-      error: (err.message as string) || 'Linking failed.',
+      error: toUserFacingErrorMessage(error, { fallback: 'Linking failed.' }),
     });
   } finally {
     if (linkingUserId === userId) {

@@ -19,10 +19,7 @@ export function AuthSplashScreen() {
   const hasContinuedRef = useRef(false);
 
   const videoStageSize = useMemo(() => {
-    const width = Math.min(
-      SPLASH_VIDEO_MAX_WIDTH,
-      Math.round(screenWidth * SPLASH_VIDEO_SCALE),
-    );
+    const width = Math.min(SPLASH_VIDEO_MAX_WIDTH, Math.round(screenWidth * SPLASH_VIDEO_SCALE));
     return { width, height: Math.round(width / SPLASH_VIDEO_ASPECT_RATIO) };
   }, [screenWidth]);
 

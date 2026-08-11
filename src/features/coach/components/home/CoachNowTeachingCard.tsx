@@ -34,7 +34,9 @@ const HeroStatCell = memo(function HeroStatCell({ value, label, accentValue }: S
       >
         {value}
       </Text>
-      <Text style={[typography.textPresets.label, styles.statLabel, { color: colors.text.inverse }]}>
+      <Text
+        style={[typography.textPresets.label, styles.statLabel, { color: colors.text.inverse }]}
+      >
         {label}
       </Text>
     </View>
@@ -60,7 +62,7 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
   presentLabel = 'PRESENT',
   onPress,
 }: Props) {
-  const { colors, inset, radius, layout, typography, shadows, gap } = useTheme();
+  const { colors, inset, radius, layout, typography, surfaceShadow, gap } = useTheme();
   const { width: screenWidth } = useWindowDimensions();
   const cardWidth = screenWidth - inset.lg * 2;
   const cardHeight = cardWidth * HERO_CARD_HEIGHT_RATIO;
@@ -69,7 +71,7 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
 
   if (!classItem) {
     return (
-      <View style={[styles.shadowWrap, shadows.mediaHero, { width: cardWidth }]}>
+      <View style={[styles.shadowWrap, surfaceShadow('mediaHero'), { width: cardWidth }]}>
         <View style={[styles.cardShell, { borderRadius: radius.cardLarge }]}>
           <View style={[styles.mediaFrame, { height: cardHeight }]}>
             <Image source={heroImage} style={styles.mediaImage} contentFit="cover" />
@@ -78,8 +80,19 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
               locations={[0, 0.45, 1]}
               style={styles.scrim}
             />
-            <View style={[styles.content, { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm }]}>
-              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
+            <View
+              style={[
+                styles.content,
+                { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm },
+              ]}
+            >
+              <Text
+                style={[
+                  typography.textPresets.label,
+                  styles.chipText,
+                  { color: colors.text.inverse },
+                ]}
+              >
                 COACH MODE
               </Text>
               <Text
@@ -109,7 +122,7 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
   const liveChipLabel = isLive ? `LIVE · ${statusChipLabel}` : statusChipLabel;
 
   return (
-    <View style={[styles.shadowWrap, shadows.mediaHero, { width: cardWidth }]}>
+    <View style={[styles.shadowWrap, surfaceShadow('mediaHero'), { width: cardWidth }]}>
       <View style={[styles.cardShell, { borderRadius: radius.cardLarge }]}>
         <View style={[styles.mediaFrame, { height: cardHeight }]}>
           <Image source={imageSource} style={styles.mediaImage} contentFit="cover" />
@@ -124,18 +137,35 @@ export const CoachNowTeachingCard = memo(function CoachNowTeachingCard({
               {isLive ? (
                 <View style={[styles.liveDot, { backgroundColor: colors.text.inverse }]} />
               ) : null}
-              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
+              <Text
+                style={[
+                  typography.textPresets.label,
+                  styles.chipText,
+                  { color: colors.text.inverse },
+                ]}
+              >
                 {liveChipLabel}
               </Text>
             </GlassMediaChip>
             <GlassMediaChip>
-              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
+              <Text
+                style={[
+                  typography.textPresets.label,
+                  styles.chipText,
+                  { color: colors.text.inverse },
+                ]}
+              >
                 {classItem.discipline.toUpperCase()}
               </Text>
             </GlassMediaChip>
           </View>
 
-          <View style={[styles.content, { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm }]}>
+          <View
+            style={[
+              styles.content,
+              { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm },
+            ]}
+          >
             <Text
               style={[typography.textPresets.hero, styles.title, { color: colors.text.inverse }]}
               numberOfLines={2}

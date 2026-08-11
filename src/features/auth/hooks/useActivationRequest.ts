@@ -7,10 +7,11 @@ import {
 
 export const activationRequestKey = ['activation-request'] as const;
 
-export function useActivationRequest() {
+export function useActivationRequest(options?: { enabled?: boolean }) {
   return useQuery({
     queryKey: activationRequestKey,
     queryFn: getMyActivationRequest,
+    enabled: options?.enabled ?? true,
   });
 }
 

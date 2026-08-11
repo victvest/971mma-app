@@ -21,7 +21,9 @@ export const RollCallPostClassBanner = memo(function RollCallPostClassBanner() {
     >
       <View style={[styles.row, { gap: gap.sm }]}>
         <Ionicons name="create-outline" size={18} color={colors.status.warning} />
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.status.warning, flex: 1 }]}>
+        <Text
+          style={[typography.textPresets.bodyStrong, { color: colors.status.warning, flex: 1 }]}
+        >
           Post-class attendance correction
         </Text>
       </View>

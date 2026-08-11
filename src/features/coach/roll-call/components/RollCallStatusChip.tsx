@@ -5,10 +5,12 @@ import { useTheme } from '@/shared/theme';
 export type RollCallStatusChipVariant =
   | 'at_academy'
   | 'no_entry_scan'
+  | 'not_here'
   | 'guardian_entry'
   | 'not_on_app'
   | 'booked'
-  | 'walk_in';
+  | 'walk_in'
+  | 'qr_code';
 
 type ChipSpec = {
   label: string;
@@ -25,9 +27,11 @@ export const RollCallStatusChip = memo(function RollCallStatusChip({ variant }: 
   const spec = useMemo((): ChipSpec => {
     switch (variant) {
       case 'at_academy':
-        return { label: 'At academy today', accentColor: colors.accent.default };
+        return { label: 'Checked In', accentColor: colors.accent.default };
       case 'no_entry_scan':
         return { label: 'No scan', accentColor: colors.status.error };
+      case 'not_here':
+        return { label: 'Not here', accentColor: colors.status.warning };
       case 'guardian_entry':
         return { label: 'Guardian', accentColor: colors.status.error };
       case 'not_on_app':
@@ -36,6 +40,8 @@ export const RollCallStatusChip = memo(function RollCallStatusChip({ variant }: 
         return { label: 'Booked', accentColor: colors.fill.primary };
       case 'walk_in':
         return { label: 'Walk-in', accentColor: colors.accent.default };
+      case 'qr_code':
+        return { label: 'QR code', accentColor: colors.accent.default };
       default:
         return { label: 'Booked', accentColor: colors.fill.primary };
     }
@@ -57,7 +63,9 @@ export const RollCallStatusChip = memo(function RollCallStatusChip({ variant }: 
       accessibilityLabel={spec.label}
     >
       <View style={[styles.accentDot, { backgroundColor: spec.accentColor }]} />
-      <Text style={[typography.textPresets.captionMedium, styles.label, { color: colors.text.primary }]}>
+      <Text
+        style={[typography.textPresets.captionMedium, styles.label, { color: colors.text.primary }]}
+      >
         {spec.label}
       </Text>
     </View>

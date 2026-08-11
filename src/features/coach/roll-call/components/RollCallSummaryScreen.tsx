@@ -1,44 +1,62 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Image } from 'expo-image';
-import { useFocusEffect, useRouter } from 'expo-router';
+import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { RollCallSummaryHeader } from '@/features/coach/roll-call/components/RollCallSummaryHeader';
 import { RollCallSummaryStats } from '@/features/coach/roll-call/components/RollCallSummaryStats';
+import { RollCallStatusChip } from '@/features/coach/roll-call/components/RollCallStatusChip';
 import {
   useCompleteRollCall,
   useRollCallState,
 } from '@/features/coach/roll-call/hooks/useRollCall';
+import { useRollCallDeckMarking } from '@/features/coach/roll-call/hooks/useRollCallDeckMarking';
+import { flushPendingRollCallMarks } from '@/features/coach/roll-call/utils/flushPendingRollCallMarks';
+import { useQueryClient } from '@tanstack/react-query';
 import type { RollCallDeckMember } from '@/features/coach/roll-call/types';
-import { rollCallStatusDisplayLabel } from '@/features/coach/roll-call/types';
 import {
-  COACH_HOME_PATH,
-  rollCallClassHubPath,
-  rollCallDeckPath,
+  DEFAULT_ROLL_CALL_CONFIG,
+  rollCallStatusDisplayLabel,
+} from '@/features/coach/roll-call/types';
+import {
+  openRollCallScanner,
+  returnToRunClassHub,
 } from '@/features/coach/roll-call/utils/rollCallNavigation';
 import { resolveRollCallMemberAvatar } from '@/features/coach/roll-call/utils/rollCallAvatarUrl';
-import { formatRollCallSummarySubtitle } from '@/features/coach/utils/classDisplay';
 import { initialsFromName } from '@/features/onboarding/services/onboardingValidation';
-import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
 import { StateBlock } from '@/shared/components/StateBlock';
-import { Button, FlashListScrollComponent } from '@/shared/components/ui';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import { AppBar, AppBarIconButton, Button, FlashListScrollComponent } from '@/shared/components/ui';
+import {
+  FLASH_LIST_ESTIMATES,
+  flashListOverrideItemLayout,
+} from '@/shared/constants/flashListEstimates';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
-import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { isRollCallSessionCompleted } from '@/features/coach/roll-call/utils/rollCallSession';
+import { resolveRollCallSummary } from '@/features/coach/roll-call/utils/resolveRollCallSummary';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_NETWORK_ERROR } from '@/lib/userFacingError';
 
 type Props = {
   classId: string;
 };
 
+type AttendanceSide = 'present' | 'absent';
+
 type SummaryRowProps = {
   member: RollCallDeckMember;
+  editable: boolean;
+  disabled?: boolean;
+  onChangeStatus?: (member: RollCallDeckMember, status: AttendanceSide) => void;
 };
 
-const LATE_STATUS_COLOR = '#F59E0B';
+function resolveAttendanceSide(member: RollCallDeckMember): AttendanceSide | null {
+  const status = member.mark?.status;
+  if (!status) return null;
+  if (status === 'present' || status === 'late') return 'present';
+  if (status === 'absent') return 'absent';
+  return null;
+}
 
 const RollCallSummaryAvatar = memo(function RollCallSummaryAvatar({
   member,
@@ -86,15 +104,85 @@ const RollCallSummaryAvatar = memo(function RollCallSummaryAvatar({
   );
 });
 
-const RollCallSummaryRow = memo(function RollCallSummaryRow({ member }: SummaryRowProps) {
+const AttendanceRadio = memo(function AttendanceRadio({
+  label,
+  selected,
+  disabled,
+  onPress,
+}: {
+  label: string;
+  selected: boolean;
+  disabled?: boolean;
+  onPress: () => void;
+}) {
+  const { colors, typography, radius, inset } = useTheme();
+
+  return (
+    <Pressable
+      onPress={() => {
+        if (disabled || selected) return;
+        triggerLightImpact();
+        onPress();
+      }}
+      disabled={disabled}
+      accessibilityRole="radio"
+      accessibilityState={{ selected, disabled: Boolean(disabled) }}
+      accessibilityLabel={label}
+      style={({ pressed }) => [
+        styles.radioChip,
+        {
+          borderRadius: radius.pill,
+          borderColor: selected ? colors.accent.default : colors.border.default,
+          backgroundColor: selected ? colors.accent.subtle : colors.surface.primary,
+          paddingHorizontal: inset.sm,
+          opacity: disabled ? 0.55 : pressed ? 0.85 : 1,
+        },
+      ]}
+    >
+      <View
+        style={[
+          styles.radioOuter,
+          {
+            borderColor: selected ? colors.accent.default : colors.border.default,
+          },
+        ]}
+      >
+        {selected ? (
+          <View style={[styles.radioInner, { backgroundColor: colors.accent.default }]} />
+        ) : null}
+      </View>
+      <Text
+        style={[
+          typography.textPresets.captionMedium,
+          { color: selected ? colors.accent.default : colors.text.secondary },
+        ]}
+      >
+        {label}
+      </Text>
+    </Pressable>
+  );
+});
+
+const RollCallSummaryRow = memo(function RollCallSummaryRow({
+  member,
+  editable,
+  disabled = false,
+  onChangeStatus,
+}: SummaryRowProps) {
   const { colors, typography, inset, gap, radii: radiiTokens } = useTheme();
+  const side = useMemo(() => resolveAttendanceSide(member), [member]);
   const statusLabel = member.mark ? rollCallStatusDisplayLabel(member.mark.status) : 'Not marked';
   const statusColor =
-    member.mark?.status === 'late'
-      ? LATE_STATUS_COLOR
-      : member.mark?.status === 'absent'
-        ? colors.status.error
-        : colors.accent.default;
+    side === 'absent'
+      ? colors.status.error
+      : side === 'present'
+        ? colors.accent.default
+        : colors.text.tertiary;
+  const presenceChip = member.hasFacilityCheckInToday
+    ? ('at_academy' as const)
+    : member.isWalkIn
+      ? null
+      : ('not_here' as const);
 
   return (
     <View
@@ -109,129 +197,191 @@ const RollCallSummaryRow = memo(function RollCallSummaryRow({ member }: SummaryR
         },
       ]}
       accessibilityRole="text"
-      accessibilityLabel={`${member.displayName}, ${statusLabel}`}
+      accessibilityLabel={`${member.displayName}, ${statusLabel}${
+        presenceChip === 'not_here'
+          ? ', Not here'
+          : presenceChip === 'at_academy'
+            ? ', Checked In'
+            : ''
+      }`}
     >
       <RollCallSummaryAvatar member={member} />
       <View style={styles.rowMain}>
-        <Text
-          style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}
-          numberOfLines={1}
-        >
-          {member.displayName}
-        </Text>
-        <Text style={[typography.textPresets.captionMedium, { color: statusColor, marginTop: 2 }]}>
-          {statusLabel}
-        </Text>
+        <View style={[styles.nameRow, { gap: gap.xs }]}>
+          <Text
+            style={[typography.textPresets.bodyStrong, styles.nameText, { color: colors.text.primary }]}
+            numberOfLines={1}
+          >
+            {member.displayName}
+          </Text>
+          {presenceChip ? <RollCallStatusChip variant={presenceChip} /> : null}
+        </View>
+        {member.mark?.method === 'qr_scan' ? (
+          <Text
+            style={[
+              typography.textPresets.captionMedium,
+              { color: colors.accent.default, marginTop: 2 },
+            ]}
+          >
+            QR code
+          </Text>
+        ) : null}
+        {editable ? (
+          <View style={[styles.radioRow, { gap: gap.sm, marginTop: 8 }]}>
+            <AttendanceRadio
+              label="Present"
+              selected={side === 'present'}
+              disabled={disabled}
+              onPress={() => onChangeStatus?.(member, 'present')}
+            />
+            <AttendanceRadio
+              label="Absent"
+              selected={side === 'absent'}
+              disabled={disabled}
+              onPress={() => onChangeStatus?.(member, 'absent')}
+            />
+          </View>
+        ) : (
+          <Text style={[typography.textPresets.captionMedium, { color: statusColor, marginTop: 2 }]}>
+            {statusLabel}
+          </Text>
+        )}
       </View>
     </View>
   );
 });
 
 export function RollCallSummaryScreen({ classId }: Props) {
-  const router = useRouter();
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const { colors, typography, inset, gap } = useTheme();
-  const { showAlert, showDialog, hideDialog } = useDialog();
+  const { showAlert, showConfirm, showDialog, hideDialog } = useDialog();
   const rollCallQuery = useRollCallState(classId);
   const completeMutation = useCompleteRollCall(classId);
+  const { recordWithStatus, handleRecordError, isRecording } = useRollCallDeckMarking(
+    classId,
+    rollCallQuery.data?.config ?? DEFAULT_ROLL_CALL_CONFIG,
+  );
+  const [isFlushing, setIsFlushing] = useState(false);
 
   const deck = rollCallQuery.data?.deck ?? [];
-  const summary = rollCallQuery.data?.summary;
+  const summary = useMemo(() => {
+    const data = rollCallQuery.data;
+    if (!data) return undefined;
+
+    return resolveRollCallSummary({
+      deck: data.deck,
+      config: data.config,
+    });
+  }, [rollCallQuery.data]);
   const session = rollCallQuery.data?.session ?? null;
-  const classTitle = rollCallQuery.data?.classTitle ?? 'Class roll call';
-  const startsAt = rollCallQuery.data?.startsAt ?? '';
   const isCompleted = isRollCallSessionCompleted(session);
+  const canEdit = !isCompleted;
 
-  const headerTopInset = insets.top;
-  const headerHeight = NAV_CHROME.topInset + NAV_CHROME.clusterHeight;
-  const contentTopInset = headerTopInset + headerHeight + inset.lg;
-
-  const subtitle = useMemo(
-    () => formatRollCallSummarySubtitle(classTitle, startsAt),
-    [classTitle, startsAt],
-  );
-
-  const attendedMembers = useMemo(
+  const members = useMemo(
     () =>
-      deck
-        .filter((member) => member.mark?.status === 'present' || member.mark?.status === 'late')
-        .sort((a, b) => a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' })),
+      [...deck].sort((a, b) => {
+        if (a.hasFacilityCheckInToday !== b.hasFacilityCheckInToday) {
+          return a.hasFacilityCheckInToday ? -1 : 1;
+        }
+        return a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' });
+      }),
     [deck],
   );
 
+  const handleChangeStatus = useCallback(
+    (member: RollCallDeckMember, status: AttendanceSide) => {
+      if (!canEdit) return;
+      void recordWithStatus(member, status).catch(handleRecordError);
+    },
+    [canEdit, handleRecordError, recordWithStatus],
+  );
+
   const renderItem = useCallback(
-    ({ item }: { item: RollCallDeckMember }) => <RollCallSummaryRow member={item} />,
-    [],
+    ({ item }: { item: RollCallDeckMember }) => (
+      <RollCallSummaryRow
+        member={item}
+        editable={canEdit}
+        disabled={isRecording || completeMutation.isPending}
+        onChangeStatus={handleChangeStatus}
+      />
+    ),
+    [canEdit, completeMutation.isPending, handleChangeStatus, isRecording],
   );
 
   const keyExtractor = useCallback((item: RollCallDeckMember) => item.deckKey, []);
 
   const handleBackPress = useCallback(() => {
-    if (router.canGoBack()) {
-      router.back();
-      return;
-    }
-    if (isCompleted) {
-      router.replace(COACH_HOME_PATH);
-      return;
-    }
-    router.replace(rollCallClassHubPath(classId));
-  }, [classId, isCompleted, router]);
+    // Never return to the swipe deck from summary — edits happen with radios here.
+    returnToRunClassHub(classId);
+  }, [classId]);
 
   const openScanner = useCallback(() => {
     triggerLightImpact();
-    router.push(`/(coach)/scanner?classId=${classId}`);
-  }, [classId, router]);
-
-  const openDeck = useCallback(() => {
-    router.replace(rollCallDeckPath(classId, { review: true }));
-  }, [classId, router]);
+    openRollCallScanner(classId, 'swiper');
+  }, [classId]);
 
   const handleMenuPress = useCallback(() => {
-    if (isCompleted) return;
+    if (!canEdit) return;
 
     showDialog({
       title: 'Roll call actions',
-      message: 'Review attendance or scan another member.',
+      message: 'Scan another member onto this class list.',
       dismissOnBackdropPress: true,
       buttons: [
         {
           label: 'Scan QR',
-          variant: 'secondary',
+          variant: 'primary',
           onPress: () => {
             hideDialog();
             openScanner();
           },
         },
         {
-          label: 'Back to roll call',
-          variant: 'primary',
-          onPress: () => {
-            hideDialog();
-            openDeck();
-          },
+          label: 'Cancel',
+          variant: 'secondary',
         },
       ],
     });
-  }, [hideDialog, isCompleted, openDeck, openScanner, showDialog]);
+  }, [canEdit, hideDialog, openScanner, showDialog]);
 
-  const handleComplete = useCallback(async () => {
+  const submitAttendance = useCallback(async () => {
     if (!session?.id) {
       showAlert('No active session', 'Go back to roll call and try again.');
       return;
     }
 
     try {
+      setIsFlushing(true);
+      await flushPendingRollCallMarks(queryClient, classId);
       await completeMutation.mutateAsync(session.id);
       triggerSuccessNotification();
-      router.replace(rollCallClassHubPath(classId));
+      returnToRunClassHub(classId);
     } catch (error) {
       showAlert(
         'Could not submit attendance',
-        error instanceof Error ? error.message : 'Check your connection and try again.',
+        toUserFacingErrorMessage(error, { fallback: USER_FACING_NETWORK_ERROR }),
       );
+    } finally {
+      setIsFlushing(false);
     }
-  }, [classId, completeMutation, router, session?.id, showAlert]);
+  }, [classId, completeMutation, queryClient, session?.id, showAlert]);
+
+  const handleConfirmAttendance = useCallback(() => {
+    if (!session?.id) {
+      showAlert('No active session', 'Go back to roll call and try again.');
+      return;
+    }
+
+    showConfirm(
+      'Confirm attendance?',
+      'This locks today’s marks for this class. You will not be able to change them after submitting.',
+      () => {
+        void submitAttendance();
+      },
+      { confirmLabel: 'Confirm attendance', cancelLabel: 'Cancel' },
+    );
+  }, [session?.id, showAlert, showConfirm, submitAttendance]);
 
   useFocusEffect(
     useCallback(() => {
@@ -243,54 +393,79 @@ export function RollCallSummaryScreen({ classId }: Props) {
     }, [handleBackPress]),
   );
 
-  if (rollCallQuery.isLoading) {
+  const isInitialLoad = rollCallQuery.isPending;
+
+  if (isInitialLoad) {
     return (
-      <View style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+      <View
+        style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}
+      >
         <StateBlock kind="loading" title="Loading summary" />
       </View>
     );
   }
 
   if (rollCallQuery.isError || !summary) {
+    const message = toUserFacingErrorMessage(rollCallQuery.error, {
+      fallback: USER_FACING_NETWORK_ERROR,
+    });
+
     return (
-      <View style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}>
+      <View
+        style={[styles.safe, { backgroundColor: colors.background.primary, padding: inset.lg }]}
+      >
         <StateBlock
           kind="error"
           title="Could not load summary"
-          message="Check your connection and try again."
+          message={message}
           actionLabel="Retry"
           onAction={() => {
             void rollCallQuery.refetch();
           }}
+          offlineAwareRetry
         />
       </View>
     );
   }
 
-  const isBusy = completeMutation.isPending;
+  const isBusy = completeMutation.isPending || isRecording || isFlushing;
   const footerPaddingBottom = insets.bottom + inset.md;
 
   return (
-    <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
-      <AppStatusBar style="dark" translucent backgroundColor="transparent" />
-
-      <RollCallSummaryHeader
-        subtitle={subtitle}
-        topInset={headerTopInset}
+    <View
+      style={[
+        styles.safe,
+        {
+          backgroundColor: colors.background.primary,
+          paddingTop: insets.top,
+        },
+      ]}
+    >
+      <AppBar
+        title={isCompleted ? 'Attendance history' : 'Roll call summary'}
+        showBackButton
         onBackPress={handleBackPress}
-        onMenuPress={handleMenuPress}
-        showMenu={!isCompleted}
+        titleNumberOfLines={2}
+        rightElement={
+          canEdit ? (
+            <AppBarIconButton
+              icon="ellipsis-horizontal"
+              accessibilityLabel="More actions"
+              onPress={handleMenuPress}
+            />
+          ) : undefined
+        }
       />
 
       <View style={styles.listWrap}>
         <FlashList
-          data={attendedMembers}
+          data={members}
           renderItem={renderItem}
           keyExtractor={keyExtractor}
           overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSummaryRow)}
           renderScrollComponent={FlashListScrollComponent}
           contentContainerStyle={{
-            paddingTop: contentTopInset,
+            paddingTop: inset.lg,
             paddingHorizontal: inset.lg,
             paddingBottom: footerPaddingBottom + 168,
           }}
@@ -300,19 +475,30 @@ export function RollCallSummaryScreen({ classId }: Props) {
               <RollCallSummaryStats summary={summary} />
               <View style={styles.sectionHeader}>
                 <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
-                  Attended
+                  {canEdit ? 'Adjust marks' : 'Marked members'}
                 </Text>
-                <Text style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}>
-                  {attendedMembers.length} member{attendedMembers.length === 1 ? '' : 's'}
+                <Text
+                  style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}
+                >
+                  {members.length} member{members.length === 1 ? '' : 's'}
                 </Text>
               </View>
+              {canEdit ? (
+                <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+                  Tap Present or Absent to fix a mark before you confirm.
+                </Text>
+              ) : null}
             </View>
           }
           ListEmptyComponent={
             <StateBlock
               kind="empty"
-              title="No attendees yet"
-              message="No members were marked present for this class."
+              title="No members yet"
+              message={
+                canEdit
+                  ? 'Scan member QR codes to build this class list.'
+                  : 'No attendance was recorded for this class.'
+              }
             />
           }
         />
@@ -331,7 +517,7 @@ export function RollCallSummaryScreen({ classId }: Props) {
           },
         ]}
       >
-        {!isCompleted ? (
+        {canEdit ? (
           <View style={[styles.footerActions, { gap: gap.sm }]}>
             <Button
               label="Scan QR"
@@ -341,12 +527,10 @@ export function RollCallSummaryScreen({ classId }: Props) {
               disabled={isBusy}
             />
             <Button
-              label="Submit attendance"
+              label="Confirm attendance"
               icon="checkmark-circle"
-              onPress={() => {
-                void handleComplete();
-              }}
-              loading={isBusy}
+              onPress={handleConfirmAttendance}
+              loading={completeMutation.isPending}
               disabled={isBusy}
             />
           </View>
@@ -354,7 +538,7 @@ export function RollCallSummaryScreen({ classId }: Props) {
           <Button
             label="Back to class"
             variant="secondary"
-            onPress={() => router.replace(`/(coach)/run-class/${classId}`)}
+            onPress={() => returnToRunClassHub(classId)}
           />
         )}
       </View>
@@ -400,6 +584,39 @@ const styles = StyleSheet.create({
   rowMain: {
     flex: 1,
     minWidth: 0,
+  },
+  nameRow: {
+    alignItems: 'center',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  nameText: {
+    flexShrink: 1,
+    minWidth: 0,
+  },
+  radioRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  radioChip: {
+    alignItems: 'center',
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: 'row',
+    gap: 6,
+    minHeight: 32,
+  },
+  radioOuter: {
+    alignItems: 'center',
+    borderRadius: 999,
+    borderWidth: 1.5,
+    height: 18,
+    justifyContent: 'center',
+    width: 18,
+  },
+  radioInner: {
+    borderRadius: 999,
+    height: 8,
+    width: 8,
   },
   avatar: {
     height: 48,

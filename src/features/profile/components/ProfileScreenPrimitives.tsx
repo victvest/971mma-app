@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import Animated, {
   Easing,
   interpolate,
@@ -18,6 +18,8 @@ import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavCh
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 import { triggerLightImpact } from '@/shared/haptics';
 import { BrandedLucideIconBadge, Button, type BrandedIconTone } from '@/shared/components/ui';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { useTheme } from '@/shared/theme';
 import { inset, layout } from '@/shared/theme/spacing';
 
@@ -40,13 +42,7 @@ export function profileScrollContentPadding(
   };
 }
 
-export function AnimatedCounter({
-  value,
-  style,
-}: {
-  value: number;
-  style?: object;
-}) {
+export function AnimatedCounter({ value, style }: { value: number; style?: object }) {
   const progress = useSharedValue(0);
 
   useEffect(() => {
@@ -155,7 +151,7 @@ export const StatCard = React.memo(function StatCard({
   cardRadius,
   iconName,
 }: StatCardProps) {
-  const { shadows } = useTheme();
+  const { surfaceShadow } = useTheme();
   const pressed = useSharedValue(0);
   const pressStyle = useAnimatedStyle(() => ({
     transform: [{ scale: interpolate(pressed.value, [0, 1], [1, 0.94]) }],
@@ -176,7 +172,7 @@ export const StatCard = React.memo(function StatCard({
         style={[
           pressStyle,
           profileScreenStyles.statCard,
-          shadows.card,
+          surfaceShadow('card'),
           {
             backgroundColor: bgColor,
             borderColor,
@@ -201,7 +197,10 @@ export const StatCard = React.memo(function StatCard({
         <View style={[profileScreenStyles.statIconBubble, { backgroundColor: `${accentColor}18` }]}>
           <Ionicons name={iconName} size={16} color={accentColor} />
         </View>
-        <AnimatedCounter value={value} style={[profileScreenStyles.statValue, { color: textColor }]} />
+        <AnimatedCounter
+          value={value}
+          style={[profileScreenStyles.statValue, { color: textColor }]}
+        />
         <Text style={[profileScreenStyles.statLabel, { color: labelColor }]}>{label}</Text>
       </Animated.View>
     </Pressable>
@@ -219,7 +218,8 @@ type ProfileAccountFooterProps = {
 };
 
 type ProfileGlassHeaderProps = {
-  safeTop: number;
+  /** @deprecated Prefer omitting — header resolves offline-aware top inset itself. */
+  safeTop?: number;
   onBackPress: () => void;
   onEditPress?: () => void;
   title?: string;
@@ -232,13 +232,16 @@ export function ProfileGlassHeader({
   title = 'Profile',
 }: ProfileGlassHeaderProps) {
   const { typography } = useTheme();
+  const topInset = useAppTopInset();
+  const offlineBannerVisible = useOfflineBannerVisible();
+  const resolvedTop = offlineBannerVisible ? 0 : (safeTop ?? topInset) + NAV_CHROME.topInset;
 
   return (
     <View
       style={[
         profileLayoutStyles.headerRoot,
         {
-          top: safeTop + NAV_CHROME.topInset,
+          top: resolvedTop,
         },
       ]}
       pointerEvents="box-none"
@@ -309,8 +312,19 @@ export const ProfilePerfMetricCard = React.memo(function ProfilePerfMetricCard({
   textColor,
   secondaryTextColor,
 }: ProfilePerfMetricCardProps) {
+  const { colors, layout, surfaceShadow } = useTheme();
+
   return (
-    <View style={profileLayoutStyles.cardWrapper}>
+    <View
+      style={[
+        profileLayoutStyles.cardWrapper,
+        surfaceShadow('card'),
+        {
+          borderColor: colors.border.subtle,
+          borderWidth: layout.borderWidth,
+        },
+      ]}
+    >
       <View style={profileLayoutStyles.watermarkContainer}>
         <Ionicons
           name={iconName}
@@ -405,7 +419,12 @@ export function ProfileAccountFooter({
   return (
     <View style={profileScreenStyles.accountFooter}>
       {onEditProfile ? (
-        <Button label="Edit profile" variant="secondary" icon="create-outline" onPress={onEditProfile} />
+        <Button
+          label="Edit profile"
+          variant="secondary"
+          icon="create-outline"
+          onPress={onEditProfile}
+        />
       ) : null}
       {onSwitchToMemberMode ? (
         <Button
@@ -422,7 +441,7 @@ export function ProfileAccountFooter({
         <Pressable
           onPress={onRequestDeletion}
           accessibilityRole="button"
-          accessibilityLabel="Request account deletion"
+          accessibilityLabel="Permanently delete account"
           hitSlop={8}
         >
           <Text
@@ -432,12 +451,18 @@ export function ProfileAccountFooter({
               { color: colors.text.tertiary },
             ]}
           >
-            Request account deletion
+            Permanently delete account
           </Text>
         </Pressable>
       ) : null}
 
-      <Text style={[typography.textPresets.caption, profileScreenStyles.versionText, { color: colors.text.tertiary }]}>
+      <Text
+        style={[
+          typography.textPresets.caption,
+          profileScreenStyles.versionText,
+          { color: colors.text.tertiary },
+        ]}
+      >
         {versionLabel}
       </Text>
     </View>
@@ -699,13 +724,16 @@ export const profileLayoutStyles = StyleSheet.create({
   avatarGlowContainer: {
     alignSelf: 'center',
     borderRadius: 999,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 4,
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+      },
+    }),
   },
   centeredName: {
     fontSize: 26,
@@ -744,12 +772,14 @@ export const profileLayoutStyles = StyleSheet.create({
     padding: 20,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 3,
-    borderWidth: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.04,
+        shadowRadius: 16,
+      },
+    }),
   },
   watermarkContainer: {
     position: 'absolute',

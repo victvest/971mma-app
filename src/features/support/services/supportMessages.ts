@@ -1,4 +1,5 @@
 import { getSupabaseClient } from '@/services/supabase/client';
+import { errorMessageIncludes, toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 export type SupportCategory =
@@ -51,8 +52,7 @@ const ERROR_COPY: Record<string, string> = {
   CONTACT_NAME_REQUIRED: 'Enter your full name so we know who to reply to.',
   CONTACT_EMAIL_REQUIRED: 'Enter your email address so we can reply.',
   CONTACT_EMAIL_INVALID: 'Enter a valid email address.',
-  TOO_MANY_OPEN_MESSAGES:
-    'You already have several open requests. We will reply to those first.',
+  TOO_MANY_OPEN_MESSAGES: 'You already have several open requests. We will reply to those first.',
 };
 
 function mapRow(row: SupportMessageRow): SupportMessage {
@@ -70,11 +70,12 @@ function mapRow(row: SupportMessageRow): SupportMessage {
 }
 
 export function friendlySupportError(error: unknown): string {
-  const raw = error instanceof Error ? error.message : String(error ?? '');
   for (const code of Object.keys(ERROR_COPY)) {
-    if (raw.includes(code)) return ERROR_COPY[code];
+    if (errorMessageIncludes(error, code)) return ERROR_COPY[code];
   }
-  return 'Could not send your message. Please try again.';
+  return toUserFacingErrorMessage(error, {
+    fallback: 'Could not send your message. Please try again.',
+  });
 }
 
 export async function submitSupportMessage(

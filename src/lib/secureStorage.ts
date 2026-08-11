@@ -9,12 +9,9 @@ export const STORAGE_KEYS = {
 export type StorageKey = (typeof STORAGE_KEYS)[keyof typeof STORAGE_KEYS];
 
 export const secureStorage = {
-  getItem: (key: string): Promise<string | null> =>
-    SecureStore.getItemAsync(key),
+  getItem: (key: string): Promise<string | null> => SecureStore.getItemAsync(key),
 
-  setItem: (key: string, value: string): Promise<void> =>
-    SecureStore.setItemAsync(key, value),
+  setItem: (key: string, value: string): Promise<void> => SecureStore.setItemAsync(key, value),
 
-  deleteItem: (key: string): Promise<void> =>
-    SecureStore.deleteItemAsync(key),
+  deleteItem: (key: string): Promise<void> => SecureStore.deleteItemAsync(key),
 };

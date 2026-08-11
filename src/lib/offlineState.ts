@@ -1,6 +1,6 @@
 export const OFFLINE_TITLE = 'You are offline';
 export const OFFLINE_MESSAGE =
-  'Connect to the internet to load this screen. Cached content may still be available on other tabs.';
+  'Connect to the internet to load this screen. Open it once while online so it can be shown offline next time.';
 export const OFFLINE_RETRY_LABEL = 'Try again when online';
 
 export type OfflineGateInput = {

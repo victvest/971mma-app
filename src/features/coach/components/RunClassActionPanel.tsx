@@ -11,7 +11,10 @@ type PrimaryProps = {
   onPress: () => void;
 };
 
-export const RunClassPrimaryButton = memo(function RunClassPrimaryButton({ label, onPress }: PrimaryProps) {
+export const RunClassPrimaryButton = memo(function RunClassPrimaryButton({
+  label,
+  onPress,
+}: PrimaryProps) {
   const { colors, typography, radius } = useTheme();
   const handlePress = useCallback(() => onPress(), [onPress]);
 
@@ -27,7 +30,9 @@ export const RunClassPrimaryButton = memo(function RunClassPrimaryButton({ label
         },
       ]}
     >
-      <Text style={[typography.textPresets.bodyStrong, { color: colors.accent.onAccent }]}>{label}</Text>
+      <Text style={[typography.textPresets.bodyStrong, { color: colors.accent.onAccent }]}>
+        {label}
+      </Text>
     </HomeAnimatedPressable>
   );
 });
@@ -70,7 +75,13 @@ export const RunClassAttendanceHistoryButton = memo(function RunClassAttendanceH
         <Ionicons name="people-outline" size={20} color={colors.text.primary} />
       </View>
 
-      <Text style={[typography.textPresets.bodyStrong, styles.scanLabel, { color: colors.text.primary }]}>
+      <Text
+        style={[
+          typography.textPresets.bodyStrong,
+          styles.scanLabel,
+          { color: colors.text.primary },
+        ]}
+      >
         Attendance history
       </Text>
 
@@ -111,7 +122,13 @@ export const RunClassScanButton = memo(function RunClassScanButton({ onPress }: 
         <Ionicons name="qr-code-outline" size={20} color={colors.text.primary} />
       </View>
 
-      <Text style={[typography.textPresets.bodyStrong, styles.scanLabel, { color: colors.text.primary }]}>
+      <Text
+        style={[
+          typography.textPresets.bodyStrong,
+          styles.scanLabel,
+          { color: colors.text.primary },
+        ]}
+      >
         Scan QR
       </Text>
 

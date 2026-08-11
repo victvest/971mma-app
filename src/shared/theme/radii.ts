@@ -1,5 +1,3 @@
-
-
 export const radii = {
   none: 0,
   xs: 4,
@@ -15,7 +13,6 @@ export const radii = {
 export type RadiiKey = keyof typeof radii;
 
 export const radius = {
-
   pill: radii.full,
 
   button: radii.lg,

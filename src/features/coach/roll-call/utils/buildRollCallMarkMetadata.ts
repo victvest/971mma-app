@@ -1,4 +1,8 @@
-import type { RollCallDeckMember, RollCallMarkMetadata, RollCallMemberStatus } from '@/features/coach/roll-call/types';
+import type {
+  RollCallDeckMember,
+  RollCallMarkMetadata,
+  RollCallMemberStatus,
+} from '@/features/coach/roll-call/types';
 
 export type RollCallDeckMarkStatus = Extract<RollCallMemberStatus, 'present' | 'absent' | 'late'>;
 

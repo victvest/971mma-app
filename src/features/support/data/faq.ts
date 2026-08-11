@@ -12,7 +12,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
     id: 'checkin',
     question: 'How does QR check-in work?',
     answer:
-      'When you arrive, open the Check-in tab and choose Scan entrance. Point your camera at the QR code on the tablet by the door — your location is verified at the academy. You can also switch to My pass to show your personal QR; coaches scan that during roll call if needed. Both codes refresh automatically for security.',
+      'When you arrive, open the Check-in tab and show your member QR pass to the gate reader. Coaches can also scan the same pass during roll call if needed. The pass refreshes automatically for security.',
   },
   {
     id: 'programs',

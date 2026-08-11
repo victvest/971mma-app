@@ -52,7 +52,12 @@ export const RollCallSummaryStats = memo(function RollCallSummaryStats({ summary
 
   const stats = useMemo(
     (): StatSpec[] => [
-      { key: 'present', label: 'Present', value: summary.present, accentColor: colors.accent.default },
+      {
+        key: 'present',
+        label: 'Present',
+        value: summary.present,
+        accentColor: colors.accent.default,
+      },
       { key: 'late', label: 'Late', value: summary.late, accentColor: LATE_ACCENT },
       { key: 'absent', label: 'Absent', value: summary.absent, accentColor: colors.status.error },
     ],

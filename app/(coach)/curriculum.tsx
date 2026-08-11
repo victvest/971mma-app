@@ -1,10 +1,14 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
-import { AppBar, AppBarIconButton, AppSafeAreaView, AppScrollView, PillSegmentedTabs } from '@/shared/components/ui';
 import {
-  CoachCurriculumRequirementCard,
-} from '@/features/coach/components/curriculum/CoachCurriculumRequirementCard';
+  AppBar,
+  AppBarIconButton,
+  AppSafeAreaView,
+  AppScrollView,
+  PillSegmentedTabs,
+} from '@/shared/components/ui';
+import { CoachCurriculumRequirementCard } from '@/features/coach/components/curriculum/CoachCurriculumRequirementCard';
 import {
   CoachCurriculumRequirementEditor,
   type CoachCurriculumRequirementDraft,
@@ -169,11 +173,15 @@ export default function CoachCurriculumScreen() {
       />
 
       {assignedDisciplinesQuery.isLoading ? (
-        <View style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}>
+        <View
+          style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}
+        >
           <StateBlock kind="loading" title="Loading your disciplines" />
         </View>
       ) : !hasRankDiscipline ? (
-        <View style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}>
+        <View
+          style={{ flex: 1, padding: inset.lg, paddingTop: appTopInset + floatingAppBarOffset }}
+        >
           <StateBlock
             kind="empty"
             title="No rank disciplines assigned"

@@ -1,11 +1,5 @@
 import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Modal,
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-} from 'react-native';
+import { Modal, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -29,8 +23,10 @@ import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import type { AccountActionKey } from '@/shared/auth/accountActionCopy';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
-import { useCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
 import { triggerLightImpact } from '@/shared/haptics';
+import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import { Image } from 'expo-image';
+import drawerBrandMark from '../../../../assets/brand/logo-notext.png';
 type NavItem = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
   label: string;
@@ -45,14 +41,12 @@ type DrawerMenuProps = {
 };
 
 const LOCKED_ROUTE_ACTIONS: Record<string, AccountActionKey> = {
-  '/communities': 'access-communities',
   '/family-trainees': 'family-profiles',
   '/(tabs)/belt-path': 'track-progress',
   '/(tabs)/rewards': 'earn-rewards',
 };
 
 const NAV_ITEMS: NavItem[] = [
-  { icon: 'chatbubbles-outline', label: 'Communities', route: '/communities' },
   { icon: 'people-outline', label: 'Family profiles', route: '/family-trainees' },
   { icon: 'ribbon-outline', label: 'Belt path', route: '/(tabs)/belt-path' },
   { icon: 'gift-outline', label: 'Rewards', route: '/(tabs)/rewards' },
@@ -60,6 +54,11 @@ const NAV_ITEMS: NavItem[] = [
   { icon: 'star-outline', label: 'Lineage', route: '/lineage' },
   { icon: 'help-buoy-outline', label: 'Help & support', route: '/help' },
   { icon: 'document-text-outline', label: 'Legal', route: '/legal' },
+];
+
+const CHILD_PROFILE_NAV_ITEMS: NavItem[] = [
+  { icon: 'ribbon-outline', label: 'Belt path', route: '/(tabs)/belt-path' },
+  { icon: 'gift-outline', label: 'Rewards', route: '/(tabs)/rewards' },
 ];
 
 const CLOSE_TIMING = { duration: 190 } as const;
@@ -75,7 +74,11 @@ type DrawerNavItemProps = {
   onNavigate: (route: string) => void;
 };
 
-const DrawerNavItem = memo(function DrawerNavItem({ item, badgeCount = 0, onNavigate }: DrawerNavItemProps) {
+const DrawerNavItem = memo(function DrawerNavItem({
+  item,
+  badgeCount = 0,
+  onNavigate,
+}: DrawerNavItemProps) {
   const { colors, typography, inset, gap, animations } = useTheme();
   const handlePress = useCallback(() => onNavigate(item.route), [item.route, onNavigate]);
   const showBadge = badgeCount > 0;
@@ -96,12 +99,20 @@ const DrawerNavItem = memo(function DrawerNavItem({ item, badgeCount = 0, onNavi
       ]}
     >
       <Ionicons name={item.icon} size={typography.fontSize.xl} color={colors.text.secondary} />
-      <Text style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}>
+      <Text
+        style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}
+      >
         {item.label}
       </Text>
       {showBadge ? (
         <View style={[styles.badge, { backgroundColor: colors.status.error }]}>
-          <Text style={[typography.textPresets.caption, styles.badgeText, { color: colors.text.inverse }]}>
+          <Text
+            style={[
+              typography.textPresets.caption,
+              styles.badgeText,
+              { color: colors.text.inverse },
+            ]}
+          >
             {badgeCount > 99 ? '99+' : badgeCount}
           </Text>
         </View>
@@ -111,27 +122,24 @@ const DrawerNavItem = memo(function DrawerNavItem({ item, badgeCount = 0, onNavi
 });
 
 export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: DrawerMenuProps) {
-  const { colors, typography, inset, gap, radius, layout, animations } = useTheme();
+  const { colors, typography, inset, gap, radius, layout, animations, surfaceShadow } = useTheme();
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { drawer } = useResponsiveLayout();
   const role = useAuthStore((s) => s.role);
   const rankEligibilityQuery = useRankEligibility();
-  const { unreadTotal: communityUnreadTotal } = useCommunityUnreadTotal(true);
   const { hasLimitedAccess, isAnonymousGuest, needsActivation } = useIsGuest();
-  const canCoach = role === 'coach' || role === 'admin';
+  const viewingChild = useIsViewingChildProfile();
+  const canCoach = !viewingChild && (role === 'coach' || role === 'admin');
   const navItems = useMemo(
-    () =>
-      NAV_ITEMS.filter((item) => {
-        if (item.route === '/(tabs)/belt-path' && !isAnonymousGuest && !needsActivation) {
-          return rankEligibilityQuery.data?.eligible === true;
-        }
-        return true;
-      }),
-    [isAnonymousGuest, needsActivation, rankEligibilityQuery.data?.eligible],
+    () => (viewingChild ? CHILD_PROFILE_NAV_ITEMS : NAV_ITEMS),
+    [viewingChild],
   );
   const [mounted, setMounted] = useState(visible);
+  const [activeView, setActiveView] = useState<'drawer' | 'disclaimer'>('drawer');
   const progress = useSharedValue(visible ? 1 : 0);
+  const backdropProgress = useSharedValue(visible ? 1 : 0);
+  const disclaimerProgress = useSharedValue(0);
   const contentTopPadding = Math.round(inset.lg * 0.8);
   const headerBottomSpacing = Math.round(gap.xl * 0.8);
 
@@ -151,21 +159,28 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
 
   useEffect(() => {
     cancelAnimation(progress);
+    cancelAnimation(backdropProgress);
+    cancelAnimation(disclaimerProgress);
 
     if (visible) {
       setMounted(true);
+      setActiveView('drawer');
+      disclaimerProgress.value = 0;
       progress.value = withSpring(1, OPEN_SPRING);
+      backdropProgress.value = withTiming(1, { duration: 250 });
       return;
     }
 
     if (mounted) {
-      progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
+      progress.value = withTiming(0, CLOSE_TIMING);
+      disclaimerProgress.value = withTiming(0, CLOSE_TIMING);
+      backdropProgress.value = withTiming(0, CLOSE_TIMING, (finished) => {
         if (finished) {
-          runOnJS(setMounted)(false);
+          runOnJS(finishClose)();
         }
       });
     }
-  }, [mounted, progress, visible]);
+  }, [mounted, progress, backdropProgress, disclaimerProgress, visible, finishClose]);
 
   const finishLockedAction = useCallback(
     (actionKey: AccountActionKey) => {
@@ -178,23 +193,33 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
 
   const requestClose = useCallback(() => {
     cancelAnimation(progress);
-    progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
+    cancelAnimation(backdropProgress);
+    cancelAnimation(disclaimerProgress);
+
+    progress.value = withTiming(0, CLOSE_TIMING);
+    disclaimerProgress.value = withTiming(0, CLOSE_TIMING);
+    backdropProgress.value = withTiming(0, CLOSE_TIMING, (finished) => {
       if (finished) {
         runOnJS(finishClose)();
       }
     });
-  }, [finishClose, progress]);
+  }, [finishClose, progress, backdropProgress, disclaimerProgress]);
 
   const navigate = useCallback(
     (route: string) => {
       cancelAnimation(progress);
-      progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
+      cancelAnimation(backdropProgress);
+      cancelAnimation(disclaimerProgress);
+
+      progress.value = withTiming(0, CLOSE_TIMING);
+      disclaimerProgress.value = withTiming(0, CLOSE_TIMING);
+      backdropProgress.value = withTiming(0, CLOSE_TIMING, (finished) => {
         if (finished) {
           runOnJS(finishNavigate)(route);
         }
       });
     },
-    [finishNavigate, progress],
+    [finishNavigate, progress, backdropProgress, disclaimerProgress],
   );
 
   const getLockedAction = useCallback(
@@ -214,7 +239,12 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
       const lockedAction = getLockedAction(route);
       if (lockedAction) {
         cancelAnimation(progress);
-        progress.value = withTiming(0, CLOSE_TIMING, (finished) => {
+        cancelAnimation(backdropProgress);
+        cancelAnimation(disclaimerProgress);
+
+        progress.value = withTiming(0, CLOSE_TIMING);
+        disclaimerProgress.value = withTiming(0, CLOSE_TIMING);
+        backdropProgress.value = withTiming(0, CLOSE_TIMING, (finished) => {
           if (finished) {
             runOnJS(finishLockedAction)(lockedAction);
           }
@@ -222,13 +252,30 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
         return;
       }
 
+      if (route === '/(tabs)/belt-path' && rankEligibilityQuery.data?.eligible === false) {
+        cancelAnimation(progress);
+        cancelAnimation(disclaimerProgress);
+        setActiveView('disclaimer');
+        progress.value = withTiming(0, CLOSE_TIMING);
+        disclaimerProgress.value = withSpring(1, OPEN_SPRING);
+        return;
+      }
+
       navigate(route);
     },
-    [finishLockedAction, getLockedAction, navigate, progress],
+    [
+      finishLockedAction,
+      getLockedAction,
+      navigate,
+      progress,
+      disclaimerProgress,
+      backdropProgress,
+      rankEligibilityQuery.data?.eligible,
+    ],
   );
 
   const backdropStyle = useAnimatedStyle(() => ({
-    opacity: interpolate(progress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
+    opacity: interpolate(backdropProgress.value, [0, 1], [0, 1], Extrapolation.CLAMP),
   }));
 
   const drawerStyle = useAnimatedStyle(() => {
@@ -247,7 +294,23 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
     };
   });
 
+  const disclaimerStyle = useAnimatedStyle(() => {
+    const translateY = interpolate(disclaimerProgress.value, [0, 1], [600, 0], Extrapolation.CLAMP);
+    const opacity = interpolate(
+      disclaimerProgress.value,
+      [0, 0.5, 1],
+      [0, 1, 1],
+      Extrapolation.CLAMP,
+    );
+    return {
+      opacity,
+      transform: [{ translateY }],
+    };
+  });
+
   if (!mounted) return null;
+
+  const logoSize = 36;
 
   return (
     <Modal
@@ -286,7 +349,10 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
         <Animated.View
           style={[
             styles.floatingShell,
+            surfaceShadow('card'),
             {
+              borderColor: colors.border.subtle,
+              borderWidth: layout.borderWidth,
               borderRadius: drawer.radius,
               height: drawer.height,
               left: drawer.left,
@@ -327,22 +393,20 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
                 <Text style={{ color: colors.accent.default }}>Level.</Text>
               </Text>
               <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-                Discipline made tactile. Owned by the academy.
+                Your training progress, ranks, and rewards in one place.
               </Text>
             </View>
 
             <AppScrollView
               style={styles.navScroll}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.navContent, { gap: inset['2xs'], paddingBottom: inset.md }]}
+              contentContainerStyle={[
+                styles.navContent,
+                { gap: inset['2xs'], paddingBottom: inset.md },
+              ]}
             >
               {navItems.map((item) => (
-                <DrawerNavItem
-                  key={item.label}
-                  item={item}
-                  badgeCount={item.route === '/communities' ? communityUnreadTotal : 0}
-                  onNavigate={handleNavPress}
-                />
+                <DrawerNavItem key={item.label} item={item} onNavigate={handleNavPress} />
               ))}
             </AppScrollView>
 
@@ -363,14 +427,132 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
                     },
                   ]}
                 >
-                  <Ionicons name="person-outline" size={typography.fontSize.lg} color={colors.accent.default} />
+                  <Ionicons
+                    name="person-outline"
+                    size={typography.fontSize.lg}
+                    color={colors.accent.default}
+                  />
                   <Text style={[typography.textPresets.button, { color: colors.accent.default }]}>
                     Switch to coach mode
                   </Text>
                 </Pressable>
               </View>
             ) : null}
+
+            <View style={{ alignItems: 'center', paddingTop: inset.sm }}>
+              <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
+                Developed by VictVest
+              </Text>
+            </View>
           </IOSGlassSurface>
+        </Animated.View>
+
+        <Animated.View style={[styles.disclaimerSheetContainer, disclaimerStyle]}>
+          <View
+            style={[
+              styles.disclaimerSheet,
+              {
+                backgroundColor: colors.surface.primary,
+                borderTopLeftRadius: radius.modal,
+                borderTopRightRadius: radius.modal,
+                paddingHorizontal: inset.lg,
+                paddingTop: inset.md,
+                paddingBottom: safeInsets.bottom + inset.lg,
+                gap: gap.lg,
+              },
+            ]}
+          >
+            <View style={styles.disclaimerHeader}>
+              <Image
+                source={drawerBrandMark}
+                contentFit="contain"
+                cachePolicy="memory-disk"
+                accessibilityLabel="971 MMA"
+                style={{
+                  width: logoSize,
+                  height: logoSize,
+                  tintColor: colors.text.primary,
+                }}
+              />
+
+              <Pressable
+                onPressIn={triggerLightImpact}
+                onPress={requestClose}
+                accessibilityLabel="Close disclaimer"
+                style={[
+                  styles.disclaimerCloseBtn,
+                  {
+                    width: 38,
+                    height: 38,
+                    borderRadius: 19,
+                    backgroundColor: colors.fill.secondary,
+                  },
+                ]}
+              >
+                <Ionicons name="close" size={20} color={colors.text.primary} />
+              </Pressable>
+            </View>
+
+            <View style={[styles.disclaimerBody, { gap: gap.md, paddingVertical: 12 }]}>
+              <Text
+                style={[
+                  typography.textPresets.coachDisplayCompact,
+                  {
+                    color: colors.text.primary,
+                    fontSize: 36,
+                    lineHeight: 40,
+                    fontWeight: '800',
+                  },
+                ]}
+              >
+                Earn Your{'\n'}
+                <Text style={{ color: colors.accent.default }}>Level.</Text>
+              </Text>
+              <Text
+                style={[
+                  typography.textPresets.body,
+                  { color: colors.text.secondary, fontSize: 16 },
+                ]}
+              >
+                Your training progress, ranks, and rewards in one place.
+              </Text>
+            </View>
+
+            <View
+              style={[
+                styles.infoCallout,
+                {
+                  backgroundColor: colors.background.secondary,
+                  borderColor: colors.border.subtle,
+                  borderRadius: radius.card,
+                  padding: inset.md,
+                  gap: gap.xs,
+                },
+              ]}
+            >
+              <View style={styles.infoCalloutHeader}>
+                <Ionicons name="information-circle" size={20} color={colors.accent.default} />
+                <Text
+                  style={[
+                    typography.textPresets.bodyStrong,
+                    { color: colors.text.primary, fontSize: 14 },
+                  ]}
+                >
+                  Progression Path Inactive
+                </Text>
+              </View>
+              <Text
+                style={[
+                  typography.textPresets.footnote,
+                  { color: colors.text.secondary, lineHeight: 18 },
+                ]}
+              >
+                This section is only accessible to trainees currently enrolled in a ranking program
+                (such as Jiu-Jitsu). Please contact the front desk or support if you need to
+                activate progression tracking for this profile.
+              </Text>
+            </View>
+          </View>
         </Animated.View>
       </View>
     </Modal>
@@ -383,11 +565,14 @@ const styles = StyleSheet.create({
   },
   floatingShell: {
     position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+    }),
   },
   glassShell: {
     flex: 1,
@@ -424,5 +609,43 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
     justifyContent: 'center',
+  },
+  disclaimerOverlay: {
+    flex: 1,
+    justifyContent: 'flex-end',
+  },
+  disclaimerSheetContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    zIndex: 900,
+  },
+  disclaimerSheet: {
+    borderWidth: 0,
+    minHeight: 380,
+  },
+  disclaimerHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  disclaimerCloseBtn: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  disclaimerBody: {
+    justifyContent: 'center',
+  },
+  infoCallout: {
+    borderWidth: 1,
+    width: '100%',
+  },
+  infoCalloutHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 4,
   },
 });

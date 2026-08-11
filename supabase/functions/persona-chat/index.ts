@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
   try {
     const authUser = await requireUser(req);
-    if (authUser.role === 'coach' || authUser.role === 'admin' || authUser.role === 'gate') {
+    if (authUser.role === 'coach' || authUser.role === 'admin') {
       throw new MbError('FORBIDDEN', 'Assistant is available to members only.');
     }
 

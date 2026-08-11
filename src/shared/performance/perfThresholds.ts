@@ -33,11 +33,7 @@ export const PERF_ACCEPTANCE_THRESHOLDS: readonly PerfAcceptanceThreshold[] = [
       PerfMark.routeHomeMount,
       PerfMark.routeHomeFirstContent,
     ],
-    forbiddenMarks: [
-      PerfMark.routeCheckinMount,
-      PerfMark.qrTokenVisible,
-      PerfMark.scannerActive,
-    ],
+    forbiddenMarks: [PerfMark.routeCheckinMount, PerfMark.qrTokenVisible, PerfMark.scannerActive],
   },
   {
     id: 'home-idle-network',
@@ -46,11 +42,7 @@ export const PERF_ACCEPTANCE_THRESHOLDS: readonly PerfAcceptanceThreshold[] = [
     maxQueryFetches: 16,
     maxEdgeInvocations: 4,
     requiredMarks: [PerfMark.routeHomeFirstContent],
-    forbiddenMarks: [
-      PerfMark.routeCheckinMount,
-      PerfMark.qrTokenVisible,
-      PerfMark.scannerActive,
-    ],
+    forbiddenMarks: [PerfMark.routeCheckinMount, PerfMark.qrTokenVisible, PerfMark.scannerActive],
   },
   {
     id: 'tab-schedule',
@@ -92,16 +84,6 @@ export const PERF_ACCEPTANCE_THRESHOLDS: readonly PerfAcceptanceThreshold[] = [
     maxEdgeInvocations: 8,
     requiredMarks: [PerfMark.scannerActive],
   },
-  {
-    id: 'gate-qr-refresh',
-    label: 'Gate display QR visible',
-    maxSpanMs: 2_500,
-    maxQueryFetches: 4,
-    maxEdgeInvocations: 2,
-    requiredMarks: [PerfMark.routeGateMount, PerfMark.gateQrVisible],
-  },
 ] as const;
 
-export const PERF_ACCEPTANCE_SCENARIO_IDS = PERF_ACCEPTANCE_THRESHOLDS.map(
-  (entry) => entry.id,
-);
+export const PERF_ACCEPTANCE_SCENARIO_IDS = PERF_ACCEPTANCE_THRESHOLDS.map((entry) => entry.id);

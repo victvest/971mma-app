@@ -1,14 +1,17 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { Ionicons } from '@expo/vector-icons';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { RollCallDeckMember, RollCallSearchResult } from '@/features/coach/roll-call/types';
 import { useRollCallMemberSearch } from '@/features/coach/roll-call/hooks/useRollCall';
 import { searchResultToWalkInMember } from '@/features/coach/roll-call/utils/rollCallSearchUtils';
 import { MotiPressable } from '@/shared/animations/MotiPressable';
+import { AppBottomSheet } from '@/shared/components/AppBottomSheet';
 import { FlashListScrollComponent, TextField } from '@/shared/components/ui';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import {
+  FLASH_LIST_ESTIMATES,
+  flashListOverrideItemLayout,
+} from '@/shared/constants/flashListEstimates';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { triggerLightImpact, triggerSuccessNotification } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -180,8 +183,7 @@ export const RollCallWalkInSearch = memo(function RollCallWalkInSearch({
   onAddWalkIn,
   onError,
 }: Props) {
-  const { colors, inset, radius, typography, gap } = useTheme();
-  const insets = useSafeAreaInsets();
+  const { colors, radius, typography } = useTheme();
   const [query, setQuery] = useState('');
   const [pendingResult, setPendingResult] = useState<RollCallSearchResult | null>(null);
   const [confirmed, setConfirmed] = useState(false);
@@ -252,92 +254,61 @@ export const RollCallWalkInSearch = memo(function RollCallWalkInSearch({
     if (searchQuery.isLoading) {
       return <StateBlock kind="loading" title="Searching members" />;
     }
-    return (
-      <StateBlock kind="empty" title="No matches" message="Try another name or email." />
-    );
+    return <StateBlock kind="empty" title="No matches" message="Try another name or email." />;
   }, [query, searchQuery.isLoading]);
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
-      <View style={styles.overlay}>
-        <Pressable
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.background.overlay }]}
-          onPress={handleClose}
-          accessibilityLabel="Close walk-in search"
+    <AppBottomSheet
+      visible={visible}
+      onDismiss={handleClose}
+      contentStyle={[styles.sheet, { backgroundColor: colors.background.primary }]}
+    >
+      <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
+        Add walk-in
+      </Text>
+      <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
+        Unbooked attendees are inserted as the next card. Mark them present with a right swipe.
+      </Text>
+
+      <TextField
+        label="Search"
+        value={query}
+        onChangeText={setQuery}
+        placeholder="Name or email"
+        autoCapitalize="none"
+        autoCorrect={false}
+        icon="search-outline"
+      />
+
+      {pendingResult ? (
+        <ConfirmPanel
+          result={pendingResult}
+          confirmed={confirmed}
+          onToggleConfirm={handleToggleConfirm}
+          onAdd={handleAddToDeck}
+          onCancel={handleCancelConfirm}
         />
-        <View
-          style={[
-            styles.sheet,
-            {
-              backgroundColor: colors.background.primary,
-              borderTopLeftRadius: radius.modal,
-              borderTopRightRadius: radius.modal,
-              paddingTop: inset.lg,
-              paddingBottom: insets.bottom + inset.lg,
-              paddingHorizontal: inset.lg,
-              gap: gap.md,
-            },
-          ]}
-        >
-          <View style={[styles.handle, { backgroundColor: colors.border.default }]} />
-          <Text style={[typography.textPresets.coachSectionTitle, { color: colors.text.primary }]}>
-            Add walk-in
-          </Text>
-          <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]}>
-            Unbooked attendees are inserted as the next card. Mark them present with a right swipe.
-          </Text>
+      ) : null}
 
-          <TextField
-            label="Search"
-            value={query}
-            onChangeText={setQuery}
-            placeholder="Name or email"
-            autoCapitalize="none"
-            autoCorrect={false}
-            icon="search-outline"
-          />
-
-          {pendingResult ? (
-            <ConfirmPanel
-              result={pendingResult}
-              confirmed={confirmed}
-              onToggleConfirm={handleToggleConfirm}
-              onAdd={handleAddToDeck}
-              onCancel={handleCancelConfirm}
-            />
-          ) : null}
-
-          <View style={[styles.listWrap, { borderRadius: radius.card }]}>
-            <FlashList
-              data={results}
-              renderItem={renderItem}
-              keyExtractor={keyExtractor}
-              overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSearchRow)}
-              ItemSeparatorComponent={SearchSeparator}
-              renderScrollComponent={FlashListScrollComponent}
-              ListEmptyComponent={listEmpty}
-              keyboardShouldPersistTaps="handled"
-            />
-          </View>
-        </View>
+      <View style={[styles.listWrap, { borderRadius: radius.card }]}>
+        <FlashList
+          data={results}
+          renderItem={renderItem}
+          keyExtractor={keyExtractor}
+          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.rollCallSearchRow)}
+          ItemSeparatorComponent={SearchSeparator}
+          renderScrollComponent={FlashListScrollComponent}
+          ListEmptyComponent={listEmpty}
+          keyboardShouldPersistTaps="handled"
+        />
       </View>
-    </Modal>
+    </AppBottomSheet>
   );
 });
 
 const styles = StyleSheet.create({
-  overlay: {
-    flex: 1,
-    justifyContent: 'flex-end',
-  },
   sheet: {
     height: '78%',
-  },
-  handle: {
-    alignSelf: 'center',
-    borderRadius: 999,
-    height: 4,
-    width: 40,
   },
   listWrap: {
     flex: 1,

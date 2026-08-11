@@ -4,10 +4,7 @@ import type { NotificationResponse } from 'expo-notifications';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { isStartupBackgroundWorkComplete } from '@/core/startup/startupBackgroundState';
-import {
-  applyGuardianNotificationContext,
-  guardianNotificationHref,
-} from '@/features/guardian/utils/guardianNotificationNavigation';
+import { resolvePushNotificationNavigation } from '@/features/notifications/resolveNotificationAction';
 import {
   registerForPushNotifications,
   type PushRegistrationResult,
@@ -20,38 +17,6 @@ import {
 
 export type { PushRegistrationResult } from '../services/pushRegistration';
 export { registerForPushNotifications } from '../services/pushRegistration';
-
-function notificationHref(data: Record<string, unknown>): string | null {
-  const url = data.url;
-  if (typeof url === 'string' && url.startsWith('/')) return url;
-
-  const type = typeof data.type === 'string' ? data.type.toLowerCase() : '';
-  if (type === 'parent_child' || type.includes('guardian')) {
-    return guardianNotificationHref(data);
-  }
-  if (type === 'community' || type.includes('community')) {
-    const channelId = data.channelId ?? data.channel_id;
-    const postId = data.postId ?? data.post_id;
-    if (typeof channelId === 'string' && channelId.trim()) {
-      return `/communities/${channelId.trim()}`;
-    }
-    if (typeof postId === 'string' && postId.trim()) {
-      return `/communities/post/${postId.trim()}`;
-    }
-    return '/communities';
-  }
-
-  const classId = data.classId ?? data.class_id;
-  if (
-    (type === 'class_reminder' || type === 'class_cancelled') &&
-    typeof classId === 'string' &&
-    classId.trim()
-  ) {
-    return `/classes/${classId.trim()}`;
-  }
-
-  return null;
-}
 
 export function usePushNotifications() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
@@ -66,14 +31,10 @@ export function usePushNotifications() {
     if (handledResponseRef.current === request.identifier) return;
     handledResponseRef.current = request.identifier;
 
-    const href = notificationHref(request.content.data ?? {});
-    if (href) {
-      const payload = request.content.data ?? {};
-      const type = typeof payload.type === 'string' ? payload.type.toLowerCase() : '';
-      if (type === 'parent_child' || type.includes('guardian')) {
-        applyGuardianNotificationContext(payload);
-      }
-      router.push(href);
+    const nav = resolvePushNotificationNavigation(request.content.data ?? {});
+    if (nav) {
+      nav.beforeNavigate?.();
+      router.push(nav.href);
     }
   }, []);
 

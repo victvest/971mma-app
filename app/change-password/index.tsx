@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  TextInput,
-} from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, TextInput } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -23,15 +17,13 @@ import { authToast } from '@/shared/components/Toast';
 import { useTheme } from '@/shared/theme';
 import { useAuth } from '@/features/auth/context/AuthContext';
 import { useAuthStore } from '@/stores/useAuthStore';
-import {
-  AuthSubmitButton,
-  AuthTextField,
-} from '@/features/auth/components/AuthExperience';
+import { AuthSubmitButton, AuthTextField } from '@/features/auth/components/AuthExperience';
 import {
   formatAuthError,
   isPasswordValid,
   validatePasswordConfirmation,
 } from '@/features/auth/services/authValidation';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 // ─── Entrance animation hook ──────────────────────────────────────────────────
 function useEntrance(delayMs: number) {
@@ -74,16 +66,13 @@ export default function ChangePasswordScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 
   const canSubmit = useMemo(
     () =>
-      current.trim().length > 0 &&
-      isPasswordValid(next) &&
-      confirm.length > 0 &&
-      next === confirm,
+      current.trim().length > 0 && isPasswordValid(next) && confirm.length > 0 && next === confirm,
     [current, next, confirm],
   );
 
@@ -138,7 +127,10 @@ export default function ChangePasswordScreen() {
   const barStyle = useEntrance(220);
 
   return (
-    <AppSafeAreaView style={[styles.safe, { backgroundColor: colors.background.primary }]} edges={['top']}>
+    <AppSafeAreaView
+      style={[styles.safe, { backgroundColor: colors.background.primary }]}
+      edges={['top']}
+    >
       <AppBar title="Change Password" showBackButton />
 
       <KeyboardAvoidingView

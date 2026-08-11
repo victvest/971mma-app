@@ -20,9 +20,7 @@ export function ScreenSectionHeader({ kicker, title, showFlag = true }: Props) {
         {showFlag ? <UaeFlagMark /> : null}
         <Text style={[styles.kicker, { color: colors.accent.default }]}>{kicker}</Text>
       </View>
-      {title ? (
-        <Text style={[styles.title, { color: colors.text.primary }]}>{title}</Text>
-      ) : null}
+      {title ? <Text style={[styles.title, { color: colors.text.primary }]}>{title}</Text> : null}
     </View>
   );
 }

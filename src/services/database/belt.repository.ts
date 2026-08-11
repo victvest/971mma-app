@@ -7,6 +7,7 @@ import {
   searchDemoCoachMembers,
 } from '@/features/coach/demo/coachDemoFixtures';
 import { isCoachDemoMode, isDemoCoachMemberId } from '@/features/coach/demo/coachDemoMode';
+import { demoUpdateMemberRank } from '@/features/coach/demo/coachDemoRollCallStore';
 import type {
   BeltPathSummary,
   BeltProgressItem,
@@ -99,14 +100,6 @@ export async function getBeltPathSummary(
   if (discError) throw discError;
   const disciplineId = discData?.id;
 
-  if (disciplineId) {
-    try {
-      await refreshBeltProgress(userId, discipline);
-    } catch {
-      // Rank system may not be configured for this discipline yet.
-    }
-  }
-
   const [disciplineScore, progressResult, promotionsResult] = await Promise.all([
     getDisciplineScore(userId),
     disciplineId
@@ -120,7 +113,9 @@ export async function getBeltPathSummary(
     disciplineId
       ? getSupabaseClient()
           .from('rank_promotions')
-          .select('id, discipline_id, from_rank_level_id, to_rank_level_id, from_stripe, to_stripe, awarded_at')
+          .select(
+            'id, discipline_id, from_rank_level_id, to_rank_level_id, from_stripe, to_stripe, awarded_at',
+          )
           .eq('user_id', userId)
           .eq('discipline_id', disciplineId)
           .order('awarded_at', { ascending: false })
@@ -169,7 +164,9 @@ export async function getBeltPathSummary(
     const [requirementsResult, statusesResult] = await Promise.all([
       getSupabaseClient()
         .from('rank_requirements')
-        .select('id, rank_level_id, stripe, title, description, requirement_type, attendance_target, sort_order')
+        .select(
+          'id, rank_level_id, stripe, title, description, requirement_type, attendance_target, sort_order',
+        )
         .eq('rank_level_id', rankId)
         .order('stripe', { ascending: true })
         .order('sort_order', { ascending: true })
@@ -196,7 +193,13 @@ export async function getBeltPathSummary(
       const statusRow = statusMap.get(row.id);
       const rawStatus = statusRow?.status;
       const status: BeltRequirementItem['status'] =
-        rawStatus === 'next' ? 'now' : rawStatus === 'done' ? 'done' : rawStatus === 'now' ? 'now' : 'locked';
+        rawStatus === 'next'
+          ? 'now'
+          : rawStatus === 'done'
+            ? 'done'
+            : rawStatus === 'now'
+              ? 'now'
+              : 'locked';
       return {
         id: row.id,
         rankId: row.rank_level_id,
@@ -218,17 +221,17 @@ export async function getBeltPathSummary(
   const targetStripe =
     progress.stripe < progress.maxStripes ? progress.stripe + 1 : progress.maxStripes;
 
-  const promotions: PromotionItem[] = ((promotionsResult.data ?? []) as any[]).map(
-    (row) => ({
-      id: row.id,
-      discipline: discipline,
-      fromRankName: row.from_rank_level_id ? (rankMap.get(row.from_rank_level_id)?.name ?? null) : null,
-      toRankName: row.to_rank_level_id ? (rankMap.get(row.to_rank_level_id)?.name ?? null) : null,
-      fromStripe: row.from_stripe,
-      toStripe: row.to_stripe,
-      awardedAt: row.awarded_at,
-    }),
-  );
+  const promotions: PromotionItem[] = ((promotionsResult.data ?? []) as any[]).map((row) => ({
+    id: row.id,
+    discipline: discipline,
+    fromRankName: row.from_rank_level_id
+      ? (rankMap.get(row.from_rank_level_id)?.name ?? null)
+      : null,
+    toRankName: row.to_rank_level_id ? (rankMap.get(row.to_rank_level_id)?.name ?? null) : null,
+    fromStripe: row.from_stripe,
+    toStripe: row.to_stripe,
+    awardedAt: row.awarded_at,
+  }));
 
   return {
     progress,
@@ -269,13 +272,24 @@ export async function awardPromotion(
     return;
   }
 
+  const discipline = options.discipline ?? DEFAULT_DISCIPLINE;
   const { error } = await getSupabaseClient().rpc('award_promotion', {
     p_user: userId,
-    p_discipline: options.discipline ?? DEFAULT_DISCIPLINE,
+    p_discipline: discipline,
     p_to_stripe: options.toStripe ?? null,
     p_to_rank: options.toRankId ?? null,
   });
   if (error) throw error;
+
+  if (isCoachDemoMode()) {
+    try {
+      const rankMap = await getRankMap(discipline);
+      const rankName = options.toRankId ? (rankMap.get(options.toRankId)?.name ?? null) : null;
+      demoUpdateMemberRank(userId, rankName, options.toStripe ?? 0);
+    } catch {
+      // Best-effort demo sync
+    }
+  }
 }
 
 export async function searchMembersForCoach(query: string): Promise<CoachMemberSearchItem[]> {
@@ -288,13 +302,15 @@ export async function searchMembersForCoach(query: string): Promise<CoachMemberS
   });
   if (error) throw error;
 
-  return ((data ?? []) as Array<{
-    id: string;
-    full_name: string;
-    email: string;
-    belt_rank: string | null;
-    belt_stripes: number;
-  }>).map((row) => ({
+  return (
+    (data ?? []) as Array<{
+      id: string;
+      full_name: string;
+      email: string;
+      belt_rank: string | null;
+      belt_stripes: number;
+    }>
+  ).map((row) => ({
     id: row.id,
     fullName: row.full_name,
     email: row.email,
@@ -314,14 +330,14 @@ export async function getCoachMemberBeltPath(
   return getBeltPathSummary(userId, discipline);
 }
 
-export async function getUnseenPromotion(
-  userId: string,
-): Promise<PromotionItem | null> {
+export async function getUnseenPromotion(userId: string): Promise<PromotionItem | null> {
   if (isCoachDemoMode()) return null;
 
   const { data, error } = await getSupabaseClient()
     .from('rank_promotions')
-    .select('id, discipline_id, from_rank_level_id, to_rank_level_id, from_stripe, to_stripe, awarded_at')
+    .select(
+      'id, discipline_id, from_rank_level_id, to_rank_level_id, from_stripe, to_stripe, awarded_at',
+    )
     .eq('user_id', userId)
     .is('celebration_seen_at', null)
     .order('awarded_at', { ascending: false })
@@ -343,7 +359,9 @@ export async function getUnseenPromotion(
   return {
     id: data.id,
     discipline,
-    fromRankName: data.from_rank_level_id ? (rankMap.get(data.from_rank_level_id)?.name ?? null) : null,
+    fromRankName: data.from_rank_level_id
+      ? (rankMap.get(data.from_rank_level_id)?.name ?? null)
+      : null,
     toRankName: data.to_rank_level_id ? (rankMap.get(data.to_rank_level_id)?.name ?? null) : null,
     fromStripe: data.from_stripe,
     toStripe: data.to_stripe,
@@ -354,11 +372,9 @@ export async function getUnseenPromotion(
 export async function markPromotionCelebrationSeen(promotionId: string): Promise<void> {
   if (isCoachDemoMode()) return;
 
-  const { error } = await getSupabaseClient()
-    .from('rank_promotions')
-    .update({ celebration_seen_at: new Date().toISOString() })
-    .eq('id', promotionId);
+  const { error } = await getSupabaseClient().rpc('mark_promotion_celebration_seen', {
+    p_promotion_id: promotionId,
+  });
 
   if (error) throw error;
 }
-

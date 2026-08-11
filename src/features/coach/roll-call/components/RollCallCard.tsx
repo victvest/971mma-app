@@ -28,6 +28,7 @@ function formatBeltLine(beltRank: string | null, beltStripes: number): string | 
 
 function statusChipsForMember(member: RollCallDeckMember): RollCallStatusChipVariant[] {
   const chips: RollCallStatusChipVariant[] = [];
+  if (member.mark?.method === 'qr_scan') chips.push('qr_code');
   if (member.isWalkIn && !member.mark) chips.push('walk_in');
   if (member.hasFacilityCheckInToday) {
     chips.push('at_academy');
@@ -65,10 +66,7 @@ const RollCallCardPhoto = memo(function RollCallCardPhoto({
 }) {
   const { colors, typography } = useTheme();
   const initials = useMemo(() => initialsFromName(member.displayName), [member.displayName]);
-  const avatarUrl = useMemo(
-    () => resolveRollCallMemberAvatar(member),
-    [member],
-  );
+  const avatarUrl = useMemo(() => resolveRollCallMemberAvatar(member), [member]);
 
   if (avatarUrl) {
     return (
@@ -85,7 +83,11 @@ const RollCallCardPhoto = memo(function RollCallCardPhoto({
 
   return (
     <View
-      style={[StyleSheet.absoluteFill, styles.initialsSurface, { backgroundColor: colors.accent.subtle }]}
+      style={[
+        StyleSheet.absoluteFill,
+        styles.initialsSurface,
+        { backgroundColor: colors.accent.subtle },
+      ]}
       accessibilityLabel={`${member.displayName} initials`}
     >
       <Text style={[typography.textPresets.coachDisplayCompact, { color: colors.accent.default }]}>
@@ -101,8 +103,16 @@ export const RollCallCard = memo(function RollCallCard({
   edgeToEdge = false,
   style,
 }: Props) {
-  const { colors, inset, radius, typography, gap, radii: radiiTokens } = useTheme();
-  const chips = useMemo(() => statusChipsForMember(member), [member]);
+  const { colors, inset, typography, gap, radii: radiiTokens } = useTheme();
+  const chips = useMemo(() => {
+    const all = statusChipsForMember(member);
+    if (showContextChips) return all;
+    // Always surface check-in + QR badges even when other context chips are hidden.
+    return all.filter(
+      (variant) =>
+        variant === 'qr_code' || variant === 'at_academy' || variant === 'guardian_entry',
+    );
+  }, [member, showContextChips]);
   const beltLine = useMemo(
     () => formatBeltLine(member.beltRank, member.beltStripes),
     [member.beltRank, member.beltStripes],
@@ -115,13 +125,13 @@ export const RollCallCard = memo(function RollCallCard({
         {
           borderRadius: edgeToEdge ? radiiTokens.md : radiiTokens.lg,
           backgroundColor: colors.surface.secondary,
-          borderColor: colors.border.subtle,
-          borderWidth: edgeToEdge ? 0 : StyleSheet.hairlineWidth,
         },
         style,
       ]}
       accessibilityRole="summary"
-      accessibilityLabel={`${member.displayName}${beltLine ? `, ${beltLine}` : ''}`}
+      accessibilityLabel={`${member.displayName}${beltLine ? `, ${beltLine}` : ''}${
+        member.hasFacilityCheckInToday ? ', Checked In' : ''
+      }`}
     >
       <RollCallCardPhoto member={member} />
 
@@ -132,7 +142,7 @@ export const RollCallCard = memo(function RollCallCard({
         style={styles.bottomScrim}
       />
 
-      {showContextChips ? (
+      {showContextChips || chips.length > 0 || member.mark ? (
         <View style={[styles.chipOverlay, { padding: inset.md }]}>
           <View style={[styles.chipRow, { gap: gap.xs }]}>
             {member.mark ? <RollCallMarkStatusChip mark={member.mark} /> : null}

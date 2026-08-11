@@ -16,10 +16,12 @@ export async function getProfileById(userId: string): Promise<MemberProfile | nu
 }
 
 export async function getMyProfile(userId?: string): Promise<MemberProfile | null> {
-  const resolvedUserId = userId ?? (await (async () => {
-    const { data: userData } = await getSupabaseClient().auth.getUser();
-    return userData.user?.id ?? null;
-  })());
+  const resolvedUserId =
+    userId ??
+    (await (async () => {
+      const { data: userData } = await getSupabaseClient().auth.getUser();
+      return userData.user?.id ?? null;
+    })());
 
   if (!resolvedUserId) return null;
 

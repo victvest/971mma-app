@@ -1,6 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
-import { StyleSheet, Text, View, type StyleProp, type TextStyle, type ViewStyle } from 'react-native';
+import {
+  StyleSheet,
+  Text,
+  View,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
+} from 'react-native';
 import { resolveMemberAvatarUrl } from '@/features/profile/services/avatarUrl';
 import { getInitials } from '@/shared/utils/getInitials';
 import { useAuthStore } from '@/stores/useAuthStore';
@@ -66,7 +73,10 @@ export function MemberAvatar({
       {showImage ? (
         <Image
           source={{ uri: resolvedAvatarUrl! }}
-          style={[styles.image, { width: innerSize, height: innerSize, borderRadius: innerSize / 2 }]}
+          style={[
+            styles.image,
+            { width: innerSize, height: innerSize, borderRadius: innerSize / 2 },
+          ]}
           contentFit="cover"
           cachePolicy="memory-disk"
           recyclingKey={resolvedAvatarUrl ?? undefined}

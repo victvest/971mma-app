@@ -23,7 +23,7 @@ export const CoachCurriculumRequirementCard = memo(function CoachCurriculumRequi
   onEdit,
   onDelete,
 }: Props) {
-  const { colors, typography, inset, gap, radius, shadows, layout } = useTheme();
+  const { colors, typography, inset, gap, radius, surfaceShadow, layout } = useTheme();
 
   const handleEdit = useCallback(() => {
     triggerLightImpact();
@@ -39,7 +39,7 @@ export const CoachCurriculumRequirementCard = memo(function CoachCurriculumRequi
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,

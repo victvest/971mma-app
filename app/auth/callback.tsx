@@ -2,10 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, View } from 'react-native';
 import * as Linking from 'expo-linking';
 import { useRouter } from 'expo-router';
-import {
-  AuthScreen,
-  AuthSubmitButton,
-} from '@/features/auth/components/AuthExperience';
+import { AuthScreen, AuthSubmitButton } from '@/features/auth/components/AuthExperience';
 import {
   handleAuthDeepLink,
   routeAuthDeepLinkOutcome,
@@ -13,6 +10,7 @@ import {
 import { isAuthCallbackUrl } from '@/features/auth/services/authRedirect';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { useTheme } from '@/shared/theme';
 
 export default function AuthCallbackScreen() {
@@ -31,7 +29,7 @@ export default function AuthCallbackScreen() {
     void (async () => {
       const outcome = await handleAuthDeepLink(url);
       if (outcome.kind === 'error') {
-        setErrorMessage(outcome.message);
+        setErrorMessage(toUserFacingErrorMessage(outcome.message));
       }
 
       await routeAuthDeepLinkOutcome(outcome, router.replace, () => {

@@ -11,10 +11,7 @@ export function RewardsSectionHeader() {
       <AcademyEyebrow label="Rewards" accent showFlag={false} />
       <TabHeroTitle
         collapseOnWide
-        lines={[
-          [{ text: 'Stack your ' }],
-          [{ text: 'points.', accent: true }],
-        ]}
+        lines={[[{ text: 'Stack your ' }], [{ text: 'points.', accent: true }]]}
       />
     </View>
   );

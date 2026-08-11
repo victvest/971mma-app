@@ -3,7 +3,10 @@ import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { AnimatedBarFill } from '@/shared/animations';
 import { BeltPathIconBadge } from '@/features/belt/components/BeltPathIconBadge';
-import { BeltPathStatusBadge, type BeltPathBadgeStatus } from '@/features/belt/components/BeltPathStatusBadge';
+import {
+  BeltPathStatusBadge,
+  type BeltPathBadgeStatus,
+} from '@/features/belt/components/BeltPathStatusBadge';
 import { useTheme } from '@/shared/theme';
 import type { BeltRequirementItem } from '@/types/domain';
 
@@ -43,7 +46,7 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
   item,
   trainingDays,
 }: Props) {
-  const { colors, typography, radius, shadows, inset, gap } = useTheme();
+  const { colors, typography, radius, surfaceShadow, inset, gap } = useTheme();
   const badgeStatus = mapRequirementStatus(item.status);
   const isActive = item.status === 'now' || item.status === 'done';
   const iconName = getRequirementIcon(item.type);
@@ -62,7 +65,7 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderRadius: radius.cardLarge,
@@ -94,7 +97,12 @@ export const BeltPathRequirementCard = React.memo(function BeltPathRequirementCa
       </View>
 
       {showDescription ? (
-        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary, lineHeight: 18 }]}>
+        <Text
+          style={[
+            typography.textPresets.footnote,
+            { color: colors.text.secondary, lineHeight: 18 },
+          ]}
+        >
           {item.description}
         </Text>
       ) : null}

@@ -11,7 +11,11 @@ export function UaeAccentBar({ height = 3 }: Props) {
   const { colors } = useTheme();
 
   return (
-    <View style={[styles.row, { height }]} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+    <View
+      style={[styles.row, { height }]}
+      accessibilityElementsHidden
+      importantForAccessibility="no-hide-descendants"
+    >
       <View style={[styles.segment, { backgroundColor: colors.accent.default }]} />
       <View style={[styles.segment, { backgroundColor: colors.surface.primary }]} />
       <View style={[styles.segment, { backgroundColor: colors.status.error }]} />

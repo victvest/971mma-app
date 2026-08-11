@@ -17,7 +17,11 @@ function getTierDisplayName(tier: string) {
   return 'Bronze';
 }
 
-export const PointsBalanceCard = memo(function PointsBalanceCard({ balance, tier, lifetimePoints }: Props) {
+export const PointsBalanceCard = memo(function PointsBalanceCard({
+  balance,
+  tier,
+  lifetimePoints,
+}: Props) {
   const { colors, radius, gap } = useTheme();
   const tierLabel = getTierDisplayName(tier).toUpperCase();
 
@@ -43,7 +47,9 @@ export const PointsBalanceCard = memo(function PointsBalanceCard({ balance, tier
         </View>
       </View>
 
-      <Text style={[styles.balance, { color: colors.text.onPromo }]}>{balance.toLocaleString('en-US')}</Text>
+      <Text style={[styles.balance, { color: colors.text.onPromo }]}>
+        {balance.toLocaleString('en-US')}
+      </Text>
       <Text style={[styles.lifetime, { color: colors.text.onPromoMuted }]}>
         {lifetimePoints.toLocaleString('en-US')} lifetime
       </Text>

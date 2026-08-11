@@ -4,8 +4,7 @@ import Svg, { Path } from 'react-native-svg';
 import type { ScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
 
 /** Icon paths sourced from Material Design Icons / Material Symbols (Apache-2.0). */
-const CATEGORY_ICON_PATHS: Record<ScheduleCategory, string> = {
-  bjj: 'm10 22l-.5-9l-3.175-1.825l-.35 1.3L8 16l-1.725 1L3.8 12.75L5 8.45l5.75-3.3L8 2.4L9.4 1L14 5.575L10.4 7.65l1.2 1.05L19.8 2L21 3.4L12.5 12L12 22zM5 7q-.825 0-1.412-.587T3 5t.588-1.412T5 3t1.413.588T7 5t-.587 1.413T5 7',
+const CATEGORY_ICON_PATHS: Record<Exclude<ScheduleCategory, 'bjj'>, string> = {
   wrestling:
     'M11.2 10.6q1.5 1.5 3.6 1.5l.1 2.1q-2.85 0-5.1-2.1l-.7-.7l-2.3 2.4L9 15.9v6H7v-5.2l-1.3-1.2v2.2L1.5 22L.1 20.6L3.7 17l-1.2-3.5c-.2-.6.1-1.1.6-1.5l3.3-3.3c.4-.5.9-.7 1.4-.7s.8.1 1.1.3zM24 11.9h-2V8.5l-1.8-.7l.9 4.4l1 5.2l.9 4.4h-2.1l-1.8-8l-2.1 2v6h-2v-7.5l2.1-2l-.6-3c-.6.6-1.3 1.2-2.1 1.6c-.9-.1-1.8-.5-2.5-1.2c1.6-.3 2.7-1.1 3.4-2.3l1-1.6c.6-1 1.5-1.3 2.6-.8L24 7.2zM11.4 4.4c1.1 0 2 .9 2 2s-.9 2-2 2s-2-.9-2-2s.9-2 2-2M16.5.3c1.1 0 2 .9 2 2s-.9 2-2 2s-2-.9-2-2s.9-2 2-2',
   'muay-thai':
@@ -17,17 +16,49 @@ const CATEGORY_ICON_PATHS: Record<ScheduleCategory, string> = {
     'M20.57 14.86L22 13.43L20.57 12L17 15.57L8.43 7L12 3.43L10.57 2L9.14 3.43L7.71 2L5.57 4.14L4.14 2.71L2.71 4.14l1.43 1.43L2 7.71l1.43 1.43L2 10.57L3.43 12L7 8.43L15.57 17L12 20.57L13.43 22l1.43-1.43L16.29 22l2.14-2.14l1.43 1.43l1.43-1.43l-1.43-1.43L22 16.29z',
 };
 
-const ICON_SIZE = 16;
-
 type Props = {
   category: ScheduleCategory | 'all';
   color: string;
+  size?: number;
 };
 
-function CategorySvgIcon({ path, color }: { path: string; color: string }) {
+function CategorySvgIcon({
+  path,
+  color,
+  size = 16,
+}: {
+  path: string;
+  color: string;
+  size?: number;
+}) {
   return (
-    <Svg width={ICON_SIZE} height={ICON_SIZE} viewBox="0 0 24 24" fill={color}>
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill={color}>
       <Path d={path} />
+    </Svg>
+  );
+}
+
+function BjjGiIcon({ color, size = 16 }: { color: string; size?: number }) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <Path
+        d="M7.4 3.6 3.8 6.1 5.2 14.8h3.1L8 20.4h8l-.3-5.6h3.1l1.4-8.7-3.6-2.5-2.4 3.1L12 11 9.8 6.7z"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M8.3 14.8h7.4M9.1 17.2h5.8M12 11l2.8 3.8M12 11l-2.8 3.8"
+        stroke={color}
+        strokeWidth={1.8}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <Path
+        d="M11 15.2h2l1.1 1.1-1.1 1h-2l-1.1-1z"
+        fill={color}
+      />
     </Svg>
   );
 }
@@ -35,10 +66,15 @@ function CategorySvgIcon({ path, color }: { path: string; color: string }) {
 export const ScheduleCategoryIcon = memo(function ScheduleCategoryIcon({
   category,
   color,
+  size = 16,
 }: Props) {
   if (category === 'all') {
-    return <LayoutGrid size={ICON_SIZE} color={color} strokeWidth={2.25} />;
+    return <LayoutGrid size={size} color={color} strokeWidth={2.25} />;
   }
 
-  return <CategorySvgIcon path={CATEGORY_ICON_PATHS[category]} color={color} />;
+  if (category === 'bjj') {
+    return <BjjGiIcon color={color} size={size} />;
+  }
+
+  return <CategorySvgIcon path={CATEGORY_ICON_PATHS[category]} color={color} size={size} />;
 });

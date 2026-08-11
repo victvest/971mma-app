@@ -12,10 +12,7 @@ export function AnimatedProgressFill({ percent, backgroundColor, style, borderRa
   const clamped = Math.max(0, Math.min(100, percent));
   return (
     <View
-      style={[
-        { height: '100%', borderRadius, backgroundColor, width: `${clamped}%` },
-        style,
-      ]}
+      style={[{ height: '100%', borderRadius, backgroundColor, width: `${clamped}%` }, style]}
     />
   );
 }

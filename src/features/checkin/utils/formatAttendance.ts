@@ -1,4 +1,4 @@
-import { formatGymDisplay, isGymToday, GYM_TIME_ZONE } from '@/core/time/gymTime';
+import { formatGymDisplay, formatGymTime12h, isGymToday, GYM_TIME_ZONE } from '@/core/time/gymTime';
 
 function gymDayKey(iso: string): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: GYM_TIME_ZONE }).format(new Date(iso));
@@ -10,63 +10,56 @@ function isGymYesterday(iso: string, now = new Date()): boolean {
   return gymDayKey(iso) === gymDayKey(yesterday.toISOString());
 }
 
-function formatTime(iso: string): string {
-  return new Intl.DateTimeFormat(undefined, {
-    hour: 'numeric',
-    minute: '2-digit',
-  }).format(new Date(iso));
-}
-
+/** Calendar day label — Today / Yesterday / weekday + date (no time). */
 export function formatAttendanceHeadline(iso: string, now = new Date()): string {
   if (isGymToday(iso, now)) return 'Today';
   if (isGymYesterday(iso, now)) return 'Yesterday';
-  return formatGymDisplay(iso).split(',')[0] ?? formatGymDisplay(iso);
-}
-
-export function formatAttendanceSubtitle(iso: string, now = new Date()): string {
-  const time = formatTime(iso);
-  if (isGymToday(iso, now) || isGymYesterday(iso, now)) return time;
+  // formatGymDisplay → "Wed, 5 Jan, 3:00 PM" — take weekday + date only
   const full = formatGymDisplay(iso);
-  const datePart = full.includes(',') ? full.slice(full.indexOf(',') + 1).trim() : full;
-  return `${datePart} · ${time}`;
+  const withoutTime = full.includes(',') ? full.slice(0, full.lastIndexOf(',')).trim() : full;
+  return withoutTime;
 }
 
-function readNestedString(payload: Record<string, unknown>, keys: string[]): string | null {
-  let current: unknown = payload;
-  for (const key of keys) {
-    if (!current || typeof current !== 'object') return null;
-    current = (current as Record<string, unknown>)[key];
-  }
-  return typeof current === 'string' && current.trim() ? current.trim() : null;
+/** Clock time only (gym-local 12h). */
+export function formatAttendanceTime(iso: string): string {
+  return formatGymTime12h(iso);
 }
 
-/** Mindbody visit class title when check_ins.class_id is null (unmapped schedule row). */
-export function extractMindbodyVisitClassTitle(
-  rawPayload: Record<string, unknown> | null | undefined,
-): string | null {
-  if (!rawPayload) return null;
-
-  return (
-    readNestedString(rawPayload, ['ClassDescription', 'Name']) ??
-    readNestedString(rawPayload, ['Class', 'ClassDescription', 'Name']) ??
-    readNestedString(rawPayload, ['Class', 'Name']) ??
-    readNestedString(rawPayload, ['Name']) ??
-    null
-  );
+/**
+ * @deprecated Prefer composing headline + time in the row.
+ * Kept for child status cards that only need a clock time for "today".
+ */
+export function formatAttendanceSubtitle(iso: string, now = new Date()): string {
+  const time = formatAttendanceTime(iso);
+  if (isGymToday(iso, now) || isGymYesterday(iso, now)) return time;
+  return `${formatAttendanceHeadline(iso, now)} · ${time}`;
 }
 
-const COACH_ROSTER_METHODS = new Set(['coach_roster', 'coach', 'manual']);
+export {
+  extractMindbodyVisitClassId,
+  extractMindbodyVisitClassTitle,
+} from '@/features/checkin/utils/mindbodyVisitPayload';
 
-/** Member-facing check-in channel — only Gate or Coach roster. */
-export function formatCheckInMethod(method: string, options?: { hasClass?: boolean }): string {
-  const normalized = method.toLowerCase();
+const CLASS_ROSTER_METHODS = new Set(['coach_roster', 'coach', 'manual', 'roll_call']);
+const FACILITY_METHODS = new Set(['qr_scan', 'qr_self', 'gate_scan']);
 
-  if (COACH_ROSTER_METHODS.has(normalized)) {
+/**
+ * Member-facing check-in channel label from the real method — never invent "Coach roster"
+ * for Mindbody-synced class visits.
+ */
+export function formatCheckInMethod(method: string): string {
+  const normalized = method?.toLowerCase?.() ?? '';
+
+  if (CLASS_ROSTER_METHODS.has(normalized)) {
     return 'Coach roster';
   }
 
-  if (normalized === 'qr_scan' || normalized === 'mindbody_visit') {
-    return options?.hasClass ? 'Coach roster' : 'Gate';
+  if (normalized === 'mindbody_visit') {
+    return 'Synced';
+  }
+
+  if (FACILITY_METHODS.has(normalized)) {
+    return 'Gate';
   }
 
   return 'Gate';

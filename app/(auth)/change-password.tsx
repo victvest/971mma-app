@@ -10,8 +10,12 @@ import {
 } from '@/features/auth/components/AuthExperience';
 import { authFeedback } from '@/features/auth/feedback/authFeedback';
 import { authRoutes } from '@/features/auth/navigation/authNavigation';
-import { formatAuthError, validatePasswordConfirmation } from '@/features/auth/services/authValidation';
+import {
+  formatAuthError,
+  validatePasswordConfirmation,
+} from '@/features/auth/services/authValidation';
 import { authToast } from '@/shared/components/Toast';
+import { USER_FACING_CONFIG_ERROR } from '@/lib/userFacingError';
 
 export default function ChangePasswordScreen() {
   const { updatePassword, signOut, configError, passwordRecoveryActive } = useAuth();
@@ -24,7 +28,7 @@ export default function ChangePasswordScreen() {
 
   useEffect(() => {
     if (configError) {
-      authToast.error('Configuration Error', configError);
+      authToast.error('Unavailable', USER_FACING_CONFIG_ERROR);
     }
   }, [configError]);
 

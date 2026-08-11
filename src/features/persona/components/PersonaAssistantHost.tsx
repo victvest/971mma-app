@@ -1,11 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSegments } from 'expo-router';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { usePersonaChat, usePersonaSuggestions } from '../hooks/usePersonaChat';
 import { usePersonaStore } from '../store/usePersonaStore';
 import type { PersonaBubblePosition } from '../types';
+import { isPersonaAssistantEnabled } from '../personaAssistantEnabled';
 import { PERSONA_BUBBLE_SIZE, PersonaFloatingBubble } from './PersonaFloatingBubble';
 import { PersonaChatPanel } from './PersonaChatPanel';
 
@@ -20,10 +22,7 @@ function computeDefaultPosition(
 ): PersonaBubblePosition {
   return {
     x: width - PERSONA_BUBBLE_SIZE - BUBBLE_EDGE_INSET,
-    y: Math.max(
-      safeTop + 72,
-      height - tabBarBottom - tabBarHeight - PERSONA_BUBBLE_SIZE - 28,
-    ),
+    y: Math.max(safeTop + 72, height - tabBarBottom - tabBarHeight - PERSONA_BUBBLE_SIZE - 28),
   };
 }
 
@@ -31,6 +30,7 @@ export function PersonaAssistantHost() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const role = useAuthStore((state) => state.role);
   const insets = useSafeAreaInsets();
+  const segments = useSegments();
   const { tabBar, window } = useResponsiveLayout();
   const isChatOpen = usePersonaStore((state) => state.isChatOpen);
   const bubblePosition = usePersonaStore((state) => state.bubblePosition);
@@ -43,6 +43,7 @@ export function PersonaAssistantHost() {
   const hydratedRef = useRef(false);
 
   const isMemberSurface = isAuthenticated && role !== 'coach' && role !== 'admin';
+  const isTabBarVisible = segments.includes('(main)');
 
   useEffect(() => {
     if (!isMemberSurface || hydratedRef.current) return;
@@ -55,12 +56,7 @@ export function PersonaAssistantHost() {
       minX: BUBBLE_EDGE_INSET,
       maxX: window.width - PERSONA_BUBBLE_SIZE - BUBBLE_EDGE_INSET,
       minY: insets.top + 64,
-      maxY:
-        window.height -
-        tabBar.bottom -
-        tabBar.height -
-        PERSONA_BUBBLE_SIZE -
-        BUBBLE_EDGE_INSET,
+      maxY: window.height - tabBar.bottom - tabBar.height - PERSONA_BUBBLE_SIZE - BUBBLE_EDGE_INSET,
     }),
     [insets.top, tabBar.bottom, tabBar.height, window.height, window.width],
   );
@@ -100,13 +96,13 @@ export function PersonaAssistantHost() {
     [setBubblePosition],
   );
 
-  if (!isMemberSurface) return null;
+  if (!isMemberSurface || !isPersonaAssistantEnabled()) return null;
 
   return (
     <View pointerEvents="box-none" style={StyleSheet.absoluteFill}>
       <PersonaFloatingBubble
         position={resolvedPosition}
-        visible={!isChatOpen}
+        visible={!isChatOpen && isTabBarVisible}
         onOpenChat={openChat}
         onPositionChange={handlePositionChange}
         bounds={bounds}

@@ -4,7 +4,7 @@ import type { RedemptionItem, RewardItem } from '@/types/domain';
 import { mapRedemptionRow, mapRewardRow } from './mappers';
 
 const REWARD_COLUMNS =
-  'id, name, category, cost_points, active, unlock_rule, fulfillment, inventory, sort_order, created_at, deleted_at, available_from, available_until';
+  'id, name, category, cost_points, price_aed, image_url, active, unlock_rule, fulfillment, inventory, sort_order, created_at, deleted_at, available_from, available_until';
 const REDEMPTION_COLUMNS =
   'id, user_id, reward_id, cost_points, status, fulfilled_at, created_at, rewards_catalog(name, category, fulfillment)';
 
@@ -37,7 +37,9 @@ export async function getCatalog(): Promise<RewardItem[]> {
   if (current.error) {
     const fallback = await client
       .from('rewards_catalog')
-      .select('id, name, category, cost_points, active, unlock_rule, fulfillment, inventory, sort_order, created_at')
+      .select(
+        'id, name, category, cost_points, active, unlock_rule, fulfillment, inventory, sort_order, created_at',
+      )
       .eq('active', true)
       .order('sort_order', { ascending: true })
       .order('name', { ascending: true });
@@ -65,9 +67,10 @@ export async function getMyRedemptions(userId?: string): Promise<RedemptionItem[
   return ((data ?? []) as RedemptionRow[]).map(mapRedemptionRow);
 }
 
-export async function redeem(rewardId: string): Promise<RedemptionItem> {
+export async function redeem(rewardId: string, userId?: string | null): Promise<RedemptionItem> {
   const { data, error } = await getSupabaseClient().rpc('redeem_reward', {
     p_reward: rewardId,
+    p_user: userId || null,
   });
 
   if (error) throw error;

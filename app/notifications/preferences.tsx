@@ -19,8 +19,7 @@ type PreferenceKey =
   | 'classReminders'
   | 'milestones'
   | 'rewards'
-  | 'guardianAlerts'
-  | 'community';
+  | 'guardianAlerts';
 
 type PreferenceRowConfig = {
   key: PreferenceKey;
@@ -60,12 +59,6 @@ const PREFERENCE_ROWS: PreferenceRowConfig[] = [
     subtitle: 'Child check-ins and trainee updates',
     icon: 'people-outline',
   },
-  {
-    key: 'community',
-    title: 'Community',
-    subtitle: 'Discipline channel activity',
-    icon: 'chatbubbles-outline',
-  },
 ];
 
 function PreferenceRow({
@@ -83,15 +76,26 @@ function PreferenceRow({
 
   return (
     <View style={[styles.preferenceRow, { paddingVertical: inset.sm + 2, gap: inset.sm }]}>
-      <View style={[styles.iconWell, { backgroundColor: colors.background.secondary, borderRadius: radius.pill }]}>
+      <View
+        style={[
+          styles.iconWell,
+          { backgroundColor: colors.background.secondary, borderRadius: radius.pill },
+        ]}
+      >
         <Ionicons name={config.icon} size={19} color={colors.text.secondary} />
       </View>
 
       <View style={styles.preferenceCopy}>
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]} numberOfLines={1}>
+        <Text
+          style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}
+          numberOfLines={1}
+        >
           {config.title}
         </Text>
-        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={1}>
+        <Text
+          style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+          numberOfLines={1}
+        >
           {config.subtitle}
         </Text>
       </View>
@@ -158,9 +162,13 @@ export default function NotificationPreferencesScreen() {
         }
       >
         <View style={{ gap: gap.xs }}>
-          <Text style={[typography.textPresets.homeHero, { color: colors.text.primary, lineHeight: 42 }]}>
-            Choose your{' '}
-            <Text style={{ color: colors.accent.default }}>signals.</Text>
+          <Text
+            style={[
+              typography.textPresets.homeHero,
+              { color: colors.text.primary, lineHeight: 42 },
+            ]}
+          >
+            Choose your <Text style={{ color: colors.accent.default }}>signals.</Text>
           </Text>
           <Text style={[styles.subtitle, { color: colors.text.secondary }]}>
             These preferences shape in-app and push notifications.

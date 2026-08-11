@@ -1,14 +1,21 @@
 import React from 'react';
-import { Platform, StyleSheet, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
-import { useTheme } from '@/shared/theme';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
+import { useTheme, androidStackingLayer } from '@/shared/theme';
 
 /** Status-bar fill matches the app screen background — seamless with home content. */
 export function TabStatusBarChrome() {
   const topInset = useAppTopInset();
+  const offlineBannerVisible = useOfflineBannerVisible();
   const { colors } = useTheme();
   const backgroundColor = colors.background.primary;
+
+  if (offlineBannerVisible) {
+    // Red offline banner owns the status bar — keep icons light, no white fill.
+    return <AppStatusBar style="light" backgroundColor={colors.status.error} translucent />;
+  }
 
   return (
     <>
@@ -32,8 +39,6 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     zIndex: 1100,
-    ...Platform.select({
-      android: { elevation: 1100 },
-    }),
+    ...androidStackingLayer(1100),
   },
 });

@@ -1,5 +1,5 @@
 import { getSupabaseClient } from '@/services/supabase/client';
-import type { PointsAccountRow, PointsLedgerRow } from '@/types/database';
+import type { CheckInMethod, PointsAccountRow, PointsLedgerRow } from '@/types/database';
 import type { PointsAccount, PointsLedgerItem } from '@/types/domain';
 import { mapPointsAccountRow, mapPointsLedgerRow } from './mappers';
 
@@ -7,6 +7,31 @@ const POINTS_ACCOUNT_COLUMNS = 'user_id, balance, tier, lifetime_points, updated
 const POINTS_LEDGER_COLUMNS =
   'id, user_id, delta, reason, ref_id, ref_table, metadata, balance_after, created_at';
 const PAGE_SIZE = 20;
+
+async function attachCheckInMethods(items: PointsLedgerItem[]): Promise<PointsLedgerItem[]> {
+  const checkInIds = items
+    .filter((item) => item.reason === 'check_in' && item.refId)
+    .map((item) => item.refId as string);
+
+  if (checkInIds.length === 0) return items;
+
+  const { data, error } = await getSupabaseClient()
+    .from('check_ins')
+    .select('id, method')
+    .in('id', checkInIds);
+
+  if (error || !data?.length) return items;
+
+  const methodById = new Map(
+    (data as Array<{ id: string; method: CheckInMethod }>).map((row) => [row.id, row.method]),
+  );
+
+  return items.map((item) =>
+    item.reason === 'check_in' && item.refId
+      ? { ...item, checkInMethod: methodById.get(item.refId) ?? null }
+      : item,
+  );
+}
 
 async function currentUserId(): Promise<string> {
   const { data } = await getSupabaseClient().auth.getUser();
@@ -72,5 +97,6 @@ export async function getLedgerPage(
     .range(offset, offset + limit - 1);
 
   if (error) throw error;
-  return ((data ?? []) as PointsLedgerRow[]).map(mapPointsLedgerRow);
+  const items = ((data ?? []) as PointsLedgerRow[]).map(mapPointsLedgerRow);
+  return attachCheckInMethods(items);
 }

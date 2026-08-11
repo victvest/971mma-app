@@ -63,9 +63,13 @@ export function SetupStepControls({
     totalSteps,
   ]);
 
-  const backButtonWidth = rowWidth > 0
-    ? Math.min(layout.authButtonHeight * 1.72, Math.max(layout.authButtonHeight * 1.4, rowWidth * 0.28))
-    : layout.authButtonHeight * 1.55;
+  const backButtonWidth =
+    rowWidth > 0
+      ? Math.min(
+          layout.authButtonHeight * 1.72,
+          Math.max(layout.authButtonHeight * 1.4, rowWidth * 0.28),
+        )
+      : layout.authButtonHeight * 1.55;
   const handleControlsLayout = useCallback((event: LayoutChangeEvent) => {
     setRowWidth(event.nativeEvent.layout.width);
   }, []);

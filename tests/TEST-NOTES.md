@@ -10,61 +10,10 @@ project. This document records:
 4. genuine gaps and recommended manual checks before shipping to 1000 users.
 
 > TL;DR for shipping: the **core money/attendance paths are solid and verified**
-> (gate check-in → points, coach roll-call → points, member pass → coach scan,
-> redeem → fulfil/cancel/refund, activation queue, admin access control). The run
-> surfaced **one real code defect** (admin Community Moderation list RPC — see §0)
-> and **one intentionally staff-only flow** (guardian linking — see §2a). Everything
-> else green. The remaining items are *external-dependency confirmations* to close
-> before launch. None of the open items block the 1000 **members**; §0 blocks one
-> **staff** tool.
-
----
-
-## 0. FIXED — admin "Community Moderation" list was broken ✅
-
-**Severity:** Medium (broke an internal staff tool; did not affect members).
-**Found by:** `tests/admin/community-moderation`.
-**Fixed by:** migration `0097_community_group_open_chat.sql`, which redefines
-`admin_list_community_moderation` as a plain `select ... order by` (no `union`) —
-the reply branch was dropped entirely as part of removing the threaded-reply
-feature, which also eliminated the column-name mismatch below. The test's SKIP
-guard has been removed in favor of a hard assertion.
-
-`public.admin_list_community_moderation(p_limit, p_offset)` throws on **every** call:
-
-```
-ERROR: invalid UNION/INTERSECT/EXCEPT ORDER BY clause
-```
-
-The admin panel calls it (`971mma-admin/src/lib/api/admin.ts:874`, rendered by
-`CommunitiesModerationPanel.tsx`), so the **Community Moderation page cannot load** —
-staff currently have no way to review/hide reported posts or replies from the panel.
-
-**Root cause** (migration `0068_admin_community_group_chat.sql`): the function is
-
-```sql
-( select 'post'::text, …, cp.published_at, … from community_posts … )
-union all
-( select 'reply'::text, …, cr.created_at, … from community_replies … )
-order by created_at desc          -- ← not a valid output column name of the UNION
-```
-
-A `UNION` takes its output column names from the **first** SELECT, whose timestamp
-column is `published_at` (and it's an unaliased expression anyway). `created_at` is
-not a recognized output column, so Postgres rejects the `ORDER BY`.
-
-**Fix (pick one):**
-
-- alias the sort column in the first branch: `cp.published_at as created_at`, **or**
-- order by position: `order by 8 desc`, **or**
-- wrap the union: `select * from ( … union all … ) t order by t.created_at desc`.
-
-Then convert the pinned SKIP in `tests/admin/community-moderation/moderation.test.mjs`
-back to the hard `assert(Array.isArray(...))` (it already auto-detects the fix).
-
-> If community features are **not** part of the day-one launch, this is not a
-> blocker — but the panel will error the moment a staff member opens it. Recommend
-> fixing the one line before enabling community moderation.
+> (SALTO/member pass check-in → points, coach roll-call → points, member pass →
+> coach scan, redeem → fulfil/cancel/refund, activation queue, admin access control), and the
+> one intentionally staff-only flow to watch is guardian linking (§2a). The
+> remaining items are *external-dependency confirmations* to close before launch.
 
 ---
 
@@ -76,9 +25,8 @@ apps call):**
 - Auth: real `auth-sign-in` path — valid login, bad-credential rejection without
   user enumeration, missing-field validation, and **admins blocked from the mobile
   app**.
-- Gate entry: gate tablet QR issuance, member self check-in with geofence, same-day
-  duplicate block, forged-signature rejection, missing-GPS rejection, **+10 points
-  on a real check-in**.
+- Gate access: SALTO/member pass access attempts, device allow-listing, same-day
+  duplicate handling, and **+10 points on a real check-in**.
 - Member pass + coach scan: pass issuance/expiry, coach scanner parse, single-use
   token (replay blocked), members can't consume scan tokens.
 - Roll call: start → mark present (incl. scan) → complete → facility check-in →
@@ -87,12 +35,13 @@ apps call):**
   **structural double-credit guard**.
 - Redemption: redeem → pending → fulfil; cancel & refund **restore points**;
   insufficient-points / out-of-stock / tier-lock guard rails.
-- Referrals, communities membership gating, belt recompute, class subscriptions,
-  notification prefs, support tickets, account-deletion requests.
+- Referrals, belt recompute, class subscriptions, notification prefs, support
+  tickets, account-deletion requests.
 - Admin: **access-control boundary** (members rejected from every privileged RPC),
   user search & role change, activation approval (activates the account),
-  redemption refund + status guards, broadcasts, coach edits, content toggles, gate
-  exit PIN, deletion queue, support triage, health/reports, moderation listing.
+  redemption refund + status guards, broadcasts, coach edits, content toggles,
+  SALTO device/access visibility, deletion queue, support triage, health/reports,
+  moderation listing.
 
 **Does NOT prove (out of scope for a backend behavior suite — verify separately):**
 
@@ -101,7 +50,7 @@ apps call):**
   [`e2e/maestro/flows`](../e2e/maestro/flows) for on-device screen coverage, and do a
   manual pass on a physical iPhone before submission.
 - **Real camera QR scanning.** We verify token issue/parse/validate logic; we do not
-  drive a physical camera. Manually scan a gate QR and a member pass on a device.
+  drive a physical camera. Manually scan a member pass on a coach device.
 - **Push notification delivery.** We verify fanout rows + recipient resolution; we do
   **not** assert APNs/FCM actually delivers to a handset. Send a real broadcast to a
   test device.
@@ -155,7 +104,7 @@ apps call):**
   generic `INVALID_CREDENTIALS` so it's indistinguishable from a bad login). This is
   a deliberate security control — admins use the web panel. Verified; no action.
   Operational note: do not hand a staff member an admin account and expect them to
-  log into the phone app; give gym-floor staff a `coach`/`gate` role instead.
+  log into the phone app; give gym-floor staff a `coach` role instead.
 
 ---
 
@@ -193,8 +142,8 @@ What the suite cannot guarantee for you:
   sign-out/sign-in and DB assertions shell out to the linked `supabase` CLI. This is
   fine for pre-release / nightly regression; it is not a per-commit unit suite.
 - **SKIPs are surfaced, not swallowed.** A SKIP means a precondition wasn't present
-  (e.g. an empty community, the MB sandbox unreachable) — read them in
-  `tests/output/REPORT.md` and decide whether they matter for your release.
+  (e.g. the MB sandbox unreachable) — read them in `tests/output/REPORT.md` and
+  decide whether they matter for your release.
 
 ---
 
@@ -204,8 +153,7 @@ These are the things a green backend suite cannot replace:
 
 - [ ] Fresh install → sign up → email verification code arrives (SMTP) → onboarding.
 - [ ] Member: open pass, have a coach scan it in a class; confirm points appear.
-- [ ] Member: scan the gate tablet QR at the gym; confirm check-in + points + streak.
-- [ ] Gate tablet: confirm the QR rotates and exit requires the staff PIN.
+- [ ] Member: show the pass to the SALTO gate reader; confirm check-in + points + streak.
 - [ ] Coach: run a roll call for a real class, mark present/absent, complete it.
 - [ ] Member: redeem a reward; staff fulfils it in the admin panel.
 - [ ] Push: send a broadcast from admin → confirm it arrives on a real device.
@@ -224,13 +172,5 @@ regressions.
 _Latest full run summary is appended below by the maintainer after each run:_
 
 <!-- RESULTS:START -->
-**Latest full run: PASS 64 · FAIL 0 · SKIP 1 of 65** (~11 min, live backend).
-
-The single SKIP is the one real bug pinned in §0 (admin Community Moderation list).
-Everything else — auth, gate check-in + points, member pass + coach scan, roll call +
-rewards, points engine, redemption + admin lifecycle, Mindbody linking, referrals,
-guardians (staff path + mobile block), communities, belt, schedule, profile/support,
-account deletion, and the full admin panel (access control, users, activations,
-redemptions, broadcasts, coaches, content, gate PIN, deletions, support, health) —
-passes end-to-end against the live project.
+Latest full run summary pending rerun after the community feature removal.
 <!-- RESULTS:END -->

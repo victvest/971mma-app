@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text } from 'react-native';
 import { Bell, BellOff } from 'lucide-react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, {
   useAnimatedStyle,
@@ -14,8 +13,8 @@ import {
   useClassSubscription,
   useToggleClassSubscription,
 } from '@/features/schedule/hooks/useClassSubscription';
-import { LiquidGlassSurface } from '@/shared/components/ui';
 import { authToast } from '@/shared/components/Toast';
+import { errorMessageIncludes, toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { triggerMediumImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { animations } from '@/shared/theme/animations';
@@ -30,16 +29,15 @@ type Props = {
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 
 function readErrorMessage(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) return error.message;
-  return 'Could not update class notifications.';
+  return toUserFacingErrorMessage(error, { fallback: 'Could not update class notifications.' });
 }
 
 function isPushTokenRequired(error: unknown): boolean {
-  return readErrorMessage(error).includes('PUSH_TOKEN_REQUIRED');
+  return errorMessageIncludes(error, 'PUSH_TOKEN_REQUIRED');
 }
 
 export function ClassReminderSubscribeBar({ item, canSubscribe }: Props) {
-  const { colors, typography, inset, radius, gap, layout } = useTheme();
+  const { colors, typography, inset, radius, gap, layout, surfaceShadow } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const userId = useAuthStore((state) => state.user?.id);
   const subscriptionQuery = useClassSubscription(item.id);
@@ -76,7 +74,10 @@ export function ClassReminderSubscribeBar({ item, canSubscribe }: Props) {
           'You will receive reminders and updates for this class.',
         );
       } else {
-        authToast.success('Class notifications off', 'You will no longer receive updates for this class.');
+        authToast.success(
+          'Class notifications off',
+          'You will no longer receive updates for this class.',
+        );
       }
     };
 
@@ -144,64 +145,45 @@ export function ClassReminderSubscribeBar({ item, canSubscribe }: Props) {
 
   if (!userId || !canSubscribe) return null;
 
-  const isPrimary = !subscribed;
   const label = subscribed ? 'Unsubscribe' : 'Subscribe to notifications';
   const Icon = subscribed ? BellOff : Bell;
-  const fg = isPrimary ? colors.accent.onAccent : colors.text.primary;
-  const bg = isPrimary ? colors.accent.default : colors.surface.secondary;
-  const borderColor = isPrimary ? colors.accent.default : colors.border.subtle;
+  const fg = colors.accent.onAccent;
+  const bg = colors.accent.default;
+  const borderColor = colors.accent.default;
 
   return (
     <Animated.View style={[styles.wrap, wrapStyle]} pointerEvents="box-none">
-      <LinearGradient
-        pointerEvents="none"
-        colors={[`${colors.background.primary}00`, colors.background.primary]}
-        locations={[0, 0.65]}
-        style={styles.scrim}
-      />
-      <LiquidGlassSurface
-        variant="chrome"
-        borderRadius={0}
-        showBorder={false}
-        style={styles.glassBar}
-        contentStyle={[
-          styles.bar,
+      <AnimatedPressable
+        onPress={handlePress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        disabled={loading}
+        accessibilityRole="button"
+        accessibilityLabel={label}
+        style={[
+          styles.button,
+          surfaceShadow('cardDark'),
           {
-            paddingHorizontal: inset.lg,
-            paddingTop: inset.sm,
-            paddingBottom: safeInsets.bottom + inset.sm,
+            backgroundColor: bg,
+            borderColor,
+            borderWidth: layout.borderWidth,
+            borderRadius: radius.button,
+            minHeight: layout.coachActionHeight,
+            gap: gap.sm,
+            opacity: loading ? 0.72 : 1,
+            marginHorizontal: inset.lg,
+            marginBottom: safeInsets.bottom > 0 ? safeInsets.bottom : inset.lg,
           },
+          buttonStyle,
         ]}
       >
-        <AnimatedPressable
-          onPress={handlePress}
-          onPressIn={handlePressIn}
-          onPressOut={handlePressOut}
-          disabled={loading}
-          accessibilityRole="button"
-          accessibilityLabel={label}
-          style={[
-            styles.button,
-            {
-              backgroundColor: bg,
-              borderColor,
-              borderWidth: layout.borderWidth,
-              borderRadius: radius.button,
-              minHeight: layout.coachActionHeight,
-              gap: gap.sm,
-              opacity: loading ? 0.72 : 1,
-            },
-            buttonStyle,
-          ]}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color={fg} />
-          ) : (
-            <Icon size={20} color={fg} strokeWidth={2.25} />
-          )}
-          <Text style={[typography.textPresets.button, { color: fg }]}>{label}</Text>
-        </AnimatedPressable>
-      </LiquidGlassSurface>
+        {loading ? (
+          <ActivityIndicator size="small" color={fg} />
+        ) : (
+          <Icon size={20} color={fg} strokeWidth={2.25} />
+        )}
+        <Text style={[typography.textPresets.button, { color: fg }]}>{label}</Text>
+      </AnimatedPressable>
     </Animated.View>
   );
 }
@@ -215,19 +197,6 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 0,
     zIndex: 30,
-  },
-  scrim: {
-    height: 48,
-    left: 0,
-    position: 'absolute',
-    right: 0,
-    top: -48,
-  },
-  glassBar: {
-    width: '100%',
-  },
-  bar: {
-    width: '100%',
   },
   button: {
     alignItems: 'center',

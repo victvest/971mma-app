@@ -1,6 +1,4 @@
-
 const palette = {
-
   // UAE flag / Emirates brand green (Pantone 348 / #00843D)
   green500: '#00843D',
   green600: '#006B32',

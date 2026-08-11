@@ -4,7 +4,5 @@ import { useTheme } from '@/shared/theme';
 
 export default function OnboardingLayout() {
   const { colors } = useTheme();
-  return (
-    <Stack screenOptions={createStackScreenOptions(colors.background.primary, 'push')} />
-  );
+  return <Stack screenOptions={createStackScreenOptions(colors.background.primary, 'push')} />;
 }

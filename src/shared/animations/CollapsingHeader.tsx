@@ -45,9 +45,7 @@ export function CollapsingHeader({
   return (
     <View style={[styles.container, style]}>
       <View style={{ height: expandedHeight }}>{header}</View>
-      <ScrollView contentContainerStyle={contentContainerStyle}>
-        {children}
-      </ScrollView>
+      <ScrollView contentContainerStyle={contentContainerStyle}>{children}</ScrollView>
     </View>
   );
 }

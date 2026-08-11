@@ -2,6 +2,7 @@ import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import {
   NativeScrollEvent,
   NativeSyntheticEvent,
+  Platform,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -135,10 +136,7 @@ export function CoachSpotlightCarousel({ testimonials }: Props) {
           {testimonials.map((item, index) => (
             <View
               key={item.id}
-              style={[
-                styles.dot,
-                index === activeIndex ? styles.dotActive : styles.dotInactive,
-              ]}
+              style={[styles.dot, index === activeIndex ? styles.dotActive : styles.dotInactive]}
             />
           ))}
         </View>
@@ -176,13 +174,16 @@ const styles = StyleSheet.create({
     borderColor: '#EFEFEF',
     borderRadius: 20,
     borderWidth: 1,
-    elevation: 2,
     gap: 10,
     padding: 20,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.05,
-    shadowRadius: 14,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 6 },
+        shadowOpacity: 0.05,
+        shadowRadius: 14,
+      },
+    }),
   },
   starRow: {
     flexDirection: 'row',

@@ -22,10 +22,14 @@ export function BeltPathRankSnapshot({ progress }: Props) {
       <View style={styles.headerRow}>
         <View style={[styles.copy, { gap: gap.xs }]}>
           <Text style={[styles.kicker, { color: colors.accent.default }]}>CURRENT RANK</Text>
-          <Text style={[typography.textPresets.title, styles.rankName, { color: colors.text.primary }]}>
+          <Text
+            style={[typography.textPresets.title, styles.rankName, { color: colors.text.primary }]}
+          >
             {progress.rankName}
           </Text>
-          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>{stripeLabel}</Text>
+          <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
+            {stripeLabel}
+          </Text>
         </View>
 
         <AnimatedProgressRing
@@ -35,7 +39,9 @@ export function BeltPathRankSnapshot({ progress }: Props) {
           trackColor={colors.fill.secondary}
           progressColor={colors.accent.default}
         >
-          <Text style={[styles.ringValue, { color: colors.text.primary }]}>{Math.round(ringPercent)}%</Text>
+          <Text style={[styles.ringValue, { color: colors.text.primary }]}>
+            {Math.round(ringPercent)}%
+          </Text>
         </AnimatedProgressRing>
       </View>
 
@@ -50,9 +56,14 @@ export function BeltPathRankSnapshot({ progress }: Props) {
           },
         ]}
       >
-        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary, flex: 1, lineHeight: 18 }]}>
-          Stripe requirements for this rank are not published in the app yet. Keep training — your attendance is already being
-          tracked below.
+        <Text
+          style={[
+            typography.textPresets.footnote,
+            { color: colors.text.secondary, flex: 1, lineHeight: 18 },
+          ]}
+        >
+          Stripe requirements for this rank are not published in the app yet. Keep training — your
+          attendance is already being tracked below.
         </Text>
       </View>
     </BeltPathSurfaceCard>

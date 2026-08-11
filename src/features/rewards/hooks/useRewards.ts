@@ -7,19 +7,27 @@ import {
   getPointsAccount,
   redeem,
 } from '@/services/database';
+import { getAppSettings } from '@/services/database/appSettings.repository';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
 import { invalidateAfterRewardRedemption } from '@/lib/queryInvalidation';
+import { MEMBER_DASHBOARD_STALE_MS, REWARDS_CATALOG_STALE_MS } from '@/lib/queryCachePolicy';
 import {
-  MEMBER_DASHBOARD_STALE_MS,
-  REWARDS_CATALOG_STALE_MS,
-} from '@/lib/queryCachePolicy';
-import { useAuthStore } from '@/stores/useAuthStore';
+  appSettingsKey,
+  catalogKey,
+  ledgerKey,
+  milestonesKey,
+  pointsKey,
+  redemptionsKey,
+} from './rewardsKeys';
 
-export const pointsKey = (userId: string) => ['points', userId] as const;
-export const ledgerKey = (userId: string) => ['points-ledger', userId] as const;
-export const milestonesKey = (userId: string) => ['milestones', userId] as const;
-export const redemptionsKey = (userId: string) => ['redemptions', userId] as const;
-export const catalogKey = ['rewards-catalog'] as const;
+export {
+  appSettingsKey,
+  catalogKey,
+  ledgerKey,
+  milestonesKey,
+  pointsKey,
+  redemptionsKey,
+} from './rewardsKeys';
 
 export function usePoints() {
   const activeMemberId = useActiveMemberId();
@@ -35,6 +43,14 @@ export function useCatalog() {
   return useQuery({
     queryKey: catalogKey,
     queryFn: getCatalog,
+    staleTime: REWARDS_CATALOG_STALE_MS,
+  });
+}
+
+export function useAppSettings() {
+  return useQuery({
+    queryKey: appSettingsKey,
+    queryFn: getAppSettings,
     staleTime: REWARDS_CATALOG_STALE_MS,
   });
 }
@@ -70,13 +86,13 @@ export function useRedemptions() {
 }
 
 export function useRedeem() {
-  const userId = useAuthStore((s) => s.user?.id ?? '');
+  const activeMemberId = useActiveMemberId();
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (rewardId: string) => redeem(rewardId),
+    mutationFn: (rewardId: string) => redeem(rewardId, activeMemberId),
     onSuccess: () => {
-      invalidateAfterRewardRedemption(queryClient, userId);
+      invalidateAfterRewardRedemption(queryClient, activeMemberId);
     },
   });
 }

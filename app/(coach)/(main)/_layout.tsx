@@ -67,9 +67,13 @@ function CoachCustomTabBar({ state, navigation }: TabBarProps) {
 
 export default function CoachMainTabsLayout() {
   return (
-    <Tabs tabBar={(props) => <CoachCustomTabBar {...props} />} screenOptions={createTabScreenOptions()}>
+    <Tabs
+      tabBar={(props) => <CoachCustomTabBar {...props} />}
+      screenOptions={createTabScreenOptions()}
+    >
       <Tabs.Screen name="index" options={{ title: 'Class' }} />
       <Tabs.Screen name="classes" options={{ title: 'Classes' }} />
+      <Tabs.Screen name="feed" options={{ title: 'Feed' }} />
       <Tabs.Screen name="promotions" options={{ title: 'Review' }} />
     </Tabs>
   );

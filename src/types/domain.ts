@@ -1,6 +1,5 @@
-
-
 import type {
+  CheckInMethod,
   MembershipStatus,
   MembershipTier,
   MilestoneStatus,
@@ -14,8 +13,6 @@ import type {
   RollCallSessionStatus,
   ClassSessionAttendanceRow,
   RollCallSessionRow,
-  CheckInMethod,
-  GateTokenRow,
 } from './database';
 
 export type {
@@ -33,7 +30,6 @@ export type {
   ClassSessionAttendanceRow,
   RollCallSessionRow,
   CheckInMethod,
-  GateTokenRow,
 };
 
 export interface ClassItem {
@@ -59,6 +55,7 @@ export interface ClassItem {
 
 export interface CoachItem {
   id: string;
+  userId: string | null;
   mindbodyStaffId: string | null;
   name: string;
   specialty: string | null;
@@ -69,10 +66,17 @@ export interface CoachItem {
   isHeadCoach: boolean;
   coachingPhilosophy: string | null;
   yearsExperience: number | null;
+  yearsMartialArts: number | null;
+  yearsCoaching: number | null;
   fightRecord: string | null;
   titles: string[];
   certifications: string[];
   languages: string[];
+  nickname: string | null;
+  statusAchievements: string[];
+  experienceHighlights: string[];
+  coachingStyle: string[];
+  inviteBlurb: string | null;
 }
 
 export interface MemberProfile {
@@ -144,7 +148,10 @@ export interface MemberRef {
 }
 
 export type ProfilePatch = Partial<
-  Pick<MemberProfile, 'fullName' | 'phone' | 'avatarUrl' | 'beltRank' | 'beltStripes' | 'dateOfBirth'>
+  Pick<
+    MemberProfile,
+    'fullName' | 'phone' | 'avatarUrl' | 'beltRank' | 'beltStripes' | 'dateOfBirth'
+  >
 >;
 
 export type OnboardingInput = {
@@ -169,6 +176,8 @@ export interface PointsLedgerItem {
   refTable: string | null;
   balanceAfter: number;
   metadata: Record<string, unknown>;
+  /** Resolved from `check_ins.method` when `reason` is `check_in`. */
+  checkInMethod?: CheckInMethod | null;
   createdAt: string;
 }
 
@@ -189,6 +198,8 @@ export interface RewardItem {
   name: string;
   category: RewardCategory;
   costPoints: number;
+  priceAed: number;
+  imageUrl: string | null;
   active: boolean;
   unlockRule: Record<string, unknown>;
   fulfillment: RewardFulfillment;
@@ -370,6 +381,7 @@ export type UpsertCoachRankRequirementInput = {
 export interface ClassRosterVisitor {
   mindbodyClientId: string;
   name: string;
+  photoUrl?: string | null;
   signedInMindbody: boolean;
   userId: string | null;
   checkedInLocally: boolean;
@@ -441,7 +453,6 @@ export interface NotificationPreferences {
   milestones: boolean;
   rewards: boolean;
   guardianAlerts: boolean;
-  community: boolean;
   updatedAt: string;
 }
 
@@ -478,101 +489,6 @@ export interface GuardianChildSummary {
 
 export interface GuardianChildrenSummary {
   children: GuardianChildSummary[];
-}
-
-export type CommunityPostKind = 'announcement' | 'system';
-export type CommunityAuthorRole = 'coach' | 'member';
-export type CommunityGroupVisibility = 'public' | 'private';
-export type CommunityChannelKind = 'community' | 'group';
-
-export interface CommunityChannelItem {
-  id: string;
-  title: string;
-  description: string | null;
-  visibility: CommunityGroupVisibility;
-  channelKind: CommunityChannelKind;
-  disciplineId: string;
-  disciplineName: string;
-  disciplineSlug: string;
-  coachId: string;
-  coachName: string;
-  coachAvatarUrl: string | null;
-  latestPostAt: string | null;
-  lastMessageAt: string | null;
-  lastMessagePreview: string | null;
-  unreadCount: number;
-  memberCount: number;
-  isCoachOwner: boolean;
-  joinedAt: string | null;
-  canJoin: boolean;
-}
-
-export interface CommunityChannelHeader {
-  id: string;
-  title: string;
-  description: string | null;
-  visibility: CommunityGroupVisibility;
-  channelKind: CommunityChannelKind;
-  disciplineId: string;
-  disciplineName: string;
-  disciplineSlug: string;
-  coachId: string;
-  coachName: string;
-  coachAvatarUrl: string | null;
-  memberCount: number;
-  isCoachOwner: boolean;
-  joinedAt: string | null;
-  canJoin: boolean;
-  pinnedPost: CommunityPostItem | null;
-}
-
-export interface CommunityGroupDiscipline {
-  id: string;
-  name: string;
-  slug: string;
-}
-
-export interface CommunityGroupMember {
-  id: string;
-  fullName: string;
-  email: string | null;
-  avatarUrl: string | null;
-  membershipStatus: MembershipStatus | string | null;
-  membershipExpiresAt: string | null;
-  joinedAt: string | null;
-  isCoach: boolean;
-}
-
-export type CommunityGroupMemberCandidate = Omit<CommunityGroupMember, 'joinedAt' | 'isCoach'>;
-
-export interface CommunityFeedCursor {
-  publishedAt: string;
-  id: string;
-}
-
-export interface CommunityChannelFeed {
-  pinnedPost: CommunityPostItem | null;
-  posts: CommunityPostItem[];
-  nextCursor: CommunityFeedCursor | null;
-}
-
-export interface CommunityPostItem {
-  id: string;
-  channelId: string;
-  authorId: string;
-  authorName: string;
-  authorAvatarUrl: string | null;
-  authorRole: CommunityAuthorRole;
-  title: string | null;
-  body: string;
-  mediaUrl: string | null;
-  postKind: CommunityPostKind;
-  isPinned: boolean;
-  pinnedAt: string | null;
-  publishedAt: string;
-  reactionCounts: Record<string, number>;
-  myReactions: string[];
-  isUnread?: boolean;
 }
 
 export interface DisciplineScoreSummary {

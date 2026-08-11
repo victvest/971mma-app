@@ -5,10 +5,7 @@ export function useDialog() {
   const show = useDialogStore((s) => s.show);
   const hide = useDialogStore((s) => s.hide);
 
-  const showDialog = useCallback(
-    (config: DialogConfig) => show(config),
-    [show],
-  );
+  const showDialog = useCallback((config: DialogConfig) => show(config), [show]);
 
   const hideDialog = useCallback(() => hide(), [hide]);
 

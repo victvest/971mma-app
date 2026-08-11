@@ -1,10 +1,11 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { getMembershipSummary } from '@/services/database';
 import { invokeEdge } from '@/services/mindbody/edgeClient';
 import { useActiveMemberId } from '@/hooks/useActiveMemberId';
 import {
   MEMBERSHIP_GC_MS,
   MEMBERSHIP_MIRROR_GC_MS,
+  MEMBERSHIP_MIRROR_STALE_MS,
   MEMBERSHIP_STALE_MS,
 } from '@/lib/queryCachePolicy';
 import { shouldInvalidateAfterMirrorSync } from '@/lib/queryRefresh';
@@ -35,11 +36,13 @@ export function useMembershipRefresh(enabled = true) {
   return useQuery({
     queryKey: membershipRefreshKey(activeMemberId),
     queryFn: async () => {
-      const result = await invokeEdge<MembershipRefreshResponse>(
-        'mb-membership',
-        activeMemberId !== authUserId ? { targetUserId: activeMemberId } : undefined,
-      );
-      if (shouldInvalidateAfterMirrorSync(result)) {
+      // Always force Mindbody → mirror so Check-in / Profile status matches gate access.
+      const body =
+        activeMemberId !== authUserId
+          ? { force: true, targetUserId: activeMemberId }
+          : { force: true };
+      const result = await invokeEdge<MembershipRefreshResponse>('mb-membership', body);
+      if (shouldInvalidateAfterMirrorSync(result, true)) {
         await Promise.all([
           queryClient.invalidateQueries({ queryKey: membershipKey(activeMemberId) }),
           queryClient.invalidateQueries({ queryKey: profileKey(activeMemberId) }),
@@ -48,8 +51,10 @@ export function useMembershipRefresh(enabled = true) {
       return result;
     },
     enabled: enabled && Boolean(activeMemberId),
-    staleTime: MEMBERSHIP_STALE_MS,
+    staleTime: MEMBERSHIP_MIRROR_STALE_MS,
     gcTime: MEMBERSHIP_MIRROR_GC_MS,
+    refetchOnMount: 'always',
+    meta: { persist: false },
   });
 }
 
@@ -65,8 +70,34 @@ export function useMembership() {
   });
 }
 
-export async function forceMembershipRefresh() {
-  const result = await invokeEdge<MembershipRefreshResponse>('mb-membership', { force: true });
+export async function forceMembershipRefresh(targetUserId?: string) {
+  const result = await invokeEdge<MembershipRefreshResponse>(
+    'mb-membership',
+    targetUserId ? { force: true, targetUserId } : { force: true },
+  );
+  return result;
+}
+
+/** Pull-to-refresh / explicit resync: always hits Mindbody, then invalidates local caches. */
+export async function syncMembershipFromMindbody(
+  queryClient: QueryClient,
+  options: { activeMemberId: string; authUserId: string },
+): Promise<MembershipRefreshResponse> {
+  const { activeMemberId, authUserId } = options;
+  const body =
+    activeMemberId !== authUserId ? { force: true, targetUserId: activeMemberId } : { force: true };
+
+  const result = await invokeEdge<MembershipRefreshResponse>('mb-membership', body);
+
+  if (shouldInvalidateAfterMirrorSync(result, true)) {
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: membershipKey(activeMemberId) }),
+      queryClient.invalidateQueries({ queryKey: profileKey(activeMemberId) }),
+    ]);
+  }
+
+  await queryClient.invalidateQueries({ queryKey: membershipRefreshKey(activeMemberId) });
+
   return result;
 }
 

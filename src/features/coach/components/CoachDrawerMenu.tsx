@@ -1,5 +1,12 @@
 import React, { memo, useCallback, useEffect, useState } from 'react';
-import { InteractionManager, Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import {
+  Modal,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
 import Animated, {
   cancelAnimation,
   Extrapolation,
@@ -19,8 +26,8 @@ import { IOSGlassSurface } from '@/shared/components/ui/IOSGlassSurface';
 import { DrawerMenuHeader } from '@/shared/components/navigation/DrawerMenuHeader';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
-import { useCoachCommunityUnreadTotal } from '@/features/communities/hooks/useCommunities';
 import { triggerLightImpact } from '@/shared/haptics';
+import { scheduleIdleTask } from '@/shared/utils/scheduleIdleTask';
 
 type NavItem = {
   icon: React.ComponentProps<typeof Ionicons>['name'];
@@ -35,9 +42,12 @@ type CoachDrawerMenuProps = {
 };
 
 const COACH_NAV_ITEMS: NavItem[] = [
-  { icon: 'chatbubbles-outline', label: 'My groups', route: '/(coach)/communities' },
-  { icon: 'megaphone-outline', label: 'Announcements', route: '/(coach)/post-announcement' },
   { icon: 'library-outline', label: 'Curriculum', route: '/(coach)/curriculum' },
+  {
+    icon: 'megaphone-outline',
+    label: 'Post announcement',
+    route: '/(coach)/post-announcement',
+  },
 ];
 
 const CLOSE_TIMING = { duration: 190 } as const;
@@ -78,12 +88,20 @@ const DrawerNavItem = memo(function DrawerNavItem({
       ]}
     >
       <Ionicons name={item.icon} size={typography.fontSize.xl} color={colors.text.secondary} />
-      <Text style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}>
+      <Text
+        style={[typography.textPresets.bodyStrong, styles.navLabel, { color: colors.text.primary }]}
+      >
         {item.label}
       </Text>
       {showBadge ? (
         <View style={[styles.badge, { backgroundColor: colors.status.error }]}>
-          <Text style={[typography.textPresets.caption, styles.badgeText, { color: colors.text.inverse }]}>
+          <Text
+            style={[
+              typography.textPresets.caption,
+              styles.badgeText,
+              { color: colors.text.inverse },
+            ]}
+          >
             {badgeCount > 99 ? '99+' : badgeCount}
           </Text>
         </View>
@@ -93,11 +111,10 @@ const DrawerNavItem = memo(function DrawerNavItem({
 });
 
 export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawerMenuProps) {
-  const { colors, typography, inset, gap, radius, layout, animations } = useTheme();
+  const { colors, typography, inset, gap, radius, layout, animations, surfaceShadow } = useTheme();
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { drawer } = useResponsiveLayout();
-  const { unreadTotal: coachCommunityUnreadTotal } = useCoachCommunityUnreadTotal(true);
   const [mounted, setMounted] = useState(visible);
   const progress = useSharedValue(visible ? 1 : 0);
   const contentTopPadding = Math.round(inset.lg * 0.8);
@@ -112,9 +129,9 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
     (route: string) => {
       onClose();
       setMounted(false);
-      InteractionManager.runAfterInteractions(() => {
+      scheduleIdleTask(() => {
         router.push(route as never);
-      });
+      }, 0);
     },
     [onClose, router],
   );
@@ -232,7 +249,10 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
         <Animated.View
           style={[
             styles.floatingShell,
+            surfaceShadow('card'),
             {
+              borderColor: colors.border.subtle,
+              borderWidth: layout.borderWidth,
               borderRadius: drawer.radius,
               height: drawer.height,
               left: drawer.left,
@@ -277,17 +297,13 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
             <AppScrollView
               style={styles.navScroll}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={[styles.navContent, { gap: inset['2xs'], paddingBottom: inset.md }]}
+              contentContainerStyle={[
+                styles.navContent,
+                { gap: inset['2xs'], paddingBottom: inset.md },
+              ]}
             >
               {COACH_NAV_ITEMS.map((item) => (
-                <DrawerNavItem
-                  key={item.label}
-                  item={item}
-                  badgeCount={
-                    item.route === '/(coach)/communities' ? coachCommunityUnreadTotal : 0
-                  }
-                  onNavigate={navigate}
-                />
+                <DrawerNavItem key={item.label} item={item} onNavigate={navigate} />
               ))}
             </AppScrollView>
 
@@ -317,6 +333,12 @@ export function CoachDrawerMenu({ visible, onClose, blurTargetRef }: CoachDrawer
                 </Text>
               </Pressable>
             </View>
+
+            <View style={{ alignItems: 'center', paddingTop: inset.sm }}>
+              <Text style={[typography.textPresets.caption, { color: colors.text.tertiary }]}>
+                Developed by VictVest
+              </Text>
+            </View>
           </IOSGlassSurface>
         </Animated.View>
       </View>
@@ -330,11 +352,14 @@ const styles = StyleSheet.create({
   },
   floatingShell: {
     position: 'absolute',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.12,
-    shadowRadius: 24,
-    elevation: 8,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 12 },
+        shadowOpacity: 0.12,
+        shadowRadius: 24,
+      },
+    }),
   },
   glassShell: {
     flex: 1,

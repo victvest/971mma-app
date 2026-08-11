@@ -5,18 +5,23 @@ import { MotiPressable } from '@/shared/animations/MotiPressable';
 import { useCoachMemberSearch } from '@/features/belt/hooks/useBeltPath';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { FlashListScrollComponent, TextField } from '@/shared/components/ui';
-import { FLASH_LIST_ESTIMATES, flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
+import {
+  FLASH_LIST_ESTIMATES,
+  flashListOverrideItemLayout,
+} from '@/shared/constants/flashListEstimates';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import type { CoachMemberSearchItem } from '@/types/domain';
 
 type CoachMemberSearchListProps = {
   onSelectMember: (member: CoachMemberSearchItem) => void;
+  query: string;
+  onChangeQuery: (query: string) => void;
 };
 
-export function CoachMemberSearchList({ onSelectMember }: CoachMemberSearchListProps) {
+export function CoachMemberSearchList({ onSelectMember, query, onChangeQuery }: CoachMemberSearchListProps) {
   const { colors, typography, inset, gap, radius } = useTheme();
-  const [query, setQuery] = useState('');
   const searchQuery = useCoachMemberSearch(query);
   const results = searchQuery.data ?? [];
   const trimmed = query.trim();
@@ -65,7 +70,7 @@ export function CoachMemberSearchList({ onSelectMember }: CoachMemberSearchListP
       <TextField
         label="Search members"
         value={query}
-        onChangeText={setQuery}
+        onChangeText={onChangeQuery}
         placeholder="Name or email"
         autoCapitalize="none"
         autoCorrect={false}
@@ -81,11 +86,7 @@ export function CoachMemberSearchList({ onSelectMember }: CoachMemberSearchListP
         <StateBlock
           kind="error"
           title="Search failed"
-          message={
-            searchQuery.error instanceof Error
-              ? searchQuery.error.message
-              : 'Please try again.'
-          }
+          message={toUserFacingErrorMessage(searchQuery.error, { fallback: 'Please try again.' })}
           actionLabel="Retry"
           onAction={() => searchQuery.refetch()}
         />
@@ -101,7 +102,9 @@ export function CoachMemberSearchList({ onSelectMember }: CoachMemberSearchListP
           data={results}
           keyExtractor={(item) => item.id}
           renderItem={renderItem}
-          overrideItemLayout={flashListOverrideItemLayout(FLASH_LIST_ESTIMATES.coachMemberSearchRow)}
+          overrideItemLayout={flashListOverrideItemLayout(
+            FLASH_LIST_ESTIMATES.coachMemberSearchRow,
+          )}
           scrollEnabled={false}
           contentContainerStyle={{ gap: gap.sm }}
         />

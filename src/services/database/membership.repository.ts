@@ -72,16 +72,14 @@ export async function getMembershipSummary(userId: string): Promise<MembershipSu
       : null;
 
   const normalizedPrimaryStatus =
-    primary?.status === 'active' ||
-    primary?.status === 'paused' ||
-    primary?.status === 'expired'
+    primary?.status === 'active' || primary?.status === 'paused' || primary?.status === 'expired'
       ? primary.status
       : null;
 
   const status =
     memberships.length === 0
       ? 'none'
-      : normalizedProfileStatus ?? normalizedPrimaryStatus ?? 'none';
+      : (normalizedProfileStatus ?? normalizedPrimaryStatus ?? 'none');
 
   const expiresAt = pickLatestMembershipEndDate([
     profile?.membership_expires_at,

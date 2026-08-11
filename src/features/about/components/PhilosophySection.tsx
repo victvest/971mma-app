@@ -27,7 +27,10 @@ export function PhilosophySection() {
         borderRadius={radius.cardLarge}
       >
         <View
-          style={[StyleSheet.absoluteFill, { backgroundColor: colors.media.scrimMiddle, opacity: 0.45 }]}
+          style={[
+            StyleSheet.absoluteFill,
+            { backgroundColor: colors.media.scrimMiddle, opacity: 0.45 },
+          ]}
         />
         <View style={[styles.quoteWrap, { padding: inset.lg }]}>
           <Text style={styles.quoteMark}>“</Text>
@@ -42,7 +45,9 @@ export function PhilosophySection() {
       <AboutContentCard>
         <Text style={[styles.body, { color: colors.text.secondary }]}>
           {PHILOSOPHY_BODY}
-          <Text style={{ color: colors.accent.default, fontWeight: '800' }}>{PHILOSOPHY_BODY_EMPHASIS}</Text>
+          <Text style={{ color: colors.accent.default, fontWeight: '800' }}>
+            {PHILOSOPHY_BODY_EMPHASIS}
+          </Text>
         </Text>
       </AboutContentCard>
     </RevealOnMount>

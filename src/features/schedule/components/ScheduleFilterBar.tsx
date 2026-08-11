@@ -1,14 +1,5 @@
-import React, { memo, useCallback, useMemo, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Text,
-  View,
-  type LayoutChangeEvent,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
+import React, { memo, useCallback } from 'react';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
@@ -16,9 +7,7 @@ import Animated, {
   withTiming,
 } from 'react-native-reanimated';
 import { ScheduleCategoryIcon } from '@/features/schedule/components/ScheduleCategoryIcon';
-import {
-  type ScheduleCategory,
-} from '@/features/schedule/utils/scheduleCategory';
+import { type ScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
 import { AppScrollView } from '@/shared/components/ui';
 import { triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
@@ -113,77 +102,14 @@ const FilterChip = memo(function FilterChip({
   );
 });
 
-function updateFadeVisibility(
-  offsetX: number,
-  viewportWidth: number,
-  contentWidth: number,
-): boolean {
-  if (contentWidth <= viewportWidth + 1) {
-    return false;
-  }
-  return offsetX + viewportWidth < contentWidth - 4;
-}
-
 export function ScheduleFilterBar({ options, selected, onSelect }: ScheduleFilterBarProps) {
-  const { colors, inset } = useTheme();
-  const [showRightFade, setShowRightFade] = useState(true);
-  const [viewportWidth, setViewportWidth] = useState(0);
-  const [contentWidth, setContentWidth] = useState(0);
-  const [scrollX, setScrollX] = useState(0);
-
-  const fadeColors = useMemo(
-    () =>
-      [
-        `${colors.background.primary}00`,
-        `${colors.background.primary}D0`,
-        colors.background.primary,
-      ] as const,
-    [colors.background.primary],
-  );
-
-  const syncFade = useCallback(
-    (nextOffsetX: number, nextViewportWidth: number, nextContentWidth: number) => {
-      // Keep visible while dimensions are unknown; hide only when confirmed no overflow or at end.
-      if (nextViewportWidth === 0 || nextContentWidth === 0) return;
-      setShowRightFade(updateFadeVisibility(nextOffsetX, nextViewportWidth, nextContentWidth));
-    },
-    [],
-  );
-
-  const handleLayout = useCallback(
-    (event: LayoutChangeEvent) => {
-      const width = event.nativeEvent.layout.width;
-      setViewportWidth(width);
-      syncFade(scrollX, width, contentWidth);
-    },
-    [contentWidth, scrollX, syncFade],
-  );
-
-  const handleContentSizeChange = useCallback(
-    (width: number) => {
-      setContentWidth(width);
-      syncFade(scrollX, viewportWidth, width);
-    },
-    [scrollX, syncFade, viewportWidth],
-  );
-
-  const handleScroll = useCallback(
-    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      const nextOffsetX = event.nativeEvent.contentOffset.x;
-      setScrollX(nextOffsetX);
-      syncFade(nextOffsetX, viewportWidth, contentWidth);
-    },
-    [contentWidth, syncFade, viewportWidth],
-  );
+  const { inset } = useTheme();
 
   return (
-    <View style={[styles.wrap, { marginHorizontal: -inset.lg }]} onLayout={handleLayout}>
+    <View style={[styles.wrap, { marginHorizontal: -inset.lg }]}>
       <AppScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
-        onContentSizeChange={handleContentSizeChange}
         contentContainerStyle={[styles.content, { paddingHorizontal: inset.lg }]}
       >
         <FilterChip
@@ -204,17 +130,6 @@ export function ScheduleFilterBar({ options, selected, onSelect }: ScheduleFilte
           />
         ))}
       </AppScrollView>
-
-      {showRightFade ? (
-        <LinearGradient
-          pointerEvents="none"
-          colors={fadeColors}
-          locations={[0, 0.45, 1]}
-          start={{ x: 0, y: 0.5 }}
-          end={{ x: 1, y: 0.5 }}
-          style={styles.fadeRight}
-        />
-      ) : null}
     </View>
   );
 }
@@ -249,12 +164,5 @@ const styles = StyleSheet.create({
   chipLabel: {
     fontSize: 14,
     fontWeight: '700',
-  },
-  fadeRight: {
-    bottom: 0,
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    width: 72,
   },
 });

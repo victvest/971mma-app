@@ -1,8 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
-import type { RollCallQueuedMark } from '@/features/coach/roll-call/utils/rollCallOfflineQueue';
-import { memberRefKey } from '@/features/coach/roll-call/utils/rollCallOfflineQueue';
+import type { RollCallQueuedMark } from '@/features/coach/roll-call/utils/rollCallOfflineQueueTypes';
+import { memberRefKey } from '@/features/coach/roll-call/utils/rollCallOfflineQueueTypes';
 
 type RollCallOfflineQueueState = {
   queue: RollCallQueuedMark[];
@@ -19,11 +19,7 @@ export const useRollCallOfflineQueueStore = create<RollCallOfflineQueueState>()(
         set((state) => {
           const memberKey = memberRefKey(item.mark);
           const withoutMember = state.queue.filter(
-            (entry) =>
-              !(
-                entry.classId === item.classId &&
-                memberRefKey(entry.mark) === memberKey
-              ),
+            (entry) => !(entry.classId === item.classId && memberRefKey(entry.mark) === memberKey),
           );
           const withoutDupId = withoutMember.filter(
             (entry) => entry.clientGeneratedId !== item.clientGeneratedId,

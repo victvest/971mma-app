@@ -1,10 +1,7 @@
 import { create } from 'zustand';
 import type { UserRole } from '@/features/auth/types';
-import { invalidateAuthProfileSync } from '@/features/auth/services/authProfileSync';
-import {
-  clearGuestMode,
-  persistGuestMode,
-} from '@/features/auth/services/guestModeStorage';
+import { invalidateAuthProfileSync } from '@/features/auth/services/authProfileSyncEpoch';
+import { clearGuestMode, persistGuestMode } from '@/features/auth/services/guestModeStorage';
 
 export type AppUser = {
   id: string;
@@ -12,6 +9,7 @@ export type AppUser = {
   fullName: string;
   role: UserRole;
   accountStatus: 'registered' | 'activation_required' | 'active' | 'disabled' | 'deleted';
+  demo?: boolean;
 };
 
 type AuthState = {
@@ -79,9 +77,6 @@ export const useAuthStore = create<AuthState & AuthActions>((set) => ({
 
   updateUserIdentity: ({ fullName }) =>
     set((state) => ({
-      user:
-        state.user && fullName !== undefined
-          ? { ...state.user, fullName }
-          : state.user,
+      user: state.user && fullName !== undefined ? { ...state.user, fullName } : state.user,
     })),
 }));

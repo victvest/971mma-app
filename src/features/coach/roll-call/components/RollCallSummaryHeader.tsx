@@ -47,6 +47,7 @@ export const RollCallSummaryHeader = memo(function RollCallSummaryHeader({
 
       <GlassNavChrome
         accessibilityLabel="Roll call summary"
+        layout="bar"
         style={styles.titleCapsule}
         contentStyle={styles.titleCapsuleContent}
       >

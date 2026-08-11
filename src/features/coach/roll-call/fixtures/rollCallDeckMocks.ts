@@ -65,8 +65,7 @@ function buildMockMember(index: number): RollCallDeckMember {
   const first = FIRST_NAMES[index % FIRST_NAMES.length];
   const last = LAST_NAMES[index % LAST_NAMES.length];
   const displayName =
-    demoName ??
-    (index === 0 ? 'Alexandra Martinez-Hernandez' : `${first} ${last}`);
+    demoName ?? (index === 0 ? 'Alexandra Martinez-Hernandez' : `${first} ${last}`);
   const userId =
     index % 5 === 1 ? null : `00000000-0000-4000-8000-${String(index + 1).padStart(12, '0')}`;
   const mindbodyClientId = String(200000 + index);

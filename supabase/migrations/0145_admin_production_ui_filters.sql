@@ -86,6 +86,101 @@ $$;
 revoke all on function public.admin_list_activation_requests(text, int, int, text, text) from public;
 grant execute on function public.admin_list_activation_requests(text, int, int, text, text) to authenticated;
 
+create or replace function public.admin_count_activation_requests(
+  p_status text default null,
+  p_query text default null
+)
+returns int
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_status text := nullif(trim(p_status), '');
+  v_query text := nullif(trim(p_query), '');
+  v_count int;
+begin
+  perform public.require_admin();
+
+  select count(*)::int
+  into v_count
+  from public.activation_requests ar
+  join public.profiles p on p.id = ar.user_id
+  join auth.users u on u.id = ar.user_id
+  left join public.mindbody_links ml on ml.user_id = ar.user_id
+  where (v_status is null or ar.status = v_status)
+    and u.email::text not ilike '%@privaterelay.appleid.com'
+    and (
+      v_query is null
+      or p.full_name ilike '%' || v_query || '%'
+      or u.email::text ilike '%' || v_query || '%'
+      or p.phone ilike '%' || v_query || '%'
+      or u.phone ilike '%' || v_query || '%'
+      or ml.mindbody_client_id ilike '%' || v_query || '%'
+      or ar.user_id::text = v_query
+    );
+
+  return coalesce(v_count, 0);
+end;
+$$;
+
+revoke all on function public.admin_count_activation_requests(text, text) from public;
+grant execute on function public.admin_count_activation_requests(text, text) to authenticated;
+
+create or replace function public.admin_mindbody_resource_summary()
+returns jsonb
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_result jsonb;
+begin
+  perform public.require_admin();
+
+  select jsonb_build_object(
+    'linkedMembers', (
+      select count(*)::int
+      from public.mindbody_links
+    ),
+    'mirroredMemberships', (
+      select count(*)::int
+      from public.member_memberships
+    ),
+    'activePrograms', (
+      select count(*)::int
+      from public.programs
+      where active = true
+    ),
+    'totalPrograms', (
+      select count(*)::int
+      from public.programs
+    ),
+    'classesWithMindbodyProgram', (
+      select count(*)::int
+      from public.classes
+      where program_id is not null
+    ),
+    'profilesSyncedFromMindbody', (
+      select count(*)::int
+      from public.profiles
+      where mindbody_synced_at is not null
+    ),
+    'gateAccessAttempts24h', (
+      select count(*)::int
+      from public.gate_access_attempts
+      where requested_at >= now() - interval '24 hours'
+    )
+  )
+  into v_result;
+
+  return v_result;
+end;
+$$;
+
+revoke all on function public.admin_mindbody_resource_summary() from public;
+grant execute on function public.admin_mindbody_resource_summary() to authenticated;
+
 drop function if exists public.admin_list_feed_moderation(text, int, int);
 
 create or replace function public.admin_list_feed_moderation(
@@ -840,8 +935,10 @@ begin
     ),
     'pendingActivationRequests', (
       select count(*)::int
-      from public.activation_requests
-      where status = 'pending'
+      from public.activation_requests ar
+      join auth.users u on u.id = ar.user_id
+      where ar.status = 'pending'
+        and u.email::text not ilike '%@privaterelay.appleid.com'
     ),
     'profilesWithoutMindbodyLink', (
       select count(*)::int

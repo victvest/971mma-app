@@ -12,7 +12,7 @@ import {
   rollCallHudWingFillOpacity,
   rollCallHudWingOpacity,
 } from '@/features/coach/roll-call/utils/rollCallGestures';
-import { useTheme } from '@/shared/theme';
+import { androidStackingLayer, useTheme } from '@/shared/theme';
 
 function wingCurveStyle(side: 'left' | 'right', wingWidth: number, hudHeight: number): ViewStyle {
   const outerRadius = Math.min(wingWidth * 0.52, hudHeight * 0.5);
@@ -67,12 +67,7 @@ const FloatingHudWing = memo(function FloatingHudWing({
   const { colors, gap, typography } = useTheme();
 
   const wingStyle = useAnimatedStyle(() => {
-    const opacity = rollCallHudWingOpacity(
-      side,
-      translateX.value,
-      screenWidth,
-      hudReveal.value,
-    );
+    const opacity = rollCallHudWingOpacity(side, translateX.value, screenWidth, hudReveal.value);
     const scale = rollCallHudBadgeScale(side, translateX.value, screenWidth, hudReveal.value);
     const glow = rollCallHudGlowRadius(side, translateX.value, screenWidth, hudReveal.value);
 
@@ -183,10 +178,7 @@ export const RollCallSwipeHud = memo(function RollCallSwipeHud({
     () => Math.max(screenWidth * HUD_WING_WIDTH_RATIO, screenWidth * 0.15),
     [screenWidth],
   );
-  const hudHeight = useMemo(
-    () => screenHeight * HUD_SCREEN_HEIGHT_RATIO,
-    [screenHeight],
-  );
+  const hudHeight = useMemo(() => screenHeight * HUD_SCREEN_HEIGHT_RATIO, [screenHeight]);
   const leftCurve = useMemo(
     () => wingCurveStyle('left', wingWidth, hudHeight),
     [hudHeight, wingWidth],
@@ -232,17 +224,14 @@ const styles = StyleSheet.create({
   frame: {
     ...StyleSheet.absoluteFill,
     zIndex: 20,
-    ...Platform.select({
-      android: { elevation: 20 },
-      default: {},
-    }),
+    ...androidStackingLayer(20),
   },
   wing: {
     justifyContent: 'center',
     position: 'absolute',
     top: '50%',
+    ...androidStackingLayer(16),
     ...Platform.select({
-      android: { elevation: 16 },
       default: {
         shadowOffset: { width: 0, height: 12 },
       },

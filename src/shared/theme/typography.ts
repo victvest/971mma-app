@@ -145,13 +145,17 @@ export const textPresets = {
 
   bodyMedium: preset(fontSize.md, fontWeight.medium, 1.53, letterSpacing.normal, { role: 'body' }),
 
-  bodyStrong: preset(fontSize.md, fontWeight.semibold, 1.53, letterSpacing.normal, { role: 'body' }),
+  bodyStrong: preset(fontSize.md, fontWeight.semibold, 1.53, letterSpacing.normal, {
+    role: 'body',
+  }),
 
   footnote: preset(fontSize.sm, fontWeight.regular, 1.46, letterSpacing.normal, { role: 'body' }),
 
   caption: preset(fontSize.xs, fontWeight.regular, 1.4, letterSpacing.normal, { role: 'body' }),
 
-  captionMedium: preset(fontSize.xs, fontWeight.medium, 1.4, letterSpacing.normal, { role: 'body' }),
+  captionMedium: preset(fontSize.xs, fontWeight.medium, 1.4, letterSpacing.normal, {
+    role: 'body',
+  }),
 
   label: preset(fontSize['2xs'], fontWeight.bold, 1.4, letterSpacing.widest, {
     role: 'body',

@@ -93,16 +93,32 @@ const CurriculumStop = React.memo(function CurriculumStop({
 
         <BeltSwatch stop={stop} />
 
-        <Text style={[typography.textPresets.bodyStrong, styles.rankName, { color: colors.text.primary }]}>
+        <Text
+          style={[
+            typography.textPresets.bodyStrong,
+            styles.rankName,
+            { color: colors.text.primary },
+          ]}
+        >
           {stop.rank}
         </Text>
         <Text
-          style={[typography.textPresets.footnote, styles.summary, { color: colors.text.secondary }]}
+          style={[
+            typography.textPresets.footnote,
+            styles.summary,
+            { color: colors.text.secondary },
+          ]}
           numberOfLines={1}
         >
           {stop.summary}
         </Text>
-        <Text style={[typography.textPresets.caption, styles.stripesCaption, { color: colors.text.tertiary }]}>
+        <Text
+          style={[
+            typography.textPresets.caption,
+            styles.stripesCaption,
+            { color: colors.text.tertiary },
+          ]}
+        >
           {stop.stripes} stripes per rank
         </Text>
       </View>
@@ -110,11 +126,7 @@ const CurriculumStop = React.memo(function CurriculumStop({
   );
 });
 
-export function CurriculumAscentModule({
-  currentRankName,
-  currentRankId,
-  stops,
-}: Props) {
+export function CurriculumAscentModule({ currentRankName, currentRankId, stops }: Props) {
   const { colors, typography, gap, inset } = useTheme();
   const currentRankKey = normalizeBeltRankKey(currentRankName);
 
@@ -126,10 +138,14 @@ export function CurriculumAscentModule({
     <View style={[styles.module, { gap: gap.md, marginBottom: gap.lg }]}>
       <View style={{ gap: gap.xs }}>
         <AcademyEyebrow label="Curriculum" accent showFlag={false} />
-        <Text style={[typography.textPresets.title, styles.moduleTitle, { color: colors.text.primary }]}>
+        <Text
+          style={[typography.textPresets.title, styles.moduleTitle, { color: colors.text.primary }]}
+        >
           The ascent
         </Text>
-        <Text style={[typography.textPresets.body, { color: colors.text.secondary, lineHeight: 22 }]}>
+        <Text
+          style={[typography.textPresets.body, { color: colors.text.secondary, lineHeight: 22 }]}
+        >
           Academy curriculum from first class to black belt.
         </Text>
       </View>

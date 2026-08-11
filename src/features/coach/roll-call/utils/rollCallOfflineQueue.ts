@@ -10,22 +10,15 @@ import type {
 } from '@/features/coach/roll-call/types';
 import { recordRollCallMark } from '@/services/database/rollCall.repository';
 import { useRollCallOfflineQueueStore } from '@/stores/useRollCallOfflineQueueStore';
-
-export type RollCallQueuedMark = {
-  clientGeneratedId: string;
-  classId: string;
-  mark: RecordRollCallMarkInput;
-  enqueuedAt: string;
-};
-
-export function memberRefKey(mark: RecordRollCallMarkInput): string {
-  if (mark.userId) return mark.userId;
-  if (mark.mindbodyClientId) return `mb:${mark.mindbodyClientId}`;
-  return 'unknown';
-}
+import type { RollCallQueuedMark } from './rollCallOfflineQueueTypes';
+export type { RollCallQueuedMark } from './rollCallOfflineQueueTypes';
+export { memberRefKey } from './rollCallOfflineQueueTypes';
 
 export function createClientGeneratedId(): string {
-  return globalThis.crypto?.randomUUID?.() ?? `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  return (
+    globalThis.crypto?.randomUUID?.() ??
+    `offline-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  );
 }
 
 export async function readNetworkOnline(options?: { safetyCheck?: boolean }): Promise<boolean> {
@@ -80,9 +73,7 @@ export async function flushRollCallOfflineQueue(queryClient: QueryClient): Promi
 
     const store = useRollCallOfflineQueueStore.getState();
     const seenClientIds = new Set<string>();
-    const pending = [...store.queue].sort(
-      (a, b) => a.enqueuedAt.localeCompare(b.enqueuedAt),
-    );
+    const pending = [...store.queue].sort((a, b) => a.enqueuedAt.localeCompare(b.enqueuedAt));
 
     for (const item of pending) {
       if (seenClientIds.has(item.clientGeneratedId)) {
@@ -117,7 +108,6 @@ export async function flushRollCallOfflineQueue(queryClient: QueryClient): Promi
 }
 
 export function pendingQueueCountForClass(classId: string): number {
-  return useRollCallOfflineQueueStore
-    .getState()
-    .queue.filter((entry) => entry.classId === classId).length;
+  return useRollCallOfflineQueueStore.getState().queue.filter((entry) => entry.classId === classId)
+    .length;
 }

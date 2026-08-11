@@ -2,39 +2,14 @@ import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { resolveTargetUserId } from '../_shared/guardian.ts';
 import { requireUser } from '../_shared/jwt.ts';
+import { signMemberQrToken } from '../_shared/memberQrToken.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
 type QrIssueRequest = {
   targetUserId?: string;
 };
 
-const TOKEN_TTL_SECONDS = 90;
-
-function requireSecret(key: string): string {
-  const value = Deno.env.get(key);
-  if (!value) throw new MbError('UPSTREAM_ERROR', `QR signing not configured (${key}).`);
-  return value;
-}
-
-function toBase64Url(bytes: Uint8Array): string {
-  let binary = '';
-  bytes.forEach((b) => {
-    binary += String.fromCharCode(b);
-  });
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-async function hmacSha256(secret: string, payload: string): Promise<Uint8Array> {
-  const key = await crypto.subtle.importKey(
-    'raw',
-    new TextEncoder().encode(secret),
-    { name: 'HMAC', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(payload));
-  return new Uint8Array(sig);
-}
+const TOKEN_TTL_SECONDS = 5 * 60;
 
 Deno.serve(async (req) => {
   const options = handleOptions(req);
@@ -48,7 +23,6 @@ Deno.serve(async (req) => {
     const { userId: callerUserId } = await requireUser(req);
     const body = (await req.json().catch(() => ({}))) as QrIssueRequest;
     const svc = serviceClient();
-    const secret = requireSecret('QR_SIGNING_SECRET');
     const targetUserId = await resolveTargetUserId(svc, callerUserId, body.targetUserId, {
       requireGuardianQrPermission: true,
     });
@@ -65,11 +39,7 @@ Deno.serve(async (req) => {
     });
     if (insertError) throw new MbError('UPSTREAM_ERROR', 'Unable to persist QR token.');
 
-    const sigPayload = `supabase:${targetUserId}:${expEpoch}:${jti}`;
-    const sigBytes = await hmacSha256(secret, sigPayload);
-    const sig = toBase64Url(sigBytes);
-
-    const token = `971mma:v2:supabase:${targetUserId}:${expEpoch}:${jti}:${sig}`;
+    const token = await signMemberQrToken('supabase', targetUserId, expEpoch, jti);
 
     await svc
       .from('qr_tokens')

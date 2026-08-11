@@ -1,5 +1,3 @@
-
-
 const SUPABASE_URL_PATTERN = /^https:\/\/[a-z0-9-]+\.supabase\.co\/?$/i;
 
 export type SupabaseEnvValidation =

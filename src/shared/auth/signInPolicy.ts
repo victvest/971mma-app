@@ -18,10 +18,7 @@ export function isAccountBanned(bannedUntil: string | null | undefined, now = Da
   return Number.isFinite(bannedUntilMs) && bannedUntilMs > now;
 }
 
-export type AuthSignInBlockReason =
-  | 'admin_blocked'
-  | 'email_not_confirmed'
-  | 'account_disabled';
+export type AuthSignInBlockReason = 'admin_blocked' | 'email_not_confirmed' | 'account_disabled';
 
 export function resolveAuthSignInBlock(params: {
   role: string | null | undefined;

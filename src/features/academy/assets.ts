@@ -1,17 +1,21 @@
 /**
- * Official marketing assets sourced from https://971mma.com/ (CloudFront CDN).
- * Re-download only with academy permission; bundled for offline app use.
- *
- * Card/hero variants live in `assets/images/optimized/` — target display size + 3× DPI margin.
+ * Official academy photography (client shoot) + brand marks.
+ * Display variants live in `assets/images/optimized/` — target display size + 3× DPI margin.
+ * Raw masters stay in `assets/academy/source/` (gitignored); regenerate with
+ * `node scripts/optimize-bundled-images.mjs`.
  */
 import type { ImageSourcePropType } from 'react-native';
 
 import logoOfficial from '../../../assets/brand/971-logo-official.webp';
 import heroNlbjj from '../../../assets/images/optimized/hero-nlbjj-card.jpg';
+import gymUsageHeroInstructor from '../../../assets/images/optimized/gym-usage-hero-instructor.jpg';
+import homeFacilityHero from '../../../assets/images/optimized/home-facility-hero.jpg';
 import coachFallbackHero from '../../../assets/images/optimized/coach-fallback-hero.jpg';
 import nextLevelBjj from '../../../assets/images/optimized/next-level-bjj-card.jpg';
 import academyMasterart from '../../../assets/images/optimized/academy-masterart-card.jpg';
 import academyTeam from '../../../assets/images/optimized/academy-team-card.jpg';
+import academyCoachesCage from '../../../assets/images/optimized/academy-coaches-cage.jpg';
+import academyCoachesNlbjj from '../../../assets/images/optimized/academy-coaches-nlbjj.jpg';
 import disciplineBjj from '../../../assets/images/optimized/discipline-bjj-card.jpg';
 import disciplineMuayThai from '../../../assets/images/optimized/discipline-muaythai-card.jpg';
 import disciplineBoxing from '../../../assets/images/optimized/discipline-boxing-card.jpg';
@@ -21,13 +25,27 @@ import disciplineYouth from '../../../assets/images/optimized/discipline-youth-c
 
 export const academyAssets = {
   logoOfficial,
+  /** Class default / NLBJJ instructor teaching. */
   heroNlbjj,
-  /** Client-favorite coach hero — home carousel (member + coach). */
-  homeCarouselHero: coachFallbackHero,
+  /**
+   * Known instructor demo — home “Gym Usage” featured card only.
+   * Do not reuse on schedule/about/other classes.
+   */
+  gymUsageHero: gymUsageHeroInstructor,
+  /** NLBJJ gym floor — coach “now teaching” / facility fallback. */
+  homeCarouselHero: homeFacilityHero,
+  homeFacilityHero,
   coachFallbackHero,
+  /** NLBJJ gym floor + wall branding — lineage featured card. */
   nextLevelBjj,
+  /** Full BJJ class community (US/Brazil flags) — About philosophy. */
   academyMasterart,
+  /** Team in the cage with UAE flag — About community hero. */
   academyTeam,
+  /** Coaching staff lineup (cage). */
+  academyCoachesCage,
+  /** Coaching staff lineup (NLBJJ wall). */
+  academyCoachesNlbjj,
   disciplines: {
     bjj: disciplineBjj,
     muayThai: disciplineMuayThai,

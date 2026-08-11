@@ -38,7 +38,9 @@ export function buildPerfScenarioReport(snapshot: PerfSnapshot): PerfScenarioRep
         const at = findMarkTime(snapshot, mark);
         return at === undefined ? null : { mark, at };
       })
-      .filter((entry): entry is { mark: (typeof scenario.marks)[number]; at: number } => entry !== null);
+      .filter(
+        (entry): entry is { mark: (typeof scenario.marks)[number]; at: number } => entry !== null,
+      );
 
     const marksFound = markTimes.map((entry) => entry.mark);
     const marksMissing = scenario.marks.filter((mark) => !marksFound.includes(mark));

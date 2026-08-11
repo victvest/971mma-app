@@ -81,21 +81,25 @@ type Props = {
   pointsBalance: number;
   onOpenCheckIn: () => void;
   onOpenRewards: () => void;
+  showRewards?: boolean;
+  qrSubtitle?: string;
 };
 
 export const HomeQuickActions = memo(function HomeQuickActions({
   pointsBalance,
   onOpenCheckIn,
   onOpenRewards,
+  showRewards = true,
+  qrSubtitle = 'Tap to open your check-in code',
 }: Props) {
-  const { colors, radius, inset, shadows, layout } = useTheme();
+  const { colors, radius, inset, surfaceShadow, layout } = useTheme();
   const pointsLabel = `${pointsBalance.toLocaleString('en-US')} pts`;
 
   return (
     <View
       style={[
         styles.card,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -108,20 +112,22 @@ export const HomeQuickActions = memo(function HomeQuickActions({
       <ActionRow
         icon={QrCode}
         title="QR pass"
-        subtitle="Tap to open your check-in code"
+        subtitle={qrSubtitle}
         iconColor={colors.status.success}
         iconBg={colors.status.successSubtle}
         onPress={onOpenCheckIn}
-        showDivider
+        showDivider={showRewards}
       />
-      <ActionRow
-        icon={Gift}
-        title={pointsLabel}
-        subtitle="Rewards"
-        iconColor={colors.accent.default}
-        iconBg={colors.accent.subtle}
-        onPress={onOpenRewards}
-      />
+      {showRewards ? (
+        <ActionRow
+          icon={Gift}
+          title={pointsLabel}
+          subtitle="Rewards"
+          iconColor={colors.accent.default}
+          iconBg={colors.accent.subtle}
+          onPress={onOpenRewards}
+        />
+      ) : null}
     </View>
   );
 });

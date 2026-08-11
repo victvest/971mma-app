@@ -9,26 +9,17 @@ import type {
   RollCallState,
 } from '@/features/coach/roll-call/types';
 import { DEFAULT_ROLL_CALL_CONFIG } from '@/features/coach/roll-call/types';
+import { rollCallKey } from '@/features/coach/roll-call/hooks/useRollCall';
 import {
-  rollCallKey,
-  useRecordRollCallMark,
-} from '@/features/coach/roll-call/hooks/useRollCall';
-import {
+  applyOptimisticRollCallMark,
   patchRollCallDeckMark,
   swipeCommitToStatus,
 } from '@/features/coach/roll-call/utils/optimisticRollCallMark';
 import { buildRollCallMarkMetadata } from '@/features/coach/roll-call/utils/buildRollCallMarkMetadata';
-import {
-  demoClearRollCallMark,
-  shouldUseDemoRollCall,
-} from '@/features/coach/demo/coachDemoRollCallStore';
-import { isCoachDemoMode } from '@/features/coach/demo/coachDemoMode';
-import { getNetworkOnline } from '@/stores/useAppConnectivityStore';
 import type { RollCallSwipeCommit } from '@/features/coach/roll-call/utils/rollCallGestures';
-import { clearRollCallMark } from '@/services/database/rollCall.repository';
-import { invokeEdge } from '@/services/mindbody/edgeClient';
+import { useAuthStore } from '@/stores/useAuthStore';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
-import { useRollCallOfflineQueueStore } from '@/stores/useRollCallOfflineQueueStore';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 
 export type RollCallDeckMarkStatus = Extract<RollCallMemberStatus, 'present' | 'absent' | 'late'>;
 
@@ -38,38 +29,19 @@ export type RollCallSummaryMarkStatus = Extract<
 >;
 
 function formatMarkError(error: unknown): string {
-  if (error instanceof Error && error.message.trim()) {
-    return error.message;
-  }
-  return 'Check your connection and try again.';
+  return toUserFacingErrorMessage(error, { fallback: 'Check your connection and try again.' });
 }
 
-async function maybeAutoFacilityCheckIn(
-  member: RollCallDeckMember,
-  status: RollCallDeckMarkStatus,
-  config: RollCallConfig,
-  classId: string,
-): Promise<void> {
-  if (!config.autoFacilityCheckinOnPresent) return;
-  if (status !== 'present' && status !== 'late') return;
-  if (member.hasFacilityCheckInToday || !member.userId) return;
-
-  if (!getNetworkOnline()) return;
-
-  try {
-    await invokeEdge('mb-checkin', { userId: member.userId, classId });
-  } catch {
-    // Best-effort bridge — roll call mark already saved.
-  }
-}
-
+/**
+ * Deck + summary marking is local-only. Network flush happens on Confirm attendance.
+ */
 export function useRollCallDeckMarking(
   classId: string | null,
-  config: RollCallConfig = DEFAULT_ROLL_CALL_CONFIG,
+  _config: RollCallConfig = DEFAULT_ROLL_CALL_CONFIG,
 ) {
   const queryClient = useQueryClient();
   const { showAlert } = useDialog();
-  const recordMarkMutation = useRecordRollCallMark(classId);
+  const coachId = useAuthStore((s) => s.user?.id ?? '');
 
   const recordWithStatus = useCallback(
     async (
@@ -88,19 +60,27 @@ export function useRollCallDeckMarking(
               ...extraMetadata,
             };
 
-      await recordMarkMutation.mutateAsync({
-        userId: member.userId,
-        mindbodyClientId: member.mindbodyClientId,
-        status,
-        method: member.isWalkIn ? 'walk_in' : 'roll_call',
-        metadata,
+      // Defer cache write so the swipe commit paint isn't competing with a
+      // parent React Query re-render in the same frame.
+      queueMicrotask(() => {
+        queryClient.setQueryData<RollCallState>(rollCallKey(classId), (current) => {
+          if (!current) return current;
+          return applyOptimisticRollCallMark(
+            current,
+            {
+              userId: member.userId,
+              mindbodyClientId: member.mindbodyClientId,
+              status,
+              method: member.isWalkIn ? 'walk_in' : 'roll_call',
+              metadata,
+            },
+            member.deckKey,
+            coachId,
+          );
+        });
       });
-
-      if (status === 'present' || status === 'late') {
-        await maybeAutoFacilityCheckIn(member, status, config, classId);
-      }
     },
-    [classId, config, recordMarkMutation],
+    [classId, coachId, queryClient],
   );
 
   const recordFromSwipe = useCallback(
@@ -121,7 +101,7 @@ export function useRollCallDeckMarking(
     async (
       member: RollCallDeckMember,
       previousMark: RollCallMemberMark | null,
-      removedMark: RollCallMemberMark | null,
+      _removedMark: RollCallMemberMark | null,
     ) => {
       if (!classId) return;
 
@@ -129,45 +109,12 @@ export function useRollCallDeckMarking(
         if (!current) return current;
         return patchRollCallDeckMark(current, member.deckKey, previousMark);
       });
-
-      if (!removedMark) {
-        if (isCoachDemoMode() && shouldUseDemoRollCall(classId)) {
-          demoClearRollCallMark(classId, member.deckKey);
-        }
-        return;
-      }
-
-      if (removedMark.id.startsWith('optimistic-')) return;
-
-      if (removedMark.id.startsWith('queued-')) {
-        const clientGeneratedId = removedMark.metadata?.client_generated_id;
-        if (typeof clientGeneratedId === 'string') {
-          useRollCallOfflineQueueStore.getState().removeByClientId(clientGeneratedId);
-        }
-        return;
-      }
-
-      try {
-        await clearRollCallMark({
-          markId: removedMark.id,
-          classId,
-          deckKey: member.deckKey,
-        });
-      } catch (error) {
-        queryClient.setQueryData<RollCallState>(rollCallKey(classId), (current) => {
-          if (!current) return current;
-          return patchRollCallDeckMark(current, member.deckKey, removedMark);
-        });
-        showAlert('Could not undo mark', formatMarkError(error));
-        void queryClient.invalidateQueries({ queryKey: rollCallKey(classId) });
-        throw error;
-      }
     },
-    [classId, queryClient, showAlert],
+    [classId, queryClient],
   );
 
   return {
-    isRecording: recordMarkMutation.isPending,
+    isRecording: false,
     recordWithStatus,
     recordFromSwipe,
     revertMark,

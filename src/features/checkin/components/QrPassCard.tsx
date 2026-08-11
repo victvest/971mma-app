@@ -1,9 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import QRCode from 'react-native-qrcode-svg';
 import { BlurView } from 'expo-blur';
 import { useRouter } from 'expo-router';
+import { formatAttendanceTime } from '@/features/checkin/utils/formatAttendance';
+import {
+  formatQrFreshnessLabel,
+  isQrTokenExpired,
+} from '@/features/checkin/utils/qrPassLifecycle';
 import { useTheme } from '@/shared/theme';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { triggerLightImpact } from '@/shared/haptics';
@@ -19,8 +24,11 @@ const ON_INVERSE = {
 
 type Props = {
   token: string | null | undefined;
+  expiresAt?: string | null;
+  memberId?: string | null;
   loading: boolean;
   checkedInToday: boolean;
+  checkedInAt?: string | null;
   memberName: string;
   /** Membership expiry date, formatted (e.g. "Expires 31 Aug 2025"). */
   expiryDate?: string | null;
@@ -38,28 +46,38 @@ function GuestQrPlaceholder() {
   );
 }
 
-function LockedQrOverlay({
-  onPress,
-  iconColor,
-}: {
-  onPress: () => void;
-  iconColor: string;
-}) {
+function LockedQrOverlay({ onPress, iconColor }: { onPress: () => void; iconColor: string }) {
   return (
     <View style={[StyleSheet.absoluteFill, styles.qrLockOverlay]}>
       <BlurView intensity={35} tint="light" style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: 'rgba(255, 255, 255, 0.45)' }]} />
-      <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel="Unlock membership card">
+      <Pressable
+        onPress={onPress}
+        accessibilityRole="button"
+        accessibilityLabel="Unlock membership card"
+      >
         <Ionicons name="lock-closed" size={32} color={iconColor} />
       </Pressable>
     </View>
   );
 }
 
+function logSaltoUatValues(memberId: string | null | undefined, token: string) {
+  if (!__DEV__) return;
+
+  console.log('——— SALTO UAT (copy to Postman) ———');
+  if (memberId) console.log(`member_id / member_user_id: ${memberId}`);
+  console.log(`qr_data / member_qr_token: ${token}`);
+  console.log('—————————————————————————————————————');
+}
+
 export function QrPassCard({
   token,
+  expiresAt,
+  memberId,
   loading,
   checkedInToday,
+  checkedInAt,
   memberName,
   expiryDate,
   expiryLoading = false,
@@ -70,6 +88,18 @@ export function QrPassCard({
   const { colors, typography, inset, radii, radius, gap } = useTheme();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
   const router = useRouter();
+  const [, setTick] = useState(0);
+
+  useEffect(() => {
+    if (!expiresAt || !token) return;
+    const id = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(id);
+  }, [expiresAt, token]);
+
+  const tokenExpired = Boolean(token && isQrTokenExpired(expiresAt));
+  const freshnessLabel = token && expiresAt ? formatQrFreshnessLabel(expiresAt) : null;
+  const arrivalTimeLabel = checkedInAt ? formatAttendanceTime(checkedInAt) : null;
+  const showLiveQr = Boolean(token) && !tokenExpired;
 
   const handleUnlockPress = () => {
     triggerLightImpact();
@@ -91,10 +121,16 @@ export function QrPassCard({
   const showOfflinePass =
     !isGuest && !loading && !token && !showActivationLock && networkStatusKnown && !isOnline;
 
+  const handleQrPress = () => {
+    if (!token || tokenExpired) return;
+    triggerLightImpact();
+    logSaltoUatValues(memberId, token);
+  };
+
   return (
     <View
       accessibilityRole="summary"
-      accessibilityLabel={`Digital membership card for ${memberName}.${expiryDate ? ` ${expiryDate}.` : ''}`}
+      accessibilityLabel={`Digital membership card for ${memberName}.${expiryDate ? ` ${expiryDate}.` : ''}${checkedInToday && arrivalTimeLabel ? ` Arrived at ${arrivalTimeLabel}.` : ''}`}
       style={[
         styles.card,
         {
@@ -115,7 +151,9 @@ export function QrPassCard({
             styles.statusPill,
             {
               borderRadius: radius.pill,
-              backgroundColor: checkedInToday ? colors.status.success + '22' : colors.accent.default + '22',
+              backgroundColor: checkedInToday
+                ? colors.status.success + '22'
+                : colors.accent.default + '22',
             },
           ]}
         >
@@ -135,7 +173,13 @@ export function QrPassCard({
               },
             ]}
           >
-            {checkedInToday ? 'CHECKED IN TODAY' : isGuest ? 'PREVIEW CARD' : 'MEMBER CARD'}
+            {checkedInToday
+              ? arrivalTimeLabel
+                ? `ARRIVED · ${arrivalTimeLabel}`
+                : 'CHECKED IN TODAY'
+              : isGuest
+                ? 'PREVIEW CARD'
+                : 'MEMBER CARD'}
           </Text>
         </View>
 
@@ -145,36 +189,51 @@ export function QrPassCard({
             { borderRadius: radius.pill, backgroundColor: colors.brand.red + '22' },
           ]}
         >
-          <Text style={[styles.pillLabel, { color: colors.brand.red }]}>
-            971 MMA
-          </Text>
+          <Text style={[styles.pillLabel, { color: colors.brand.red }]}>971 MMA</Text>
         </View>
       </View>
 
       <View style={styles.qrWrap}>
         {isGuest ? (
-          <View style={[styles.qrFrame, { borderRadius: radii.lg, overflow: 'hidden', position: 'relative' }]}>
+          <View
+            style={[
+              styles.qrFrame,
+              { borderRadius: radii.lg, overflow: 'hidden', position: 'relative' },
+            ]}
+          >
             <GuestQrPlaceholder />
             <LockedQrOverlay onPress={handleUnlockPress} iconColor={colors.accent.default} />
           </View>
-        ) : loading ? (
+        ) : loading || (tokenExpired && isOnline) ? (
           <View style={[styles.qrFrame, { borderRadius: radii.lg }]}>
             <View style={styles.qrLoadingBox}>
               <ActivityIndicator size="large" color={colors.accent.default} />
             </View>
           </View>
-        ) : token ? (
-          <View style={[styles.qrFrame, { borderRadius: radii.lg }]}>
-            <QRCode value={token} size={208} backgroundColor="#FFFFFF" color="#000000" />
-          </View>
-        ) : showOfflinePass ? (
+        ) : showLiveQr ? (
+          <Pressable
+            onPress={handleQrPress}
+            accessibilityRole="button"
+            accessibilityLabel="Membership QR pass"
+            style={[styles.qrFrame, { borderRadius: radii.lg }]}
+          >
+            <QRCode value={token!} size={208} backgroundColor="#FFFFFF" color="#000000" />
+          </Pressable>
+        ) : showOfflinePass || (tokenExpired && !isOnline) ? (
           <View style={[styles.qrPlaceholder, { borderRadius: radii.lg }]}>
             <Ionicons name="cloud-offline-outline" size={48} color="rgba(255,255,255,0.35)" />
             <Text style={styles.errorLabel}>Connect to refresh your pass</Text>
-            <Text style={styles.offlineHint}>Your membership card needs internet to load a secure QR code.</Text>
+            <Text style={styles.offlineHint}>
+              Your membership card needs internet to load a secure QR code.
+            </Text>
           </View>
         ) : showActivationLock ? (
-          <View style={[styles.qrFrame, { borderRadius: radii.lg, overflow: 'hidden', position: 'relative' }]}>
+          <View
+            style={[
+              styles.qrFrame,
+              { borderRadius: radii.lg, overflow: 'hidden', position: 'relative' },
+            ]}
+          >
             <GuestQrPlaceholder />
             <LockedQrOverlay onPress={handleUnlockPress} iconColor={colors.accent.default} />
           </View>
@@ -186,17 +245,20 @@ export function QrPassCard({
         )}
       </View>
 
+      {!isGuest && showLiveQr ? (
+        <Text style={[styles.readerHint, { color: ON_INVERSE.muted }]}>
+          Show this QR to the gate reader at the entrance.
+          {freshnessLabel ? `\n${freshnessLabel}` : ''}
+        </Text>
+      ) : null}
+
       <View style={[styles.memberBlock, { gap: gap.xs }]}>
         <Text style={[styles.memberName, { color: ON_INVERSE.text }]} numberOfLines={1}>
           {memberName}
         </Text>
-        {expiryDate ? (
+        {!isGuest && (expiryDate || expiryLoading) ? (
           <Text style={[styles.expiryLine, { color: ON_INVERSE.muted }]} numberOfLines={1}>
-            {expiryDate}
-          </Text>
-        ) : expiryLoading ? (
-          <Text style={[styles.expiryLine, { color: ON_INVERSE.subtle }]} numberOfLines={1}>
-            Syncing end date from Mindbody…
+            {expiryLoading && !expiryDate ? 'Checking membership…' : expiryDate}
           </Text>
         ) : null}
       </View>
@@ -259,6 +321,11 @@ const styles = StyleSheet.create({
   qrWrap: {
     alignItems: 'center',
   },
+  readerHint: {
+    textAlign: 'center',
+    fontSize: 13,
+    lineHeight: 18,
+  },
   qrFrame: {
     padding: 18,
     backgroundColor: '#FFFFFF',
@@ -281,7 +348,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 12,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: '#000000',
   },
   errorLabel: {
     fontSize: 14,

@@ -15,7 +15,7 @@ export function ShimmerSurface({
   style,
   contentStyle,
 }: ShimmerSurfaceProps) {
-  const { colors } = useTheme();
+  const { colors, layout } = useTheme();
 
   return (
     <View
@@ -25,7 +25,16 @@ export function ShimmerSurface({
           borderRadius,
           borderColor: colors.border.subtle,
           backgroundColor: colors.background.secondary,
+          borderWidth: layout.borderWidth,
         },
+        Platform.OS === 'ios'
+          ? {
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: 4 },
+              shadowOpacity: 0.05,
+              shadowRadius: 8,
+            }
+          : { elevation: 0 },
         style,
       ]}
     >
@@ -36,17 +45,8 @@ export function ShimmerSurface({
 
 const styles = StyleSheet.create({
   shell: {
-    borderWidth: StyleSheet.hairlineWidth,
     overflow: 'hidden',
     position: 'relative',
-    ...(Platform.OS === 'ios'
-      ? {
-          shadowColor: '#000000',
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.05,
-          shadowRadius: 8,
-        }
-      : { elevation: 2 }),
   },
   content: {
     flex: 1,

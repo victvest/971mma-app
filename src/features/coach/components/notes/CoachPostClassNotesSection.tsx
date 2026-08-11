@@ -72,9 +72,7 @@ export const CoachPostClassNotesSection = memo(function CoachPostClassNotesSecti
         </Text>
       </View>
 
-      {notesQuery.isLoading ? (
-        <StateBlock kind="loading" title="Loading notes" />
-      ) : null}
+      {notesQuery.isLoading ? <StateBlock kind="loading" title="Loading notes" /> : null}
 
       {(notesQuery.data ?? []).length > 0 ? (
         <View style={{ gap: gap.sm }}>
@@ -131,7 +129,9 @@ export const CoachPostClassNotesSection = memo(function CoachPostClassNotesSecti
                 <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}>
                   {member.displayName}
                 </Text>
-                <Text style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}>
+                <Text
+                  style={[typography.textPresets.captionMedium, { color: colors.text.secondary }]}
+                >
                   Add coaching note
                 </Text>
               </View>

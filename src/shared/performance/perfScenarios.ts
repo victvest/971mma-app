@@ -19,13 +19,11 @@ export const PerfMark = {
   routeCoachHomeMount: 'route:coach-home:mount',
   routeCoachHomeFirstContent: 'route:coach-home:first-content',
   routeRollCallMount: 'route:roll-call:mount',
-  routeGateMount: 'route:gate:mount',
 
   queryFirstSuccess: 'query:first-success',
   qrTokenVisible: 'qr:token-visible',
   scannerActive: 'scanner:active',
   rollCallFirstCardInteractive: 'roll-call:first-card-interactive',
-  gateQrVisible: 'gate:qr-visible',
 } as const;
 
 export type PerfMarkName = (typeof PerfMark)[keyof typeof PerfMark];
@@ -35,7 +33,12 @@ export const PERF_SCENARIOS = [
   {
     id: 'cold-launch-home',
     label: 'Cold launch to Home first content',
-    marks: [PerfMark.appFontsReady, PerfMark.authSessionRestored, PerfMark.routeHomeMount, PerfMark.routeHomeFirstContent],
+    marks: [
+      PerfMark.appFontsReady,
+      PerfMark.authSessionRestored,
+      PerfMark.routeHomeMount,
+      PerfMark.routeHomeFirstContent,
+    ],
   },
   {
     id: 'auth-restore-route',
@@ -91,10 +94,5 @@ export const PERF_SCENARIOS = [
     id: 'coach-scanner-mark',
     label: 'Coach scanner scan-to-mark',
     marks: [PerfMark.scannerActive],
-  },
-  {
-    id: 'gate-qr-refresh',
-    label: 'Gate QR refresh',
-    marks: [PerfMark.routeGateMount, PerfMark.gateQrVisible],
   },
 ] as const;

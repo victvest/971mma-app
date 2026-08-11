@@ -38,3 +38,95 @@ export async function createAnnouncement(input: {
   if (error) throw error;
   return mapAnnouncementRow(data as AnnouncementRow);
 }
+
+export type CoachAnnouncementAudienceMode = 'general' | 'classes';
+
+export type CoachAnnouncementTargetClass = {
+  id: string;
+  title: string;
+  discipline: string;
+  startsAt: string;
+  rosterCount: number;
+};
+
+export type CoachAnnouncementTargets = {
+  classes: CoachAnnouncementTargetClass[];
+  generalRecipientCount: number;
+};
+
+export type CoachSendAnnouncementResult = {
+  announcementId: string;
+  channel: string;
+  title: string;
+  body: string;
+  mode: CoachAnnouncementAudienceMode;
+  recipientCount: number;
+  createdAt: string;
+};
+
+type TargetsRpcPayload = {
+  classes?: Array<{
+    id?: string;
+    title?: string;
+    discipline?: string;
+    startsAt?: string;
+    rosterCount?: number;
+  }>;
+  generalRecipientCount?: number;
+};
+
+type SendRpcPayload = {
+  announcementId?: string;
+  channel?: string;
+  title?: string;
+  body?: string;
+  mode?: string;
+  recipientCount?: number;
+  createdAt?: string;
+};
+
+export async function listCoachAnnouncementTargets(): Promise<CoachAnnouncementTargets> {
+  const { data, error } = await getSupabaseClient().rpc('list_coach_announcement_targets');
+  if (error) throw error;
+
+  const payload = (data ?? {}) as TargetsRpcPayload;
+  return {
+    generalRecipientCount: Number(payload.generalRecipientCount ?? 0),
+    classes: (payload.classes ?? [])
+      .filter((row): row is NonNullable<typeof row> & { id: string } => Boolean(row?.id))
+      .map((row) => ({
+        id: row.id!,
+        title: row.title?.trim() || 'Class',
+        discipline: row.discipline?.trim() || 'Class',
+        startsAt: row.startsAt ?? '',
+        rosterCount: Number(row.rosterCount ?? 0),
+      })),
+  };
+}
+
+export async function coachSendAnnouncement(input: {
+  title: string;
+  body: string;
+  mode: CoachAnnouncementAudienceMode;
+  classIds?: string[];
+}): Promise<CoachSendAnnouncementResult> {
+  const { data, error } = await getSupabaseClient().rpc('coach_send_announcement', {
+    p_title: input.title,
+    p_body: input.body,
+    p_mode: input.mode,
+    p_class_ids: input.mode === 'classes' ? (input.classIds ?? []) : null,
+  });
+
+  if (error) throw error;
+
+  const payload = (data ?? {}) as SendRpcPayload;
+  return {
+    announcementId: String(payload.announcementId ?? ''),
+    channel: String(payload.channel ?? input.mode),
+    title: String(payload.title ?? input.title),
+    body: String(payload.body ?? input.body),
+    mode: payload.mode === 'classes' ? 'classes' : 'general',
+    recipientCount: Number(payload.recipientCount ?? 0),
+    createdAt: String(payload.createdAt ?? new Date().toISOString()),
+  };
+}

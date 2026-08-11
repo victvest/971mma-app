@@ -21,9 +21,9 @@ enabled = false
 # Hosted auth settings — pushed via `supabase config push`.
 [auth]
 enabled = true
-site_url = "nine71mma://auth/callback"
+site_url = "ninemma://auth/callback"
 additional_redirect_urls = [
-  "nine71mma://auth/callback",
+  "ninemma://auth/callback",
   "https://app.971mma.com/auth/callback",
 ]
 enable_signup = true
@@ -60,6 +60,9 @@ verify_jwt = true
 [functions.mb-link-auto]
 verify_jwt = true
 
+[functions.mb-unlink]
+verify_jwt = true
+
 [functions.mb-programs]
 verify_jwt = true
 
@@ -71,9 +74,6 @@ verify_jwt = false
 
 [functions.push-send]
 verify_jwt = false
-
-[functions.community-push]
-verify_jwt = true
 
 [functions.class-reminders]
 verify_jwt = false
@@ -108,12 +108,6 @@ verify_jwt = true
 [functions.mb-class-roster]
 verify_jwt = true
 
-[functions.gate-qr-issue]
-verify_jwt = true
-
-[functions.entry-checkin]
-verify_jwt = true
-
 [functions.auth-sign-in]
 verify_jwt = false
 
@@ -123,8 +117,29 @@ verify_jwt = true
 [functions.account-delete]
 verify_jwt = true
 
+[functions.account-self-delete]
+verify_jwt = true
+
 [functions.mb-admin-clients]
+verify_jwt = true
+
+[functions.mb-coach-client-search]
 verify_jwt = true
 
 [functions.auth-sign-out-others]
 verify_jwt = true
+
+[functions.salto-access-by-media]
+verify_jwt = false
+
+[functions.salto-access-by-member-id]
+verify_jwt = false
+
+[functions.salto-profile-by-member-id]
+verify_jwt = false
+
+[functions.gate-sync-jobs]
+verify_jwt = false
+
+[functions.membership-refresh-cron]
+verify_jwt = false

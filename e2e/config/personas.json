@@ -22,13 +22,6 @@
     "password": "${E2E_COACH_PASSWORD}",
     "expectAccountStatus": "active"
   },
-  "gate": {
-    "role": "gate",
-    "description": "Gate tablet — entrance QR display",
-    "email": "${E2E_GATE_EMAIL}",
-    "password": "${E2E_GATE_PASSWORD}",
-    "expectAccountStatus": "active"
-  },
   "guardian": {
     "role": "member",
     "description": "Guardian with linked child trainee",

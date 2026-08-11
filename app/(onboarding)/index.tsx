@@ -33,6 +33,7 @@ import { completeOnboarding, getMyProfile } from '@/services/database/profiles.r
 import { authToast } from '@/shared/components/Toast';
 import { getDefaultHomeRoute } from '@/shared/navigation/defaultHomeRoute';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_SAVE_ERROR } from '@/lib/userFacingError';
 import { useAuthStore } from '@/stores/useAuthStore';
 
 const TOTAL_STEPS = 3;
@@ -49,7 +50,8 @@ const STEP_COPY = [
   },
   {
     title: 'Add your photo',
-    subtitle: 'Optional — a clear photo helps coaches recognize you at check-in. You can skip and add it later.',
+    subtitle:
+      'Optional — a clear photo helps coaches recognize you at check-in. You can skip and add it later.',
   },
 ] as const;
 
@@ -58,7 +60,7 @@ export default function OnboardingWizardScreen() {
   const queryClient = useQueryClient();
   const { user, markOnboardingComplete } = useAuth();
   const role = useAuthStore((s) => s.role);
-  const { colors, typography, gap, radius, layout, inset } = useTheme();
+  const { colors, typography, gap, radius, layout, inset, surfaceShadow } = useTheme();
   const { goForward, goBackward, getStepAnimation } = useOnboardingStepTransition();
   const { entering, exiting } = getStepAnimation();
 
@@ -166,12 +168,7 @@ export default function OnboardingWizardScreen() {
   }
 
   async function pickAvatar() {
-    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (!permission.granted) {
-      showError('Allow photo access to add a profile picture.');
-      return;
-    }
-
+    // System photo picker — no broad READ_MEDIA / library permission (Play policy).
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images'],
       allowsEditing: true,
@@ -218,10 +215,9 @@ export default function OnboardingWizardScreen() {
           avatarUrl = await uploadAvatarWithRetry(user.id, avatarUri);
           setUploadedAvatarUrl(avatarUrl);
         } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : 'Could not upload your photo. Check your connection and try again.';
+          const message = toUserFacingErrorMessage(error, {
+            fallback: 'Could not upload your photo. Check your connection and try again.',
+          });
           setUploadError(message);
           showError(message);
           return;
@@ -249,7 +245,7 @@ export default function OnboardingWizardScreen() {
       authFeedback.profileReady();
       router.replace(getDefaultHomeRoute(role));
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Could not save your profile.';
+      const message = toUserFacingErrorMessage(error, { fallback: USER_FACING_SAVE_ERROR });
       showError(message);
     } finally {
       setLoading(false);
@@ -258,156 +254,157 @@ export default function OnboardingWizardScreen() {
 
   return (
     <>
-    <OnboardingScreen
-      step={step}
-      totalSteps={TOTAL_STEPS}
-      title={copy.title}
-      subtitle={copy.subtitle}
-      entering={entering}
-      exiting={exiting}
-      controls={
-        <SetupStepControls
-          step={step}
-          totalSteps={TOTAL_STEPS}
-          onBack={handleBack}
-          onPrimary={
-            step === 0
-              ? goToAgeStep
-              : step === 1
-                ? goToAvatarStep
-                : handleFinish
-          }
-          loading={step === 2 ? loading : false}
-          disabled={false}
-          finalLabel={uploadError ? 'Try again' : avatarUri ? 'Get started' : 'Skip for now'}
-        />
-      }
-    >
-      {step === 0 ? (
-        <>
-          <AuthTextField
-            ref={nameRef}
-            label="Full name"
-            value={fullName}
-            onChangeText={setFullName}
-            autoCapitalize="words"
-            autoComplete="name"
-            textContentType="name"
-            placeholder="Your full name"
-            icon={User}
-            returnKeyType="next"
-            onSubmitEditing={goToAgeStep}
+      <OnboardingScreen
+        step={step}
+        totalSteps={TOTAL_STEPS}
+        title={copy.title}
+        subtitle={copy.subtitle}
+        entering={entering}
+        exiting={exiting}
+        controls={
+          <SetupStepControls
+            step={step}
+            totalSteps={TOTAL_STEPS}
+            onBack={handleBack}
+            onPrimary={step === 0 ? goToAgeStep : step === 1 ? goToAvatarStep : handleFinish}
+            loading={step === 2 ? loading : false}
+            disabled={false}
+            finalLabel={uploadError ? 'Try again' : avatarUri ? 'Get started' : 'Skip for now'}
           />
-        </>
-      ) : null}
+        }
+      >
+        {step === 0 ? (
+          <>
+            <AuthTextField
+              ref={nameRef}
+              label="Full name"
+              value={fullName}
+              onChangeText={setFullName}
+              autoCapitalize="words"
+              autoComplete="name"
+              textContentType="name"
+              placeholder="Your full name"
+              icon={User}
+              returnKeyType="next"
+              onSubmitEditing={goToAgeStep}
+            />
+          </>
+        ) : null}
 
-      {step === 1 ? (
-        <>
-          <AuthTextField
-            ref={ageRef}
-            label="Age"
-            value={age}
-            onChangeText={setAge}
-            keyboardType="number-pad"
-            textContentType="none"
-            placeholder="e.g. 28"
-            icon={Calendar}
-            maxLength={3}
-            inputAccessoryViewID={Platform.OS === 'ios' ? AGE_INPUT_ACCESSORY_ID : undefined}
-          />
-        </>
-      ) : null}
+        {step === 1 ? (
+          <>
+            <AuthTextField
+              ref={ageRef}
+              label="Age"
+              value={age}
+              onChangeText={setAge}
+              keyboardType="number-pad"
+              textContentType="none"
+              placeholder="e.g. 28"
+              icon={Calendar}
+              maxLength={3}
+              inputAccessoryViewID={Platform.OS === 'ios' ? AGE_INPUT_ACCESSORY_ID : undefined}
+            />
+          </>
+        ) : null}
 
-      {step === 2 ? (
-        <>
-          <View style={{ alignItems: 'center', gap: gap.md }}>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel="Choose profile photo"
-              onPress={pickAvatar}
-              style={[
-                styles.avatarAnchor,
-                {
-                  width: layout.authBrandMark * 1.35,
-                  height: layout.authBrandMark * 1.35,
-                },
-              ]}
-            >
-              <View
+        {step === 2 ? (
+          <>
+            <View style={{ alignItems: 'center', gap: gap.md }}>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Choose profile photo"
+                onPress={pickAvatar}
                 style={[
-                  styles.avatarCircle,
+                  styles.avatarAnchor,
                   {
-                    borderRadius: radius.avatar,
-                    borderColor: colors.accent.default,
-                    borderWidth: layout.borderWidthStrong,
-                    backgroundColor: avatarUri
-                      ? colors.background.elevated
-                      : colors.accent.subtle,
+                    width: layout.authBrandMark * 1.35,
+                    height: layout.authBrandMark * 1.35,
                   },
                 ]}
               >
-                {avatarUri ? (
-                  <Image source={{ uri: avatarUri }} style={styles.avatarImage} contentFit="cover" />
-                ) : (
-                  <Text
-                    style={{
-                      ...typography.textPresets.title,
-                      color: colors.accent.default,
-                      fontWeight: '800',
-                    }}
-                  >
-                    {previewInitials}
-                  </Text>
-                )}
-              </View>
-              {!avatarUri ? (
                 <View
-                  pointerEvents="none"
                   style={[
-                    styles.cameraBadge,
+                    styles.avatarCircle,
                     {
-                      backgroundColor: colors.accent.default,
-                      borderRadius: radius.pill,
-                      bottom: -inset['2xs'],
-                      height: layout.appHeaderIconTouch * 0.64,
-                      right: -inset['2xs'],
-                      width: layout.appHeaderIconTouch * 0.64,
-                      zIndex: 2,
+                      borderRadius: radius.avatar,
+                      borderColor: colors.accent.default,
+                      borderWidth: layout.borderWidthStrong,
+                      backgroundColor: avatarUri
+                        ? colors.background.elevated
+                        : colors.accent.subtle,
                     },
                   ]}
                 >
-                  <Camera size={18} color={colors.accent.onAccent} strokeWidth={2.2} />
+                  {avatarUri ? (
+                    <Image
+                      source={{ uri: avatarUri }}
+                      style={styles.avatarImage}
+                      contentFit="cover"
+                    />
+                  ) : (
+                    <Text
+                      style={{
+                        ...typography.textPresets.title,
+                        color: colors.accent.default,
+                        fontWeight: '800',
+                      }}
+                    >
+                      {previewInitials}
+                    </Text>
+                  )}
                 </View>
-              ) : null}
-            </Pressable>
+                {!avatarUri ? (
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.cameraBadge,
+                      surfaceShadow('card'),
+                      {
+                        backgroundColor: colors.accent.default,
+                        borderColor: colors.border.subtle,
+                        borderWidth: layout.borderWidth,
+                        borderRadius: radius.pill,
+                        bottom: -inset['2xs'],
+                        height: layout.appHeaderIconTouch * 0.64,
+                        right: -inset['2xs'],
+                        width: layout.appHeaderIconTouch * 0.64,
+                        zIndex: 2,
+                      },
+                    ]}
+                  >
+                    <Camera size={18} color={colors.accent.onAccent} strokeWidth={2.2} />
+                  </View>
+                ) : null}
+              </Pressable>
 
-            <Text
-              style={[
-                typography.textPresets.footnote,
-                { color: colors.text.tertiary, textAlign: 'center' },
-              ]}
-            >
-              Tap to choose from your library
-            </Text>
-            {uploadError ? (
               <Text
                 style={[
                   typography.textPresets.footnote,
-                  { color: colors.status.errorEmphasis, textAlign: 'center' },
+                  { color: colors.text.tertiary, textAlign: 'center' },
                 ]}
               >
-                {uploadError}
+                Tap to choose from your library
               </Text>
-            ) : null}
-          </View>
-        </>
+              {uploadError ? (
+                <Text
+                  style={[
+                    typography.textPresets.footnote,
+                    { color: colors.status.errorEmphasis, textAlign: 'center' },
+                  ]}
+                >
+                  {uploadError}
+                </Text>
+              ) : null}
+            </View>
+          </>
+        ) : null}
+      </OnboardingScreen>
+      {Platform.OS === 'ios' ? (
+        <InputAccessoryView nativeID={AGE_INPUT_ACCESSORY_ID}>
+          <View style={styles.hiddenInputAccessory} />
+        </InputAccessoryView>
       ) : null}
-    </OnboardingScreen>
-    {Platform.OS === 'ios' ? (
-      <InputAccessoryView nativeID={AGE_INPUT_ACCESSORY_ID}>
-        <View style={styles.hiddenInputAccessory} />
-      </InputAccessoryView>
-    ) : null}
     </>
   );
 }
@@ -434,8 +431,15 @@ const styles = StyleSheet.create({
   },
   cameraBadge: {
     alignItems: 'center',
-    elevation: 2,
     justifyContent: 'center',
     position: 'absolute',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.12,
+        shadowRadius: 4,
+      },
+    }),
   },
 });

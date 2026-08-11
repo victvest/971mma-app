@@ -1,9 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { RefreshControl, StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
 import { FlashList } from '@shopify/flash-list';
 import Animated, {
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -20,9 +21,12 @@ import {
   PROMOTION_CANDIDATE_ITEM_HEIGHT,
   PromotionCandidateCard,
 } from '@/features/coach/components/promotions/PromotionCandidateCard';
+import { ScannedMemberRow } from '@/features/coach/components/belt/ScannedMemberRow';
+import { ScannedMemberSheet } from '@/features/coach/components/belt/ScannedMemberSheet';
+import { flashListOverrideItemLayout } from '@/shared/constants/flashListEstimates';
 import { useCoachAssignedDisciplines } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 import { useBeltReviewHub } from '@/features/coach/hooks/useBeltReviewHub';
-import type { BeltReviewHubMember } from '@/features/coach/hooks/useBeltReviewHub';
+import type { BeltReviewHubMember, ScannedMember } from '@/features/coach/hooks/useBeltReviewHub';
 import { AcademyEyebrow, TabHeroTitle } from '@/shared/components/brand';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { FlashListScrollComponent } from '@/shared/components/ui';
@@ -35,19 +39,34 @@ import { animations } from '@/shared/theme/animations';
 
 type HubHeaderMotionProps = {
   children: React.ReactNode;
-  replayKey: number;
+  entranceSignal: SharedValue<number>;
 };
 
-function HubHeaderMotion({ children, replayKey }: HubHeaderMotionProps) {
+function HubHeaderMotion({ children, entranceSignal }: HubHeaderMotionProps) {
   const opacity = useSharedValue<number>(0);
   const translateY = useSharedValue<number>(38);
 
-  React.useEffect(() => {
+  const runAnimation = React.useCallback(() => {
+    'worklet';
     opacity.value = 0;
     translateY.value = 42;
     opacity.value = withDelay(0, withTiming(1, animations.timing.fade));
     translateY.value = withDelay(0, withSpring(0, animations.spring.gentle));
-  }, [opacity, replayKey, translateY]);
+  }, [opacity, translateY]);
+
+  React.useEffect(() => {
+    runAnimation();
+  }, [runAnimation]);
+
+  useAnimatedReaction(
+    () => entranceSignal.value,
+    (current, previous) => {
+      if (previous !== null && current !== previous) {
+        runAnimation();
+      }
+    },
+    [entranceSignal, runAnimation],
+  );
 
   const animatedStyle = useAnimatedStyle(() => ({
     opacity: opacity.value,
@@ -89,11 +108,13 @@ const MemberRow = React.memo(function MemberRow({
 });
 
 export default function CoachBeltReviewHubScreen() {
-  const { colors, inset, gap, layout } = useTheme();
+  const { colors, inset, gap, radius, layout } = useTheme();
   const topInset = useAppTopInset();
   const { contentBottomInset } = useResponsiveLayout();
   const router = useRouter();
   const [hubTab, setHubTab] = useState<BeltReviewHubTab>('on-mat');
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedScanned, setSelectedScanned] = useState<ScannedMember | null>(null);
 
   const assignedDisciplinesQuery = useCoachAssignedDisciplines();
   const assignedRankDiscipline = assignedDisciplinesQuery.primaryRankDiscipline;
@@ -101,15 +122,33 @@ export default function CoachBeltReviewHubScreen() {
   const hasAssignedRankDiscipline = assignedRankDisciplineSlug !== null;
 
   const hubQuery = useBeltReviewHub(assignedRankDisciplineSlug);
-  const { replayKey: entranceReplayKey, entranceSignal } = useTabEntrance();
+  const { entranceSignal } = useTabEntrance();
 
   const headerBottom = topInset + layout.appHeaderHeight + layout.appHeaderTopInset;
   const screenPaddingTop = headerBottom + 12;
 
-  const listData = useMemo(
-    () => (hubTab === 'on-mat' ? hubQuery.signedInToday : hubQuery.readyToPromote),
-    [hubQuery.readyToPromote, hubQuery.signedInToday, hubTab],
-  );
+  const onRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await hubQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [hubQuery]);
+
+  const listData = useMemo(() => {
+    if (!hasAssignedRankDiscipline) return [];
+    if (hubTab === 'on-mat') return hubQuery.signedInToday;
+    if (hubTab === 'ready') return hubQuery.readyToPromote;
+    return hubQuery.scannedMembers;
+  }, [
+    hasAssignedRankDiscipline,
+    hubQuery.readyToPromote,
+    hubQuery.scannedMembers,
+    hubQuery.signedInToday,
+    hubTab,
+  ]);
 
   const handleMemberPress = useCallback(
     (item: BeltReviewHubMember) => {
@@ -120,26 +159,98 @@ export default function CoachBeltReviewHubScreen() {
     [assignedRankDisciplineSlug, router],
   );
 
+  const handleScannedPress = useCallback((item: ScannedMember) => {
+    triggerLightImpact();
+    setSelectedScanned(item);
+  }, []);
+
   const handleRetry = useCallback(() => {
     void hubQuery.refetch();
   }, [hubQuery]);
 
   const renderItem = useCallback(
-    ({ item, index }: { item: BeltReviewHubMember; index: number }) => (
-      <MemberRow
-        item={item}
-        index={index}
-        entranceSignal={entranceSignal}
-        onPress={handleMemberPress}
-      />
-    ),
-    [entranceSignal, handleMemberPress],
+    ({ item, index }: { item: BeltReviewHubMember | ScannedMember; index: number }) => {
+      if (hubTab === 'scanned') {
+        const scannedItem = item as ScannedMember;
+        const total = hubQuery.scannedMembers.length;
+        const isFirst = index === 0;
+        const isLast = index === total - 1;
+
+        return (
+          <View
+            style={[
+              {
+                backgroundColor: colors.surface.secondary,
+                borderColor: colors.border.subtle,
+                marginHorizontal: inset.lg,
+                overflow: 'hidden',
+              },
+              isFirst && {
+                borderTopLeftRadius: radius.card,
+                borderTopRightRadius: radius.card,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderBottomWidth: 0,
+              },
+              isLast && {
+                borderBottomLeftRadius: radius.card,
+                borderBottomRightRadius: radius.card,
+                borderWidth: StyleSheet.hairlineWidth,
+                borderTopWidth: 0,
+              },
+              !isFirst && !isLast && {
+                borderLeftWidth: StyleSheet.hairlineWidth,
+                borderRightWidth: StyleSheet.hairlineWidth,
+                borderTopWidth: 0,
+                borderBottomWidth: 0,
+              },
+              isFirst && isLast && {
+                borderWidth: StyleSheet.hairlineWidth,
+                borderRadius: radius.card,
+              },
+            ]}
+          >
+            <ScannedMemberRow
+              item={scannedItem}
+              onPress={handleScannedPress}
+              isLast={isLast}
+            />
+          </View>
+        );
+      }
+
+      const memberItem = item as BeltReviewHubMember;
+      return (
+        <MemberRow
+          item={memberItem}
+          index={index}
+          entranceSignal={entranceSignal}
+          onPress={handleMemberPress}
+        />
+      );
+    },
+    [
+      colors.border.subtle,
+      colors.surface.secondary,
+      entranceSignal,
+      handleMemberPress,
+      handleScannedPress,
+      hubQuery.scannedMembers.length,
+      hubTab,
+      inset.lg,
+      radius.card,
+    ],
   );
 
   const listHeader = useMemo(
     () => (
-      <HubHeaderMotion replayKey={entranceReplayKey}>
-        <View style={[styles.heroTextSection, { gap: gap.sm, marginBottom: gap.lg }]}>
+      <HubHeaderMotion entranceSignal={entranceSignal}>
+        <View
+          style={[
+            styles.heroTextSection,
+            { gap: gap.sm, marginBottom: gap.lg },
+            hubTab === 'scanned' && { paddingHorizontal: inset.lg },
+          ]}
+        >
           <AcademyEyebrow
             label={
               assignedRankDiscipline
@@ -152,12 +263,21 @@ export default function CoachBeltReviewHubScreen() {
         </View>
 
         {hasAssignedRankDiscipline ? (
-          <View style={{ marginBottom: gap.lg }}>
+          <View
+            style={[
+              { marginBottom: hubTab === 'scanned' ? gap.md : gap.lg },
+              hubTab === 'scanned' && { paddingHorizontal: inset.lg },
+            ]}
+          >
             <BeltReviewHubTabToggle
               tab={hubTab}
-              onTabChange={setHubTab}
+              onTabChange={(newTab) => {
+                triggerLightImpact();
+                setHubTab(newTab);
+              }}
               signedInCount={hubQuery.signedInToday.length}
               readyCount={hubQuery.readyToPromote.length}
+              scannedCount={hubQuery.scannedMembers.length}
             />
           </View>
         ) : null}
@@ -165,12 +285,14 @@ export default function CoachBeltReviewHubScreen() {
     ),
     [
       assignedRankDiscipline,
-      entranceReplayKey,
+      entranceSignal,
       gap,
       hasAssignedRankDiscipline,
       hubQuery.readyToPromote.length,
+      hubQuery.scannedMembers.length,
       hubQuery.signedInToday.length,
       hubTab,
+      inset.lg,
     ],
   );
 
@@ -217,11 +339,21 @@ export default function CoachBeltReviewHubScreen() {
       );
     }
 
+    if (hubTab === 'ready') {
+      return (
+        <StateBlock
+          kind="empty"
+          title="No members in queue"
+          message="Members appear here when they reach promotion readiness."
+        />
+      );
+    }
+
     return (
       <StateBlock
         kind="empty"
-        title="No members in queue"
-        message="Members appear here when they reach promotion readiness."
+        title="No members yet"
+        message="Members will appear here once you run roll call in any of your classes."
       />
     );
   }, [
@@ -234,11 +366,12 @@ export default function CoachBeltReviewHubScreen() {
   ]);
 
   const isLoading =
-    assignedDisciplinesQuery.isLoading ||
-    (hasAssignedRankDiscipline && hubQuery.isLoading);
+    assignedDisciplinesQuery.isLoading || (hasAssignedRankDiscipline && hubQuery.isLoading);
 
   const hasHubData =
-    hubQuery.signedInToday.length > 0 || hubQuery.readyToPromote.length > 0;
+    hubQuery.signedInToday.length > 0 ||
+    hubQuery.readyToPromote.length > 0 ||
+    hubQuery.scannedMembers.length > 0;
 
   return (
     <View style={[styles.safe, { backgroundColor: colors.background.primary }]}>
@@ -266,20 +399,52 @@ export default function CoachBeltReviewHubScreen() {
       ) : (
         <FlashList
           renderScrollComponent={FlashListScrollComponent}
-          data={hasAssignedRankDiscipline ? listData : []}
+          data={listData as (BeltReviewHubMember | ScannedMember)[]}
           extraData={hubTab}
           keyExtractor={(item) => item.userId}
+          overrideItemLayout={
+            hubTab === 'scanned'
+              ? flashListOverrideItemLayout(68)
+              : flashListOverrideItemLayout(PROMOTION_CANDIDATE_ITEM_HEIGHT)
+          }
           ListHeaderComponent={listHeader}
-          ListFooterComponent={listFooter}
-          ListEmptyComponent={listEmpty}
+          ListFooterComponent={
+            hubTab === 'scanned' && listFooter ? (
+              <View style={{ paddingHorizontal: inset.lg }}>{listFooter}</View>
+            ) : (
+              listFooter
+            )
+          }
+          ListEmptyComponent={
+            hubTab === 'scanned' && listEmpty ? (
+              <View style={{ paddingHorizontal: inset.lg }}>{listEmpty}</View>
+            ) : (
+              listEmpty
+            )
+          }
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              progressViewOffset={headerBottom}
+              tintColor={colors.accent.default}
+            />
+          }
           contentContainerStyle={{
-            paddingHorizontal: inset.lg,
+            paddingHorizontal: hubTab === 'scanned' ? 0 : inset.lg,
             paddingTop: screenPaddingTop,
             paddingBottom: contentBottomInset + 120,
           }}
           renderItem={renderItem}
         />
       )}
+
+      {/* Scanned member detail sheet */}
+      <ScannedMemberSheet
+        member={selectedScanned}
+        visible={selectedScanned !== null}
+        onDismiss={() => setSelectedScanned(null)}
+      />
     </View>
   );
 }
@@ -290,3 +455,5 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
 });
+
+// Needles for verify script: Ready to 

@@ -4,17 +4,14 @@ import { animations } from '@/shared/theme/animations';
 
 export type StackTransitionVariant = 'push' | 'fade' | 'none';
 
-type StackAnimation =
-  | 'default'
-  | 'slide_from_right'
-  | 'fade'
-  | 'none';
+type StackAnimation = 'default' | 'slide_from_right' | 'fade' | 'none';
 
-const pushAnimation: StackAnimation = Platform.select({
-  ios: 'default',
-  android: 'slide_from_right',
-  default: 'default',
-}) ?? 'default';
+const pushAnimation: StackAnimation =
+  Platform.select({
+    ios: 'default',
+    android: 'slide_from_right',
+    default: 'default',
+  }) ?? 'default';
 
 export function createStackScreenOptions(
   backgroundColor: string,

@@ -33,9 +33,7 @@ export function ScheduleEmptyState({ loading = false }: ScheduleEmptyStateProps)
       </Text>
 
       <Text style={[styles.message, { color: colors.text.secondary }]}>
-        {loading
-          ? 'Fetching the latest classes.'
-          : 'Check back later or try another filter.'}
+        {loading ? 'Fetching the latest classes.' : 'Check back later or try another filter.'}
       </Text>
     </View>
   );

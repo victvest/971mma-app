@@ -2,14 +2,20 @@ import React, { memo } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { isGymToday } from '@/core/time/gymTime';
+import { isNonCountedCheckIn } from '@/features/attendance/utils/classifyCheckIn';
 import {
-  extractMindbodyVisitClassTitle,
   formatAttendanceHeadline,
-  formatAttendanceSubtitle,
+  formatAttendanceTime,
   formatCheckInMethod,
 } from '@/features/checkin/utils/formatAttendance';
+import {
+  extractMindbodyVisitClassId,
+  extractMindbodyVisitClassTitle,
+} from '@/features/checkin/utils/mindbodyVisitPayload';
 import { useTheme } from '@/shared/theme';
 import type { CheckInRow } from '@/types/database';
+import { resolveScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
+import { ScheduleCategoryIcon } from '@/features/schedule/components/ScheduleCategoryIcon';
 
 type Props = {
   item: CheckInRow;
@@ -19,18 +25,31 @@ type Props = {
 export const AttendanceRow = memo(function AttendanceRow({ item, compact = false }: Props) {
   const { colors, typography, inset, radius, radii, layout } = useTheme();
   const isToday = isGymToday(item.checked_in_at);
-  const timeLabel = formatAttendanceSubtitle(item.checked_in_at);
+  const timeLabel = formatAttendanceTime(item.checked_in_at);
   const dateLabel = formatAttendanceHeadline(item.checked_in_at);
 
   const mindbodyClassTitle = extractMindbodyVisitClassTitle(item.raw_payload);
-  const hasClassInfo = !!item.classes || !!mindbodyClassTitle;
-  const title = item.classes?.title ?? mindbodyClassTitle ?? 'Facility Visit';
+  const mindbodyClassId = extractMindbodyVisitClassId(item.raw_payload);
+  const isMindbodyVisit = item.method?.toLowerCase?.() === 'mindbody_visit';
+  const hasClassInfo = !!item.classes || !!mindbodyClassTitle || !!mindbodyClassId || isMindbodyVisit;
+  const title =
+    item.classes?.title ??
+    mindbodyClassTitle ??
+    (isMindbodyVisit || mindbodyClassId ? 'Class visit' : 'Gate arrival');
   const discipline = item.classes?.disciplines?.display_name ?? item.classes?.discipline;
   const coachName = item.classes?.coaches?.name ?? item.classes?.coach_name;
   const duration = item.classes?.duration_minutes;
-  const didNotAttend = item.missed === true || item.late_cancelled === true || item.signed_in === false;
+  const didNotAttend = isNonCountedCheckIn(item);
 
-  const methodLabel = formatCheckInMethod(item.method, { hasClass: hasClassInfo });
+  const methodLabel = formatCheckInMethod(item.method);
+
+  const resolvedCategory = resolveScheduleCategory(title, discipline);
+  const iconSize = compact ? 18 : 20;
+  const iconColor = didNotAttend
+    ? colors.status.warning
+    : isToday
+      ? colors.accent.default
+      : colors.text.secondary;
 
   return (
     <View
@@ -55,17 +74,15 @@ export const AttendanceRow = memo(function AttendanceRow({ item, compact = false
           },
         ]}
       >
-        <Ionicons
-          name={isToday ? 'checkmark-circle' : hasClassInfo ? 'barbell-outline' : 'footsteps-outline'}
-          size={compact ? 18 : 20}
-          color={
-            didNotAttend
-              ? colors.status.warning
-              : isToday
-                ? colors.accent.default
-                : colors.text.secondary
-          }
-        />
+        {resolvedCategory ? (
+          <ScheduleCategoryIcon category={resolvedCategory} color={iconColor} size={iconSize} />
+        ) : (
+          <Ionicons
+            name={isToday ? 'checkmark-circle' : 'footsteps-outline'}
+            size={iconSize}
+            color={iconColor}
+          />
+        )}
       </View>
 
       <View style={styles.textBlock}>
@@ -78,14 +95,16 @@ export const AttendanceRow = memo(function AttendanceRow({ item, compact = false
         >
           {title}
         </Text>
-        
+
         <Text style={[styles.subtitle, { color: colors.text.secondary }]} numberOfLines={1}>
-          {dateLabel} at {timeLabel}
+          {dateLabel} · {timeLabel}
         </Text>
 
         {hasClassInfo && (
           <Text style={[styles.metaText, { color: colors.text.tertiary }]} numberOfLines={1}>
-            {discipline}{coachName ? ` · Coach: ${coachName}` : ''}{duration ? ` · ${duration}m` : ''}
+            {discipline}
+            {coachName ? ` · Coach: ${coachName}` : ''}
+            {duration ? ` · ${duration}m` : ''}
           </Text>
         )}
 

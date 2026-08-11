@@ -37,10 +37,7 @@ export function useToggleClassSubscription() {
     },
     onError: (_error, _classId, context) => {
       if (!context) return;
-      queryClient.setQueryData(
-        classSubscriptionKey(userId, context.classId),
-        context.previous,
-      );
+      queryClient.setQueryData(classSubscriptionKey(userId, context.classId), context.previous);
     },
     onSuccess: (subscribed, classId) => {
       queryClient.setQueryData(classSubscriptionKey(userId, classId), subscribed);

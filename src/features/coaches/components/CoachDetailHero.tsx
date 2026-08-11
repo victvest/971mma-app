@@ -54,7 +54,11 @@ function HeroTag({ label, index, play }: { label: string; index: number; play: b
 
   return (
     <Animated.View
-      style={[styles.tag, { backgroundColor: colors.accent.default, borderRadius: radius.pill }, style]}
+      style={[
+        styles.tag,
+        { backgroundColor: colors.accent.default, borderRadius: radius.pill },
+        style,
+      ]}
     >
       <Text style={[typography.textPresets.label, { color: colors.accent.onAccent }]}>{label}</Text>
     </Animated.View>
@@ -85,7 +89,12 @@ export function CoachDetailHero({ coach, heroHeight, scrollY, fromList }: Props)
         ),
       },
       {
-        scale: interpolate(scrollY.value, [-140, 0, heroHeight], [1.28, 1.08, 1.2], Extrapolation.CLAMP),
+        scale: interpolate(
+          scrollY.value,
+          [-140, 0, heroHeight],
+          [1.28, 1.08, 1.2],
+          Extrapolation.CLAMP,
+        ),
       },
     ],
   }));
@@ -93,7 +102,12 @@ export function CoachDetailHero({ coach, heroHeight, scrollY, fromList }: Props)
   const ratingStyle = useAnimatedStyle(() => ({
     opacity:
       entrance.value *
-      interpolate(scrollY.value, [0, heroHeight * 0.32, heroHeight * 0.52], [1, 0.5, 0], Extrapolation.CLAMP),
+      interpolate(
+        scrollY.value,
+        [0, heroHeight * 0.32, heroHeight * 0.52],
+        [1, 0.5, 0],
+        Extrapolation.CLAMP,
+      ),
     transform: [
       { translateY: interpolate(entrance.value, [0, 1], [-12, 0], Extrapolation.CLAMP) },
       { scale: interpolate(entrance.value, [0, 1], [0.8, 1], Extrapolation.CLAMP) },
@@ -175,13 +189,23 @@ export function CoachDetailHero({ coach, heroHeight, scrollY, fromList }: Props)
             ))}
           </View>
         ) : null}
-        <Text style={[typography.textPresets.screenEyebrow, styles.role, { color: 'rgba(255,255,255,0.86)' }]}>
+        <Text
+          style={[
+            typography.textPresets.screenEyebrow,
+            styles.role,
+            { color: 'rgba(255,255,255,0.86)' },
+          ]}
+        >
           {getCoachRoleLabel(coach)} · {getCoachSpecialtyLabel(coach)}
         </Text>
         <Text
           numberOfLines={2}
           adjustsFontSizeToFit
-          style={[typography.textPresets.coachDisplayCompact, styles.name, { color: colors.accent.onAccent }]}
+          style={[
+            typography.textPresets.coachDisplayCompact,
+            styles.name,
+            { color: colors.accent.onAccent },
+          ]}
         >
           {coach.name}
         </Text>

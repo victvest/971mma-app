@@ -1,9 +1,6 @@
 import type { ImageSourcePropType } from 'react-native';
 
-import {
-  academyAssets,
-  DISCIPLINE_IMAGE_BY_KEY,
-} from '@/features/academy/assets';
+import { academyAssets, DISCIPLINE_IMAGE_BY_KEY } from '@/features/academy/assets';
 import {
   resolveScheduleCategory,
   type ScheduleCategory,

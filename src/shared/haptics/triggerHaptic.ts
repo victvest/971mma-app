@@ -2,7 +2,8 @@ import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 
 function runHaptic(task: () => Promise<void>): void {
-  if (Platform.OS === 'web') return;
+  // Android system touch feedback already provides tactile response; skip expo-haptics.
+  if (Platform.OS === 'web' || Platform.OS === 'android') return;
   void task().catch(() => undefined);
 }
 

@@ -1,14 +1,7 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Pressable,
-  RefreshControl,
-  StyleSheet,
-  Text,
-  View,
-  ScrollView,
-} from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, View, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { useFloatingAppBarContentInset } from '@/shared/hooks/useFloatingAppBarContentInset';
 import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { useRouter } from 'expo-router';
 import Animated, {
@@ -25,22 +18,26 @@ import {
   useMarkAllNotificationsRead,
   useMarkNotificationRead,
   useNotifications,
+  guestBroadcastUnreadKey,
 } from '@/features/notifications/hooks/useNotifications';
+import { registerForPushNotifications } from '@/features/notifications/services/pushRegistration';
+import { markGuestBroadcastsSeen } from '@/features/notifications/services/guestBroadcastReadState';
+import { isGuestAnnouncementNotification } from '@/features/notifications/utils/broadcastNotifications';
 import {
   computeNotificationChipMetrics,
   matchesNotificationFilter,
   type NotificationFilterId,
 } from '@/features/notifications/utils/notificationCategory';
-import {
-  resolveNotificationAction,
-} from '@/features/notifications/resolveNotificationAction';
+import { resolveNotificationAction } from '@/features/notifications/resolveNotificationAction';
 import { NotificationsSectionHeader } from '@/features/notifications/components/NotificationsSectionHeader';
 import { NotificationsSkeleton } from '@/shared/animations';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { AppBar, AppBarIconButton } from '@/shared/components/ui';
 import { NAV_CHROME } from '@/features/home/components/navigation/uaeChrome';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
+import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { useTheme, type AppColors } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import {
   isOfflineWithoutCache,
   isQueryActivelyLoading,
@@ -48,6 +45,7 @@ import {
   OFFLINE_TITLE,
 } from '@/lib/offlineState';
 import type { NotificationItem } from '@/types/domain';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   triggerLightImpact,
   triggerSelectionHaptic,
@@ -58,16 +56,17 @@ function getNotificationVisuals(type: string, title: string, colors: AppColors) 
   const t = type.toLowerCase();
   const titleLower = title.toLowerCase();
 
-  if (
-    t === 'announcement' ||
-    t === 'community' ||
-    t.includes('announcement') ||
-    t.includes('community') ||
-    titleLower.includes('announcement')
-  ) {
+  if (t === 'announcement' || t.includes('announcement') || titleLower.includes('announcement')) {
     return {
       icon: 'megaphone-outline' as const,
       color: colors.accent.default,
+    };
+  }
+
+  if (t === 'feed_like' || t === 'feed_comment' || t.includes('feed')) {
+    return {
+      icon: t.includes('comment') ? ('chatbubble-outline' as const) : ('heart-outline' as const),
+      color: t.includes('comment') ? colors.accent.default : colors.brand.red,
     };
   }
 
@@ -98,7 +97,12 @@ function getNotificationVisuals(type: string, title: string, colors: AppColors) 
     };
   }
 
-  if (t === 'class_attendance' || t === 'class' || t.includes('class') || titleLower.includes('class')) {
+  if (
+    t === 'class_attendance' ||
+    t === 'class' ||
+    t.includes('class') ||
+    titleLower.includes('class')
+  ) {
     return {
       icon: 'calendar-outline' as const,
       color: colors.status.success,
@@ -198,11 +202,16 @@ const FILTER_CHIPS: ReadonlyArray<{ id: NotificationFilterId; label: string }> =
 
 interface NotificationRowProps {
   item: NotificationItem;
+  actionLabel: string | null;
   onPress: () => void;
 }
 
-const NotificationRow = React.memo(function NotificationRow({ item, onPress }: NotificationRowProps) {
-  const { colors, typography, radius, inset, layout, shadows } = useTheme();
+const NotificationRow = React.memo(function NotificationRow({
+  item,
+  actionLabel,
+  onPress,
+}: NotificationRowProps) {
+  const { colors, typography, radius, inset, layout, surfaceShadow } = useTheme();
   const unread = !item.readAt;
   const scale = useSharedValue(1);
 
@@ -230,13 +239,17 @@ const NotificationRow = React.memo(function NotificationRow({ item, onPress }: N
       onPress={onPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
-      accessibilityLabel={`${item.title}. ${timeLabel}`}
+      accessibilityLabel={
+        actionLabel
+          ? `${item.title}. ${timeLabel}. ${actionLabel}`
+          : `${item.title}. ${timeLabel}`
+      }
       style={styles.rowPressable}
     >
       <Animated.View
         style={[
           styles.rowContainer,
-          shadows.card,
+          surfaceShadow('card'),
           {
             backgroundColor: colors.surface.primary,
             borderColor: colors.border.subtle,
@@ -249,20 +262,12 @@ const NotificationRow = React.memo(function NotificationRow({ item, onPress }: N
         ]}
       >
         <View style={styles.rowLayout}>
-          <Ionicons
-            name={visuals.icon}
-            size={20}
-            color={visuals.color}
-            style={styles.rowIcon}
-          />
+          <Ionicons name={visuals.icon} size={20} color={visuals.color} style={styles.rowIcon} />
 
           <View style={styles.contentCol}>
             <View style={styles.rowTop}>
               <Text
-                style={[
-                  typography.textPresets.bodyStrong,
-                  { color: colors.text.primary, flex: 1 },
-                ]}
+                style={[typography.textPresets.bodyStrong, { color: colors.text.primary, flex: 1 }]}
                 numberOfLines={1}
               >
                 {item.title}
@@ -280,9 +285,18 @@ const NotificationRow = React.memo(function NotificationRow({ item, onPress }: N
             {item.body ? (
               <Text
                 style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
-                numberOfLines={1}
+                numberOfLines={2}
               >
                 {item.body}
+              </Text>
+            ) : null}
+
+            {actionLabel ? (
+              <Text
+                style={[typography.textPresets.footnote, { color: colors.accent.default, marginTop: 2, fontWeight: '600' }]}
+                numberOfLines={1}
+              >
+                {actionLabel}
               </Text>
             ) : null}
           </View>
@@ -299,9 +313,11 @@ const NotificationRow = React.memo(function NotificationRow({ item, onPress }: N
 export default function NotificationsScreen() {
   const { colors, inset, layout } = useTheme();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const safeInsets = useSafeAreaInsets();
-  const appTopInset = useAppTopInset();
-  const scrollTopInset = layout.headerHeight + appTopInset + inset.sm;
+  const scrollTopInset = useFloatingAppBarContentInset(inset.sm);
+  const { hasLimitedAccess, isAnonymousGuest, needsActivation } = useIsGuest();
+  const guestBroadcastMode = hasLimitedAccess && isAnonymousGuest;
 
   const notificationsQuery = useNotifications();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
@@ -309,6 +325,24 @@ export default function NotificationsScreen() {
   const markAllMutation = useMarkAllNotificationsRead();
 
   const [activeFilter, setActiveFilter] = useState<NotificationFilterId>('all');
+
+  useEffect(() => {
+    if (!guestBroadcastMode || !notificationsQuery.isSuccess) return;
+
+    void markGuestBroadcastsSeen().then(() => {
+      void queryClient.invalidateQueries({ queryKey: guestBroadcastUnreadKey });
+    });
+  }, [guestBroadcastMode, notificationsQuery.isSuccess, queryClient]);
+
+  useEffect(() => {
+    if (!needsActivation) return;
+    void registerForPushNotifications({ requestPermission: true });
+  }, [needsActivation]);
+
+  const visibleFilterChips = useMemo(
+    () => (hasLimitedAccess ? FILTER_CHIPS.filter((chip) => chip.id === 'all') : FILTER_CHIPS),
+    [hasLimitedAccess],
+  );
 
   const scrollY = useSharedValue(0);
 
@@ -318,10 +352,7 @@ export default function NotificationsScreen() {
 
   const rawData = useMemo(() => notificationsQuery.data ?? [], [notificationsQuery.data]);
 
-  const chipMetrics = useMemo(
-    () => computeNotificationChipMetrics(rawData),
-    [rawData],
-  );
+  const chipMetrics = useMemo(() => computeNotificationChipMetrics(rawData), [rawData]);
 
   const filteredData = useMemo(
     () => rawData.filter((item) => matchesNotificationFilter(item, activeFilter)),
@@ -339,7 +370,7 @@ export default function NotificationsScreen() {
       triggerLightImpact();
       const action = resolveNotificationAction(item);
 
-      if (!item.readAt) {
+      if (!item.readAt && !isGuestAnnouncementNotification(item)) {
         markReadMutation.mutate(item.id);
       }
 
@@ -354,8 +385,22 @@ export default function NotificationsScreen() {
   const handleMarkAllRead = useCallback(() => {
     if (rawData.length === 0 || unreadCount === 0) return;
     triggerSuccessNotification();
+
+    if (guestBroadcastMode) {
+      const readAt = new Date().toISOString();
+      queryClient.setQueriesData<NotificationItem[]>({ queryKey: ['notifications'] }, (old) =>
+        old?.map((item) => (item.readAt ? item : { ...item, readAt })),
+      );
+      queryClient.setQueryData(guestBroadcastUnreadKey, 0);
+      void markGuestBroadcastsSeen().then(() => {
+        void queryClient.invalidateQueries({ queryKey: guestBroadcastUnreadKey });
+        void queryClient.invalidateQueries({ queryKey: ['notifications', 'broadcast-guest'] });
+      });
+      return;
+    }
+
     markAllMutation.mutate();
-  }, [rawData, unreadCount, markAllMutation]);
+  }, [guestBroadcastMode, markAllMutation, queryClient, rawData.length, unreadCount]);
 
   // Non-needed UI components: slide up and fade out as user scrolls down
   const animatedHeroStyle = useAnimatedStyle(() => {
@@ -372,9 +417,7 @@ export default function NotificationsScreen() {
     return (
       <View key={title} style={styles.sectionWrap}>
         <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionHeaderText, { color: colors.text.tertiary }]}>
-            {title}
-          </Text>
+          <Text style={[styles.sectionHeaderText, { color: colors.text.tertiary }]}>{title}</Text>
           <View style={[styles.sectionLine, { backgroundColor: colors.border.subtle }]} />
         </View>
         <View style={styles.sectionList}>
@@ -382,6 +425,7 @@ export default function NotificationsScreen() {
             <NotificationRow
               key={item.id}
               item={item}
+              actionLabel={resolveNotificationAction(item)?.label ?? null}
               onPress={() => handleNotificationPress(item)}
             />
           ))}
@@ -404,11 +448,13 @@ export default function NotificationsScreen() {
           router.back();
         }}
         rightElement={
-          <AppBarIconButton
-            icon="settings-outline"
-            onPress={() => router.push('/notifications/preferences')}
-            accessibilityLabel="Open notification preferences"
-          />
+          guestBroadcastMode ? null : (
+            <AppBarIconButton
+              icon="settings-outline"
+              onPress={() => router.push('/notifications/preferences')}
+              accessibilityLabel="Open notification preferences"
+            />
+          )
         }
       />
 
@@ -435,11 +481,12 @@ export default function NotificationsScreen() {
       >
         {/* Animated Hero Banner + Filter Chips (Hides on Scroll) */}
         <Animated.View style={animatedHeroStyle}>
-          {/* Large display header */}
-          <NotificationsSectionHeader />
-
-          {rawData.length > 0 && unreadCount > 0 ? (
-            <View style={styles.heroActions}>
+          {/* Large display header + Mark all as read inline on right */}
+          <View style={styles.heroRow}>
+            <View style={{ flex: 1 }}>
+              <NotificationsSectionHeader />
+            </View>
+            {rawData.length > 0 && unreadCount > 0 ? (
               <Pressable
                 onPress={handleMarkAllRead}
                 accessibilityLabel="Mark all as read"
@@ -456,61 +503,79 @@ export default function NotificationsScreen() {
                   Mark all as read
                 </Text>
               </Pressable>
-            </View>
-          ) : null}
+            ) : null}
+          </View>
 
           {/* Horizontal category filter chips */}
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.filterScroll}
-          >
-            {FILTER_CHIPS.map((chip) => {
-              const active = activeFilter === chip.id;
-              const countInCategory = chipMetrics.counts[chip.id];
-              const activeBg = colors.accent.default;
-              const activeFg = colors.accent.onAccent;
-              const chipHasUnread = chipMetrics.hasUnread[chip.id];
+          {!hasLimitedAccess ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.filterScroll}
+            >
+              {visibleFilterChips.map((chip) => {
+                const active = activeFilter === chip.id;
+                const countInCategory = chipMetrics.counts[chip.id];
+                const activeBg = colors.accent.default;
+                const activeFg = colors.accent.onAccent;
+                const chipHasUnread = chipMetrics.hasUnread[chip.id];
 
-              return (
-                <Pressable
-                  key={chip.id}
-                  onPress={() => {
-                    triggerSelectionHaptic();
-                    setActiveFilter(chip.id);
-                  }}
-                  style={[
-                    styles.chip,
-                    {
-                      backgroundColor: active ? activeBg : colors.background.secondary,
-                      borderColor: active ? activeBg : colors.border.subtle,
-                    },
-                  ]}
-                >
-                  <View style={styles.chipInner}>
-                    {chipHasUnread && !active ? (
-                      <View style={[styles.chipUnreadDot, { backgroundColor: colors.accent.default }]} />
-                    ) : null}
-                    <Text style={[styles.chipText, { color: active ? activeFg : colors.text.secondary }]}>
-                      {chip.label}
-                    </Text>
-                    {countInCategory > 0 ? (
-                      <View
+                return (
+                  <Pressable
+                    key={chip.id}
+                    onPress={() => {
+                      triggerSelectionHaptic();
+                      setActiveFilter(chip.id);
+                    }}
+                    style={[
+                      styles.chip,
+                      {
+                        backgroundColor: active ? activeBg : colors.background.secondary,
+                        borderColor: active ? activeBg : colors.border.subtle,
+                      },
+                    ]}
+                  >
+                    <View style={styles.chipInner}>
+                      {chipHasUnread && !active ? (
+                        <View
+                          style={[styles.chipUnreadDot, { backgroundColor: colors.accent.default }]}
+                        />
+                      ) : null}
+                      <Text
                         style={[
-                          styles.chipCounter,
-                          { backgroundColor: active ? colors.accent.onAccent : colors.background.secondary },
+                          styles.chipText,
+                          { color: active ? activeFg : colors.text.secondary },
                         ]}
                       >
-                        <Text style={[styles.chipCounterText, { color: active ? colors.accent.default : colors.text.tertiary }]}>
-                          {countInCategory}
-                        </Text>
-                      </View>
-                    ) : null}
-                  </View>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+                        {chip.label}
+                      </Text>
+                      {countInCategory > 0 ? (
+                        <View
+                          style={[
+                            styles.chipCounter,
+                            {
+                              backgroundColor: active
+                                ? colors.accent.onAccent
+                                : colors.background.secondary,
+                            },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.chipCounterText,
+                              { color: active ? colors.accent.default : colors.text.tertiary },
+                            ]}
+                          >
+                            {countInCategory}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          ) : null}
         </Animated.View>
 
         {(() => {
@@ -525,10 +590,9 @@ export default function NotificationsScreen() {
             hasData,
             hasError,
           });
-          const listErrorMessage =
-            notificationsQuery.error instanceof Error
-              ? notificationsQuery.error.message
-              : 'Please check your connection.';
+          const listErrorMessage = toUserFacingErrorMessage(notificationsQuery.error, {
+            fallback: USER_FACING_LOAD_ERROR,
+          });
 
           if (isOfflineBlocked) {
             return (
@@ -571,7 +635,9 @@ export default function NotificationsScreen() {
                 title="No notifications"
                 message={
                   activeFilter === 'all'
-                    ? 'Announcements, promotion milestones, and streaks will appear here.'
+                    ? hasLimitedAccess
+                      ? 'Academy broadcasts and announcements will appear here.'
+                      : 'Announcements, promotion milestones, and streaks will appear here.'
                     : `You have no notifications in the "${activeFilter}" category.`
                 }
               />
@@ -596,9 +662,11 @@ const styles = StyleSheet.create({
   safe: {
     flex: 1,
   },
-  heroActions: {
-    alignItems: 'flex-start',
+  heroRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
     marginBottom: 12,
+    gap: 8,
   },
   markAllButton: {
     alignItems: 'center',

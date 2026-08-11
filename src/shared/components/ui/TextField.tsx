@@ -21,16 +21,10 @@ type Props = TextInputProps & {
   containerStyle?: StyleProp<ViewStyle>;
 };
 
-export const TextField = forwardRef<TextInput, Props>(function TextField({
-  label,
-  hint,
-  error,
-  icon,
-  password,
-  style,
-  containerStyle,
-  ...rest
-}, ref) {
+export const TextField = forwardRef<TextInput, Props>(function TextField(
+  { label, hint, error, icon, password, style, containerStyle, ...rest },
+  ref,
+) {
   const { colors, radius, inset } = useTheme();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(!!password);
@@ -93,12 +87,7 @@ export const TextField = forwardRef<TextInput, Props>(function TextField({
       </View>
 
       {(hint || error) && (
-        <Text
-          style={[
-            styles.hint,
-            { color: error ? colors.status.error : colors.text.tertiary },
-          ]}
-        >
+        <Text style={[styles.hint, { color: error ? colors.status.error : colors.text.tertiary }]}>
           {error ?? hint}
         </Text>
       )}

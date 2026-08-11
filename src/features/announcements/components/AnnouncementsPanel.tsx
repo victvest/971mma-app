@@ -15,6 +15,11 @@ import {
 import { BrandedButton, TextField } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import {
+  toUserFacingErrorMessage,
+  USER_FACING_LOAD_ERROR,
+  USER_FACING_SAVE_ERROR,
+} from '@/lib/userFacingError';
 import type { AnnouncementItem } from '@/types/domain';
 
 function AnnouncementRow({ item }: { item: AnnouncementItem }) {
@@ -23,7 +28,9 @@ function AnnouncementRow({ item }: { item: AnnouncementItem }) {
   return (
     <View style={[styles.row, { backgroundColor: colors.background.secondary }]}>
       <Text style={[styles.channel, { color: colors.accent.default }]}>{item.channel}</Text>
-      <Text style={[typography.textPresets.body, { color: colors.text.primary }]}>{item.title}</Text>
+      <Text style={[typography.textPresets.body, { color: colors.text.primary }]}>
+        {item.title}
+      </Text>
       <Text style={[styles.body, { color: colors.text.secondary }]}>{item.body}</Text>
       <Text style={[styles.time, { color: colors.text.tertiary }]}>
         {formatLocalDisplay(item.createdAt)}
@@ -52,9 +59,8 @@ export function AnnouncementsPanel({ canPost, contentPadding }: Props) {
   const [body, setBody] = useState('');
 
   const errorMessage = useMemo(() => {
-    const err = createMutation.error;
-    if (!err || typeof err !== 'object' || !('message' in err)) return null;
-    return String((err as { message: unknown }).message);
+    if (!createMutation.error) return null;
+    return toUserFacingErrorMessage(createMutation.error, { fallback: USER_FACING_SAVE_ERROR });
   }, [createMutation.error]);
 
   const handlePost = () => {
@@ -72,10 +78,9 @@ export function AnnouncementsPanel({ canPost, contentPadding }: Props) {
   const hasError = Boolean(announcementsQuery.error);
   const data = announcementsQuery.data ?? [];
   const hasData = data.length > 0;
-  const listErrorMessage =
-    announcementsQuery.error instanceof Error
-      ? announcementsQuery.error.message
-      : 'Please check your connection.';
+  const listErrorMessage = toUserFacingErrorMessage(announcementsQuery.error, {
+    fallback: USER_FACING_LOAD_ERROR,
+  });
 
   const listHeader = (
     <>
@@ -149,7 +154,11 @@ export function AnnouncementsPanel({ canPost, contentPadding }: Props) {
       data={data}
       keyExtractor={(item) => item.id}
       ListHeaderComponent={listHeader}
-      contentContainerStyle={{ paddingHorizontal: resolvedPadding, paddingTop: 8, paddingBottom: inset.xl }}
+      contentContainerStyle={{
+        paddingHorizontal: resolvedPadding,
+        paddingTop: 8,
+        paddingBottom: inset.xl,
+      }}
       ItemSeparatorComponent={AnnouncementSeparator}
       renderItem={({ item }) => <AnnouncementRow item={item} />}
     />

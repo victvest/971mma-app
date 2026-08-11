@@ -42,7 +42,7 @@ type Bucket = { count: number; resetAt: number };
 
 const entryBuckets = new Map<string, Bucket>();
 
-/** Per-user sliding window for entry-checkin (per Edge isolate). */
+/** Per-key sliding window for edge endpoints (per Edge isolate). */
 export function assertRateLimit(key: string, max: number, windowMs: number): void {
   const now = Date.now();
   const existing = entryBuckets.get(key);

@@ -73,7 +73,10 @@ export function validatePassword(password: string): string | null {
   return null;
 }
 
-export function validatePasswordConfirmation(password: string, confirmPassword: string): string | null {
+export function validatePasswordConfirmation(
+  password: string,
+  confirmPassword: string,
+): string | null {
   const passwordError = validatePassword(password);
   if (passwordError) return passwordError;
   if (!confirmPassword) return 'Confirm your password.';
@@ -91,7 +94,10 @@ export function shouldShowEmailDomainSuggestion(email: string): boolean {
   return email.endsWith('@');
 }
 
-export function applyEmailDomainSuggestion(email: string, domain = DEFAULT_EMAIL_DOMAIN_SUGGESTION): string {
+export function applyEmailDomainSuggestion(
+  email: string,
+  domain = DEFAULT_EMAIL_DOMAIN_SUGGESTION,
+): string {
   if (!email.endsWith('@')) return email;
   return `${email}${domain}`;
 }
@@ -143,7 +149,7 @@ export function mapAuthErrorCode(code: AuthErrorCode, fallback?: string): string
 export function formatAuthError(error: unknown): string {
   const explicitCode = getAuthErrorCode(error);
   if (explicitCode && AUTH_ERROR_CODES.has(explicitCode as AuthErrorCode)) {
-    return mapAuthErrorCode(explicitCode as AuthErrorCode, getAuthErrorMessage(error));
+    return mapAuthErrorCode(explicitCode as AuthErrorCode);
   }
 
   const message = getAuthErrorMessage(error).trim();
@@ -209,5 +215,6 @@ export function formatAuthError(error: unknown): string {
     return mapAuthErrorCode('ACCOUNT_DISABLED');
   }
 
-  return message;
+  // Never return raw upstream/auth SDK text — keep copy member-safe.
+  return mapAuthErrorCode('UNKNOWN');
 }

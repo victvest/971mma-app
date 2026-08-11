@@ -1,0 +1,105 @@
+{
+  "uploadedAt": "2026-07-29T11:31:35.698Z",
+  "bucket": "reward-images",
+  "rewards": [
+    {
+      "id": "ece0c981-5077-4ac2-9580-33469a670bf0",
+      "name": "971 Insulated Bottle",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/971-insulated-bottle.jpg",
+      "cost_points": 400,
+      "price_aed": 120,
+      "sort_order": 10,
+      "active": true
+    },
+    {
+      "id": "3bbb5191-142f-444f-91c0-0e9d4a9af393",
+      "name": "Next Level Cap & Tee — Black Cap",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-cap-tee-black.jpg",
+      "cost_points": 650,
+      "price_aed": 190,
+      "sort_order": 20,
+      "active": true
+    },
+    {
+      "id": "9e3e3d6c-f708-4473-98ca-365a3ce1d25e",
+      "name": "Next Level Cap & Tee — White Cap",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-cap-tee-white.jpg",
+      "cost_points": 650,
+      "price_aed": 190,
+      "sort_order": 30,
+      "active": true
+    },
+    {
+      "id": "ad474290-3922-4c05-b934-c2185e708422",
+      "name": "Training Kit Bundle",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/training-kit-bundle.jpg",
+      "cost_points": 1400,
+      "price_aed": 380,
+      "sort_order": 40,
+      "active": true
+    },
+    {
+      "id": "b130ec4d-9215-4d6f-8199-ed8582a9e47b",
+      "name": "971 Boxing Gloves",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/971-boxing-gloves.jpg",
+      "cost_points": 900,
+      "price_aed": 250,
+      "sort_order": 50,
+      "active": true
+    },
+    {
+      "id": "5c564f7c-8f41-4c4d-81fb-06167bbb635f",
+      "name": "Next Level BJJ Rash Guard",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-bjj-rashguard.jpg",
+      "cost_points": 800,
+      "price_aed": 220,
+      "sort_order": 60,
+      "active": true
+    },
+    {
+      "id": "7af14d8c-61bf-447a-92f1-f2af9afeb3f3",
+      "name": "Next Level Wave Training Set",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-wave-training-set.jpg",
+      "cost_points": 1100,
+      "price_aed": 300,
+      "sort_order": 70,
+      "active": true
+    },
+    {
+      "id": "a2add91e-b702-4066-8b26-45215de8c28d",
+      "name": "Performance Tee & Shorts",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/performance-tee-shorts.jpg",
+      "cost_points": 700,
+      "price_aed": 200,
+      "sort_order": 80,
+      "active": true
+    },
+    {
+      "id": "a8742232-e55c-42b9-8ce2-ea1adc5ee4df",
+      "name": "Next Level Training Tee",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-training-tee.jpg",
+      "cost_points": 550,
+      "price_aed": 160,
+      "sort_order": 90,
+      "active": true
+    },
+    {
+      "id": "b1b22408-ae3a-46ef-a3e5-3dfc6304f06b",
+      "name": "Next Level Association Tee",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-association-tee.jpg",
+      "cost_points": 550,
+      "price_aed": 160,
+      "sort_order": 100,
+      "active": true
+    },
+    {
+      "id": "9c08b2d1-0b0e-41ca-9363-336d86e0142f",
+      "name": "Next Level Long Sleeve Rash Guard",
+      "image_url": "https://nzbbpduwahcncyvyjusj.supabase.co/storage/v1/object/public/reward-images/catalog/next-level-long-sleeve-rashguard.jpg",
+      "cost_points": 850,
+      "price_aed": 240,
+      "sort_order": 110,
+      "active": true
+    }
+  ]
+}

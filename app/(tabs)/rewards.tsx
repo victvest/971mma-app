@@ -1,5 +1,6 @@
 import React, { memo, useCallback, useMemo, useState } from 'react';
 import { RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { useQueryClient } from '@tanstack/react-query';
 import Animated, {
   Extrapolation,
   interpolate,
@@ -36,20 +37,21 @@ import {
   usePoints,
   useRedeem,
   useRedemptions,
+  useAppSettings,
+  redemptionsKey,
 } from '@/features/rewards/hooks/useRewards';
-import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import { useRewardCatalogImagePrefetch } from '@/features/rewards/hooks/useRewardCatalogImagePrefetch';
+import { useActiveMemberId, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useDisciplineScore, useGymWeekActivity } from '@/features/home/hooks/useHomeDashboard';
 import { useTheme } from '@/shared/theme';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import {
-  isOfflineWithoutCache,
-  OFFLINE_MESSAGE,
-  OFFLINE_TITLE,
-} from '@/lib/offlineState';
+import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
 import { AppScrollView } from '@/shared/components/ui';
+import { mapRedeemErrorMessage } from '@/features/rewards/utils/mapRedeemError';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import type {
   DisciplineScoreSummary,
   GymDayActivity,
@@ -59,7 +61,12 @@ import type {
   RedemptionStatus,
 } from '@/types/domain';
 
-const REDEMPTION_STATUS_ORDER: RedemptionStatus[] = ['pending', 'fulfilled', 'refunded', 'cancelled'];
+const REDEMPTION_STATUS_ORDER: RedemptionStatus[] = [
+  'pending',
+  'fulfilled',
+  'refunded',
+  'cancelled',
+];
 
 type RedemptionListItem =
   | { id: string; type: 'header'; status: RedemptionStatus; count: number }
@@ -79,10 +86,12 @@ function getRedemptionStatusCopy(status: RedemptionStatus): string {
   if (status === 'fulfilled') return 'Fulfilled';
   if (status === 'cancelled') return 'Cancelled';
   if (status === 'refunded') return 'Refunded';
-  return 'Pending';
+  return 'Awaiting pickup';
 }
 
-function getRedemptionStatusIcon(status: RedemptionStatus): React.ComponentProps<typeof Ionicons>['name'] {
+function getRedemptionStatusIcon(
+  status: RedemptionStatus,
+): React.ComponentProps<typeof Ionicons>['name'] {
   if (status === 'fulfilled') return 'checkmark-circle-outline';
   if (status === 'cancelled') return 'close-circle-outline';
   if (status === 'refunded') return 'return-down-back-outline';
@@ -146,9 +155,7 @@ function buildStreakInsights(
           ? 'One missed day is protected; multiple gaps reset it.'
           : 'A counted class starts your first streak.';
 
-  const nextRemaining = nextMilestone
-    ? Math.max(0, nextMilestone.unlockDays - trainingDays)
-    : 0;
+  const nextRemaining = nextMilestone ? Math.max(0, nextMilestone.unlockDays - trainingDays) : 0;
 
   return [
     {
@@ -166,9 +173,13 @@ function buildStreakInsights(
       subtitle: nextMilestone
         ? `${pluralizeDays(nextRemaining)} to unlock${nextMilestone.pointsAward > 0 ? ` +${nextMilestone.pointsAward} pts` : ''}.`
         : 'Every visible milestone is already earned.',
-      value: nextMilestone ? `${trainingDays} / ${nextMilestone.unlockDays}` : `${trainingDays} days`,
+      value: nextMilestone
+        ? `${trainingDays} / ${nextMilestone.unlockDays}`
+        : `${trainingDays} days`,
       eyebrow: 'Next',
-      progressPct: nextMilestone ? Math.min(100, (trainingDays / nextMilestone.unlockDays) * 100) : 100,
+      progressPct: nextMilestone
+        ? Math.min(100, (trainingDays / nextMilestone.unlockDays) * 100)
+        : 100,
       icon: nextMilestone ? 'medal-outline' : 'checkmark-circle-outline',
     },
     {
@@ -183,23 +194,32 @@ function buildStreakInsights(
   ];
 }
 
-function getLedgerReasonLabel(reason: PointsLedgerItem['reason']): string {
-  if (reason === 'check_in') return 'Class check-in';
-  if (reason === 'redeem') return 'Reward redemption';
-  if (reason === 'milestone') return 'Milestone award';
-  if (reason === 'promotion') return 'Promotion award';
-  if (reason === 'referral') return 'Referral award';
-  if (reason === 'adjustment') return 'Adjustment';
+function getLedgerReasonLabel(item: PointsLedgerItem): string {
+  if (item.reason === 'check_in') {
+    if (item.checkInMethod === 'gate_scan') return 'Facility check-in';
+    if (item.checkInMethod === 'qr_scan' || item.checkInMethod === 'coach_roster') {
+      return 'Class check-in';
+    }
+    return 'Check-in';
+  }
+  if (item.reason === 'redeem') return 'Reward redemption';
+  if (item.reason === 'milestone') return 'Milestone award';
+  if (item.reason === 'promotion') return 'Promotion award';
+  if (item.reason === 'referral') return 'Referral award';
+  if (item.reason === 'adjustment') return 'Adjustment';
   return 'Bonus';
 }
 
-function getLedgerIcon(reason: PointsLedgerItem['reason']): React.ComponentProps<typeof Ionicons>['name'] {
-  if (reason === 'redeem') return 'gift-outline';
-  if (reason === 'milestone') return 'medal-outline';
-  if (reason === 'promotion') return 'ribbon-outline';
-  if (reason === 'referral') return 'person-add-outline';
-  if (reason === 'adjustment') return 'swap-horizontal-outline';
-  if (reason === 'bonus') return 'add-circle-outline';
+function getLedgerIcon(item: PointsLedgerItem): React.ComponentProps<typeof Ionicons>['name'] {
+  if (item.reason === 'check_in' && item.checkInMethod === 'gate_scan') {
+    return 'enter-outline';
+  }
+  if (item.reason === 'redeem') return 'gift-outline';
+  if (item.reason === 'milestone') return 'medal-outline';
+  if (item.reason === 'promotion') return 'ribbon-outline';
+  if (item.reason === 'referral') return 'person-add-outline';
+  if (item.reason === 'adjustment') return 'swap-horizontal-outline';
+  if (item.reason === 'bonus') return 'add-circle-outline';
   return 'checkmark-circle-outline';
 }
 
@@ -212,7 +232,9 @@ type RedemptionHistoryRowProps = {
   item: RedemptionListItem;
 };
 
-const RedemptionHistoryRow = memo(function RedemptionHistoryRow({ item }: RedemptionHistoryRowProps) {
+const RedemptionHistoryRow = memo(function RedemptionHistoryRow({
+  item,
+}: RedemptionHistoryRowProps) {
   const { colors, radius, layout } = useTheme();
 
   if (item.type === 'header') {
@@ -245,14 +267,19 @@ const RedemptionHistoryRow = memo(function RedemptionHistoryRow({ item }: Redemp
       ]}
     >
       <View style={styles.redemptionIcon}>
-        <Ionicons name={getRedemptionStatusIcon(redemption.status)} size={18} color={colors.accent.default} />
+        <Ionicons
+          name={getRedemptionStatusIcon(redemption.status)}
+          size={18}
+          color={colors.accent.default}
+        />
       </View>
       <View style={styles.redemptionContent}>
         <Text style={[styles.redemptionTitle, { color: colors.text.primary }]} numberOfLines={2}>
           {rewardName}
         </Text>
         <Text style={[styles.redemptionMeta, { color: colors.text.secondary }]}>
-          {redemption.costPoints.toLocaleString('en-US')} pts · {formatRedemptionDate(redemption.createdAt)}
+          {redemption.costPoints.toLocaleString('en-US')} pts ·{' '}
+          {formatRedemptionDate(redemption.createdAt)}
         </Text>
       </View>
       <View style={[styles.redemptionStatusBadge, { backgroundColor: colors.fill.secondary }]}>
@@ -269,13 +296,13 @@ type StreakInsightCardProps = {
 };
 
 const StreakInsightCard = memo(function StreakInsightCard({ insight }: StreakInsightCardProps) {
-  const { colors, typography, radius, gap, shadows, layout } = useTheme();
+  const { colors, typography, radius, gap, surfaceShadow, layout } = useTheme();
 
   return (
     <View
       style={[
         styles.insightCard,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -291,15 +318,23 @@ const StreakInsightCard = memo(function StreakInsightCard({ insight }: StreakIns
           <Ionicons name={insight.icon} size={22} color={colors.accent.default} />
         </View>
         <View style={[styles.insightBadge, { backgroundColor: colors.fill.secondary }]}>
-          <Text style={[styles.insightBadgeText, { color: colors.text.secondary }]}>{insight.eyebrow}</Text>
+          <Text style={[styles.insightBadgeText, { color: colors.text.secondary }]}>
+            {insight.eyebrow}
+          </Text>
         </View>
       </View>
 
       <View style={{ gap: gap.xs }}>
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]} numberOfLines={2}>
+        <Text
+          style={[typography.textPresets.bodyStrong, { color: colors.text.primary }]}
+          numberOfLines={2}
+        >
           {insight.title}
         </Text>
-        <Text style={[typography.textPresets.footnote, { color: colors.text.secondary }]} numberOfLines={3}>
+        <Text
+          style={[typography.textPresets.footnote, { color: colors.text.secondary }]}
+          numberOfLines={3}
+        >
           {insight.subtitle}
         </Text>
       </View>
@@ -307,9 +342,16 @@ const StreakInsightCard = memo(function StreakInsightCard({ insight }: StreakIns
       <View style={{ gap: gap.xs }}>
         <View style={styles.progressLabels}>
           <Text style={[styles.progressLabel, { color: colors.text.tertiary }]}>STATE</Text>
-          <Text style={[styles.progressValue, { color: colors.text.primary }]}>{insight.value}</Text>
+          <Text style={[styles.progressValue, { color: colors.text.primary }]}>
+            {insight.value}
+          </Text>
         </View>
-        <View style={[styles.progressTrack, { backgroundColor: colors.fill.secondary, borderRadius: radius.pill }]}>
+        <View
+          style={[
+            styles.progressTrack,
+            { backgroundColor: colors.fill.secondary, borderRadius: radius.pill },
+          ]}
+        >
           <AnimatedProgressFill
             percent={insight.progressPct}
             backgroundColor={colors.accent.default}
@@ -348,16 +390,21 @@ const PointsActivityRow = memo(function PointsActivityRow({ item }: PointsActivi
         },
       ]}
     >
-      <View style={[styles.ledgerIcon, { backgroundColor: isPositive ? colors.accent.subtle : colors.fill.secondary }]}>
+      <View
+        style={[
+          styles.ledgerIcon,
+          { backgroundColor: isPositive ? colors.accent.subtle : colors.fill.secondary },
+        ]}
+      >
         <Ionicons
-          name={getLedgerIcon(item.reason)}
+          name={getLedgerIcon(item)}
           size={18}
           color={isPositive ? colors.accent.default : colors.text.secondary}
         />
       </View>
       <View style={styles.ledgerContent}>
         <Text style={[styles.ledgerTitle, { color: colors.text.primary }]} numberOfLines={1}>
-          {getLedgerReasonLabel(item.reason)}
+          {getLedgerReasonLabel(item)}
         </Text>
         <Text style={[styles.ledgerMeta, { color: colors.text.secondary }]}>
           {dateLabel} · Balance {item.balanceAfter.toLocaleString('en-US')}
@@ -409,18 +456,23 @@ export default function RewardsScreen() {
     ],
   }));
 
+  const queryClient = useQueryClient();
+  const activeMemberId = useActiveMemberId();
   const viewingChild = useIsViewingChildProfile();
   const accountStatus = useAuthStore((s) => s.user?.accountStatus ?? 'registered');
   const canOpenReferrals = accountStatus === 'active' && !viewingChild;
   const pointsQuery = usePoints();
   const milestonesQuery = useMilestones();
   const catalogQuery = useCatalog();
+  const appSettingsQuery = useAppSettings();
   const redemptionsQuery = useRedemptions();
   const ledgerQuery = useLedger();
   const redeemMutation = useRedeem();
   const scoreQuery = useDisciplineScore();
   const weekActivityQuery = useGymWeekActivity();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
+
+  useRewardCatalogImagePrefetch(catalogQuery.data ?? []);
 
   const [refreshing, setRefreshing] = useState(false);
 
@@ -442,6 +494,13 @@ export default function RewardsScreen() {
     }, [isAnonymousGuest, needsActivation, prompt, router]),
   );
 
+  useFocusEffect(
+    useCallback(() => {
+      if (!activeMemberId || hasLimitedAccess) return;
+      void queryClient.invalidateQueries({ queryKey: redemptionsKey(activeMemberId) });
+    }, [activeMemberId, hasLimitedAccess, queryClient]),
+  );
+
   const account = pointsQuery.data ?? {
     balance: 0,
     tier: 'bronze' as const,
@@ -451,14 +510,20 @@ export default function RewardsScreen() {
   const pendingRewardId = redeemMutation.variables ?? null;
   const trainingDays = scoreQuery.data?.trainingDays ?? 0;
 
-  const errorMessage =
-    redeemMutation.error && typeof redeemMutation.error === 'object' && 'message' in redeemMutation.error
-      ? String((redeemMutation.error as { message: unknown }).message)
-      : null;
+  const errorMessage = redeemMutation.error ? mapRedeemErrorMessage(redeemMutation.error) : null;
 
   const milestones = useMemo(() => milestonesQuery.data ?? [], [milestonesQuery.data]);
   const rewards = useMemo(() => catalogQuery.data ?? [], [catalogQuery.data]);
   const redemptions = useMemo(() => redemptionsQuery.data ?? [], [redemptionsQuery.data]);
+  const pendingRedemptionRewardIds = useMemo(
+    () =>
+      new Set(
+        redemptions
+          .filter((redemption) => redemption.status === 'pending')
+          .map((redemption) => redemption.rewardId),
+      ),
+    [redemptions],
+  );
   const ledgerItems = useMemo(() => ledgerQuery.data ?? [], [ledgerQuery.data]);
 
   const sortedMilestones = useMemo(() => {
@@ -480,7 +545,6 @@ export default function RewardsScreen() {
 
   const handleRedeem = useCallback(
     (rewardId: string) => {
-      if (viewingChild) return;
       if (hasLimitedAccess) {
         prompt('earn-rewards');
         return;
@@ -489,6 +553,8 @@ export default function RewardsScreen() {
       const reward = rewards.find((item) => item.id === rewardId);
       if (!reward) return;
 
+      redeemMutation.reset();
+
       showConfirm(
         `Redeem ${reward.name}?`,
         `${reward.costPoints.toLocaleString('en-US')} points will be deducted from your balance.`,
@@ -496,13 +562,20 @@ export default function RewardsScreen() {
           redeemMutation.mutate(rewardId, {
             onSuccess: () => {
               triggerSuccessNotification();
-              toast.success('Reward redeemed', 'Your redemption is being processed.');
+              toast.success(
+                'Reward redeemed',
+                'Your redemption is being processed. Visit the front desk to pick it up.',
+              );
+            },
+            onError: (error) => {
+              const message = mapRedeemErrorMessage(error);
+              toast.error('Redemption failed', message);
             },
           }),
         { confirmLabel: 'Redeem' },
       );
     },
-    [hasLimitedAccess, prompt, redeemMutation, rewards, showConfirm, viewingChild],
+    [hasLimitedAccess, prompt, redeemMutation, rewards, showConfirm],
   );
 
   const handleRefresh = useCallback(async () => {
@@ -513,6 +586,7 @@ export default function RewardsScreen() {
         pointsQuery.refetch(),
         milestonesQuery.refetch(),
         catalogQuery.refetch(),
+        appSettingsQuery.refetch(),
         redemptionsQuery.refetch(),
         ledgerQuery.refetch(),
         scoreQuery.refetch(),
@@ -525,6 +599,7 @@ export default function RewardsScreen() {
     pointsQuery,
     milestonesQuery,
     catalogQuery,
+    appSettingsQuery,
     redemptionsQuery,
     ledgerQuery,
     scoreQuery,
@@ -538,7 +613,10 @@ export default function RewardsScreen() {
       const nextDays = item.unlockDays;
       let progressPct = 0;
       if (nextDays > prevDays) {
-        progressPct = Math.min(100, Math.max(0, ((trainingDays - prevDays) / (nextDays - prevDays)) * 100));
+        progressPct = Math.min(
+          100,
+          Math.max(0, ((trainingDays - prevDays) / (nextDays - prevDays)) * 100),
+        );
       }
       return <MilestoneRow key={item.id} item={item} progressPct={progressPct} />;
     },
@@ -581,18 +659,14 @@ export default function RewardsScreen() {
     [scrollTopInset, inset.lg, contentBottomInset],
   );
 
-  const errorMsg =
-    pointsQuery.error instanceof Error
-      ? pointsQuery.error.message
-      : milestonesQuery.error instanceof Error
-        ? milestonesQuery.error.message
-        : catalogQuery.error instanceof Error
-          ? catalogQuery.error.message
-          : redemptionsQuery.error instanceof Error
-            ? redemptionsQuery.error.message
-            : ledgerQuery.error instanceof Error
-              ? ledgerQuery.error.message
-              : 'Please check your connection.';
+  const errorMsg = toUserFacingErrorMessage(
+    pointsQuery.error ??
+      milestonesQuery.error ??
+      catalogQuery.error ??
+      redemptionsQuery.error ??
+      ledgerQuery.error,
+    { fallback: USER_FACING_LOAD_ERROR },
+  );
 
   if (needsActivation || isAnonymousGuest) {
     return sheet;
@@ -620,10 +694,16 @@ export default function RewardsScreen() {
             <Ionicons name="chevron-back" size={NAV_CHROME.iconSize} color={UAE.ink} />
           </GlassNavChrome>
 
-          <Animated.View pointerEvents="none" style={[styles.floatingNavTitleWrap, animatedHeaderTitleStyle]}>
+          <Animated.View
+            pointerEvents="none"
+            style={[styles.floatingNavTitleWrap, animatedHeaderTitleStyle]}
+          >
             <Text
               numberOfLines={1}
-              style={[typography.textPresets.bodyStrong, { color: colors.text.primary, textAlign: 'center' }]}
+              style={[
+                typography.textPresets.bodyStrong,
+                { color: colors.text.primary, textAlign: 'center' },
+              ]}
             >
               Rewards
             </Text>
@@ -715,7 +795,9 @@ export default function RewardsScreen() {
                 ]}
               >
                 <Ionicons name="alert-circle-outline" size={18} color={colors.status.error} />
-                <Text style={[styles.errorText, { color: colors.status.error }]}>{errorMessage}</Text>
+                <Text style={[styles.errorText, { color: colors.status.error }]}>
+                  {errorMessage}
+                </Text>
               </View>
             ) : null}
 
@@ -730,7 +812,12 @@ export default function RewardsScreen() {
             ) : !loading ? (
               <>
                 <RewardsSectionTitle title="Streak status" />
-                <View style={[styles.insightRailWrap, { marginHorizontal: -inset.lg, marginBottom: gap.lg }]}>
+                <View
+                  style={[
+                    styles.insightRailWrap,
+                    { marginHorizontal: -inset.lg, marginBottom: gap.lg },
+                  ]}
+                >
                   <AppScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
@@ -757,7 +844,9 @@ export default function RewardsScreen() {
                             balance={account.balance}
                             tier={account.tier}
                             pendingRewardId={redeemMutation.isPending ? pendingRewardId : null}
-                            readOnly={viewingChild}
+                            awaitingPickup={pendingRedemptionRewardIds.has(item.id)}
+                            readOnly={false}
+                            showPrice={appSettingsQuery.data?.showRewardPrices ?? true}
                             onRedeem={handleRedeem}
                           />
                         </View>

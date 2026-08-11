@@ -74,11 +74,20 @@ export function ProfileSwitcher({ compact = false }: ProfileSwitcherProps) {
   return (
     <View style={styles.container}>
       {!compact ? (
-        <Text style={[typography.textPresets.caption, { color: colors.text.secondary, marginBottom: 8 }]}>
+        <Text
+          style={[
+            typography.textPresets.caption,
+            { color: colors.text.secondary, marginBottom: 8 },
+          ]}
+        >
           Active profile
         </Text>
       ) : null}
-      <AppScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.row}>
+      <AppScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        contentContainerStyle={styles.row}
+      >
         {options.map((option) => (
           <ProfileChip
             key={option.userId}

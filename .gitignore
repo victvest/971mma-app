@@ -14,10 +14,27 @@ expo-env.d.ts
 .kotlin/
 *.orig.*
 *.jks
+*.keystore
 *.p8
 *.p12
 *.key
 *.mobileprovision
+
+# Store / signing secrets (never commit)
+store/google-service-account.json
+store/AuthKey_*.p8
+store/android-signing.env
+store/android-upload.keystore
+!store/google-service-account.json.example
+credentials.json
+*.apk
+*.aab
+google-services.json
+GoogleService-Info.plist
+
+# Local capture noise
+Screenshot*.png
+*.orig.png
 
 # Metro
 .metro-health-check*
@@ -36,10 +53,15 @@ yarn-error.*
 .env*.local
 !.env.example
 supabase/.env.local
-supabase/.temp/
+supabase/.env.local.backup*
+supabase/.env.local.backup-*
+postman/*.local.postman_environment.json
 
 # typescript
 *.tsbuildinfo
+
+# Raw client photography masters (regenerate optimized/ with scripts)
+assets/academy/source/
 
 # generated native folders
 /ios

@@ -4,8 +4,10 @@ import type { Theme } from '@/shared/theme';
 
 export const APP_BAR_TITLE_FONT_SIZE = 17;
 export const APP_BAR_BACK_ICON_SIZE = 22;
-/** Matches `layout.appHeaderIconTouch` — keeps title centered against back/actions. */
-export const APP_BAR_SIDE_SLOT_WIDTH = 48;
+/** Circular app bar icon cluster — keep in sync with `NAV_CHROME.clusterHeight`. */
+export const APP_BAR_ICON_CLUSTER_SIZE = 58;
+/** Matches icon cluster width so title stays centered against back/actions. */
+export const APP_BAR_SIDE_SLOT_WIDTH = APP_BAR_ICON_CLUSTER_SIZE;
 
 export function getAppBarTitleStyle(theme: Theme): TextStyle {
   const { colors, resolveFontFamily, fontWeight } = theme;

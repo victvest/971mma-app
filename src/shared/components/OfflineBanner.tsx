@@ -1,9 +1,9 @@
 import React from 'react';
-import { ActivityIndicator, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { useOfflineReconnect } from '@/shared/hooks/useOfflineReconnect';
-import { useTheme } from '@/shared/theme';
+import { useTheme, androidStackingLayer } from '@/shared/theme';
 
 export function OfflineBanner() {
   const visible = useOfflineBannerVisible();
@@ -64,12 +64,10 @@ export function OfflineBanner() {
 
 const styles = StyleSheet.create({
   shell: {
-    paddingBottom: 8,
+    paddingBottom: 6,
     paddingHorizontal: 12,
     zIndex: 2000,
-    ...Platform.select({
-      android: { elevation: 2000 },
-    }),
+    ...androidStackingLayer(2000),
   },
   row: {
     alignItems: 'center',

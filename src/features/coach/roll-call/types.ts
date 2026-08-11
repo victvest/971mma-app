@@ -13,18 +13,9 @@
 // Core enums
 // ---------------------------------------------------------------------------
 
-export type RollCallMemberStatus =
-  | 'present'
-  | 'absent'
-  | 'late'
-  | 'left_early'
-  | 'guest';
+export type RollCallMemberStatus = 'present' | 'absent' | 'late' | 'left_early' | 'guest';
 
-export type RollCallMarkMethod =
-  | 'roll_call'
-  | 'walk_in'
-  | 'qr_scan'
-  | 'roster_list';
+export type RollCallMarkMethod = 'roll_call' | 'walk_in' | 'qr_scan' | 'roster_list';
 
 export type RollCallSessionStatus = 'draft' | 'in_progress' | 'completed';
 
@@ -131,6 +122,12 @@ export interface RollCallDeckMember {
   isGuest: boolean;
   /** F4 — guardian presented QR at entry */
   presentedBy: string | null;
+  /** Persistent roster — Mindbody membership label */
+  membershipStatus?: string;
+  /** Persistent roster — active membership flag */
+  membershipActive?: boolean;
+  /** Timestamp when added to the class roster */
+  addedAt?: string;
 }
 
 export interface RollCallSummary {
@@ -222,6 +219,62 @@ export interface GetRollCallStateRequest {
 
 export type GetRollCallStateResponse = RollCallState;
 
+export interface RollCallMemberPreview {
+  userId: string;
+  fullName: string;
+  avatarUrl: string | null;
+  membershipStatus: string;
+  membershipActive: boolean;
+  isLinked: boolean;
+  mindbodyClientId?: string;
+  beltRank?: string | null;
+  beltStripes?: number;
+}
+
+export type RollCallPreviewCode = 'OK' | 'INVALID_QR' | 'UNKNOWN_MEMBER' | 'NOT_LINKED';
+
+export type RollCallPreviewResult =
+  | {
+      ok: true;
+      code: 'OK';
+      member: RollCallMemberPreview;
+    }
+  | {
+      ok: false;
+      code: Exclude<RollCallPreviewCode, 'OK'> | string;
+      message: string;
+      member?: Partial<RollCallMemberPreview>;
+    };
+
+export interface RollCallClassRosterMember {
+  id: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  membershipStatus: string;
+  membershipActive: boolean;
+  beltRank: string | null;
+  beltStripes: number;
+  mindbodyClientId: string | null;
+  isOnApp: boolean;
+  addedAt: string;
+}
+
+export interface AddRollCallClassMemberResponse {
+  id: string;
+  listKey: string;
+  userId: string;
+  displayName: string;
+  avatarUrl: string | null;
+  addedAt: string;
+}
+
+export interface RemoveRollCallClassMemberResponse {
+  removed: boolean;
+  listKey: string;
+  userId: string;
+}
+
 export interface SearchRollCallMemberRequest {
   classId: string;
   query: string;
@@ -295,10 +348,7 @@ export function rollCallStatusDisplayLabel(status: RollCallMemberStatus): string
   }
 }
 
-export function buildRollCallDeckKey(
-  userId: string | null,
-  mindbodyClientId: string,
-): string {
+export function buildRollCallDeckKey(userId: string | null, mindbodyClientId: string): string {
   return userId ?? `mb:${mindbodyClientId}`;
 }
 
@@ -342,8 +392,7 @@ export function computeRollCallSummary(
   }
 
   const notOnApp = deck.filter((m) => !m.isOnApp).length;
-  const sessionCount =
-    present + (config.lateCountsAsPresent ? late : 0);
+  const sessionCount = present + (config.lateCountsAsPresent ? late : 0);
 
   return {
     present,
@@ -403,7 +452,13 @@ export const ROLL_CALL_SCENARIOS: readonly RollCallScenarioSpec[] = [
   // §1.2 Presence
   { id: 'P1', section: 'presence', status: 'present', method: 'roll_call', notes: 'Swipe right' },
   { id: 'P2', section: 'presence', status: 'absent', method: 'roll_call', notes: 'Swipe left' },
-  { id: 'P3', section: 'presence', status: 'late', method: 'roll_call', notes: 'Add late from summary/search' },
+  {
+    id: 'P3',
+    section: 'presence',
+    status: 'late',
+    method: 'roll_call',
+    notes: 'Add late from summary/search',
+  },
   {
     id: 'P4',
     section: 'presence',
@@ -411,9 +466,27 @@ export const ROLL_CALL_SCENARIOS: readonly RollCallScenarioSpec[] = [
     method: 'roll_call',
     notes: 'Present (late); counts as present for session stats',
   },
-  { id: 'P5', section: 'presence', status: 'present', method: 'walk_in', notes: 'Walk-in search → add → swipe' },
-  { id: 'P6', section: 'presence', status: 'guest', method: 'walk_in', notes: 'Guest / name-only; no points' },
-  { id: 'P7', section: 'presence', status: null, method: null, notes: 'Undo reverts mark; no stored status' },
+  {
+    id: 'P5',
+    section: 'presence',
+    status: 'present',
+    method: 'walk_in',
+    notes: 'Walk-in search → add → swipe',
+  },
+  {
+    id: 'P6',
+    section: 'presence',
+    status: 'guest',
+    method: 'walk_in',
+    notes: 'Guest / name-only; no points',
+  },
+  {
+    id: 'P7',
+    section: 'presence',
+    status: null,
+    method: null,
+    notes: 'Undo reverts mark; no stored status',
+  },
   {
     id: 'P8',
     section: 'presence',
@@ -421,7 +494,13 @@ export const ROLL_CALL_SCENARIOS: readonly RollCallScenarioSpec[] = [
     method: 'roll_call',
     notes: 'Summary edit — any status via roll_call or roster_list',
   },
-  { id: 'P9', section: 'presence', status: 'absent', method: 'roll_call', notes: 'Bulk mark remaining absent' },
+  {
+    id: 'P9',
+    section: 'presence',
+    status: 'absent',
+    method: 'roll_call',
+    notes: 'Bulk mark remaining absent',
+  },
   // §1.3 Facility cross-over (read-only hints; marks unchanged)
   { id: 'F1', section: 'facility', status: null, method: null, notes: 'Chip: At academy today' },
   {
@@ -438,27 +517,123 @@ export const ROLL_CALL_SCENARIOS: readonly RollCallScenarioSpec[] = [
     method: 'roll_call',
     notes: 'Allowed; metadata.attendance_mismatch',
   },
-  { id: 'F4', section: 'facility', status: null, method: null, notes: 'presented_by in metadata/chip' },
+  {
+    id: 'F4',
+    section: 'facility',
+    status: null,
+    method: null,
+    notes: 'presented_by in metadata/chip',
+  },
   // §1.4 Session lifecycle
-  { id: 'L1', section: 'lifecycle', status: null, method: null, notes: 'start_roll_call → in_progress' },
-  { id: 'L2', section: 'lifecycle', status: null, method: null, notes: 'Exit confirm; save deck_cursor' },
-  { id: 'L3', section: 'lifecycle', status: null, method: null, notes: 'Resume unswiped cards first' },
-  { id: 'L4', section: 'lifecycle', status: null, method: null, notes: 'complete_roll_call → completed' },
-  { id: 'L5', section: 'lifecycle', status: null, method: null, notes: 'Partial deck + bulk absent summary' },
-  { id: 'L6', section: 'lifecycle', status: null, method: null, notes: 'Separate attendance per class_id' },
-  { id: 'L7', section: 'lifecycle', status: null, method: null, notes: 'Cancelled class — roll call disabled' },
+  {
+    id: 'L1',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'start_roll_call → in_progress',
+  },
+  {
+    id: 'L2',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'Exit confirm; save deck_cursor',
+  },
+  {
+    id: 'L3',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'Resume unswiped cards first',
+  },
+  {
+    id: 'L4',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'complete_roll_call → completed',
+  },
+  {
+    id: 'L5',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'Partial deck + bulk absent summary',
+  },
+  {
+    id: 'L6',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'Separate attendance per class_id',
+  },
+  {
+    id: 'L7',
+    section: 'lifecycle',
+    status: null,
+    method: null,
+    notes: 'Cancelled class — roll call disabled',
+  },
   { id: 'L8', section: 'lifecycle', status: null, method: null, notes: 'Early banner only' },
-  { id: 'L9', section: 'lifecycle', status: 'left_early', method: 'roll_call', notes: 'Post-class correction' },
+  {
+    id: 'L9',
+    section: 'lifecycle',
+    status: 'left_early',
+    method: 'roll_call',
+    notes: 'Post-class correction',
+  },
   // §1.5 Reliability
-  { id: 'X1', section: 'reliability', status: null, method: 'roll_call', notes: 'Offline queue; same status on flush' },
-  { id: 'X2', section: 'reliability', status: null, method: 'roll_call', notes: 'Idempotent upsert per member+class' },
-  { id: 'X3', section: 'reliability', status: null, method: 'roll_call', notes: 'Concurrent coaches; last write + audit' },
+  {
+    id: 'X1',
+    section: 'reliability',
+    status: null,
+    method: 'roll_call',
+    notes: 'Offline queue; same status on flush',
+  },
+  {
+    id: 'X2',
+    section: 'reliability',
+    status: null,
+    method: 'roll_call',
+    notes: 'Idempotent upsert per member+class',
+  },
+  {
+    id: 'X3',
+    section: 'reliability',
+    status: null,
+    method: 'roll_call',
+    notes: 'Concurrent coaches; last write + audit',
+  },
   { id: 'X4', section: 'reliability', status: null, method: null, notes: 'Coach route guard' },
-  { id: 'X5', section: 'reliability', status: null, method: 'roll_call', notes: 'Network fail → card returns to deck' },
+  {
+    id: 'X5',
+    section: 'reliability',
+    status: null,
+    method: 'roll_call',
+    notes: 'Network fail → card returns to deck',
+  },
   // §1.6 Member-facing (later)
-  { id: 'M1', section: 'member', status: 'present', method: 'roll_call', notes: 'Optional notification Phase 16' },
-  { id: 'M2', section: 'member', status: 'absent', method: 'roll_call', notes: 'No auto push by default' },
-  { id: 'M3', section: 'member', status: null, method: null, notes: 'Member reads own rows via RLS' },
+  {
+    id: 'M1',
+    section: 'member',
+    status: 'present',
+    method: 'roll_call',
+    notes: 'Optional notification Phase 16',
+  },
+  {
+    id: 'M2',
+    section: 'member',
+    status: 'absent',
+    method: 'roll_call',
+    notes: 'No auto push by default',
+  },
+  {
+    id: 'M3',
+    section: 'member',
+    status: null,
+    method: null,
+    notes: 'Member reads own rows via RLS',
+  },
 ] as const;
 
 export function getRollCallScenario(id: RollCallScenarioId): RollCallScenarioSpec {

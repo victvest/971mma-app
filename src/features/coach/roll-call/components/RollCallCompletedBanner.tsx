@@ -7,7 +7,9 @@ type Props = {
   presentCount: number;
 };
 
-export const RollCallCompletedBanner = memo(function RollCallCompletedBanner({ presentCount }: Props) {
+export const RollCallCompletedBanner = memo(function RollCallCompletedBanner({
+  presentCount,
+}: Props) {
   const { colors, inset, radius, typography, gap } = useTheme();
 
   return (
@@ -27,7 +29,9 @@ export const RollCallCompletedBanner = memo(function RollCallCompletedBanner({ p
     >
       <View style={[styles.row, { gap: gap.sm }]}>
         <Ionicons name="checkmark-circle-outline" size={18} color={colors.status.success} />
-        <Text style={[typography.textPresets.bodyStrong, { color: colors.status.success, flex: 1 }]}>
+        <Text
+          style={[typography.textPresets.bodyStrong, { color: colors.status.success, flex: 1 }]}
+        >
           Roll call completed · {presentCount} present
         </Text>
       </View>

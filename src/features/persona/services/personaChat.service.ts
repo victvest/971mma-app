@@ -7,6 +7,8 @@ type PersonaChatRequest = {
   targetUserId?: string;
 };
 
-export async function sendPersonaChatMessage(payload: PersonaChatRequest): Promise<PersonaChatResponse> {
+export async function sendPersonaChatMessage(
+  payload: PersonaChatRequest,
+): Promise<PersonaChatResponse> {
   return invokeEdge<PersonaChatResponse, PersonaChatRequest>('persona-chat', payload);
 }

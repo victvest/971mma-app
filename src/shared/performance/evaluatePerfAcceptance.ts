@@ -1,9 +1,6 @@
 import { buildPerfScenarioReport, type PerfScenarioReport } from './buildScenarioReport';
 import type { PerfSnapshot } from './perfMarks';
-import {
-  PERF_ACCEPTANCE_THRESHOLDS,
-  type PerfAcceptanceThreshold,
-} from './perfThresholds';
+import { PERF_ACCEPTANCE_THRESHOLDS, type PerfAcceptanceThreshold } from './perfThresholds';
 
 export type PerfAcceptanceScenarioResult = {
   id: string;

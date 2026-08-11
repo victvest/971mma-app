@@ -1,5 +1,6 @@
 import { FunctionsHttpError } from '@supabase/supabase-js';
 import type { ApiError, ApiErrorCode } from '@/lib/apiError';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { recordPerfEdgeInvocation } from '@/shared/performance';
 import { getSupabaseClient } from '@/services/supabase/client';
 
@@ -40,16 +41,10 @@ async function normalizeInvokeError(error: unknown): Promise<ApiError> {
     }
   }
 
-  if (error && typeof error === 'object' && 'message' in error) {
-    return {
-      message: String((error as { message?: unknown }).message ?? 'Edge Function error.'),
-      code: 'UNKNOWN',
-      status: null,
-    };
-  }
-
   return {
-    message: 'Edge Function error.',
+    message: toUserFacingErrorMessage(error, {
+      fallback: 'Something went wrong. Please try again, or talk to the front desk for help.',
+    }),
     code: 'UNKNOWN',
     status: null,
   };
@@ -57,9 +52,15 @@ async function normalizeInvokeError(error: unknown): Promise<ApiError> {
 
 function normalizeBodyError(body: EdgeErrorBody): ApiError {
   const code = body.error?.code ?? 'UNKNOWN';
+  const mappedCode = EDGE_CODE_MAP[code] ?? 'UNKNOWN';
   return {
-    message: body.error?.message ?? 'Edge Function error.',
-    code: EDGE_CODE_MAP[code] ?? 'UNKNOWN',
+    message: toUserFacingErrorMessage(
+      { message: body.error?.message ?? '', rawCode: code, code: mappedCode },
+      {
+        fallback: 'Something went wrong. Please try again, or talk to the front desk for help.',
+      },
+    ),
+    code: mappedCode,
     status: null,
     rawCode: body.error?.code,
   };
@@ -86,7 +87,7 @@ export async function invokeEdge<
 
   if (!data) {
     throw {
-      message: 'Edge Function returned no data.',
+      message: 'Something went wrong. Please try again, or talk to the front desk for help.',
       code: 'UNKNOWN',
       status: null,
     } satisfies ApiError;

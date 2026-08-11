@@ -1,12 +1,17 @@
 import type { QueryClient } from '@tanstack/react-query';
-import { beltPathKey } from '@/features/belt/hooks/useBeltPath';
+import { beltPathKey } from '@/features/belt/hooks/beltPathKeys';
+import { coachStatsKey, promotionCandidatesKey } from '@/features/coach/hooks/useCoachMode';
+import { homeDashboardKey } from '@/features/home/hooks/homeDashboardKeys';
+import { disciplineKey } from '@/features/home/hooks/homeActivityKeys';
 import {
-  coachStatsKey,
-  promotionCandidatesKey,
-} from '@/features/coach/hooks/useCoachMode';
-import { disciplineKey, homeDashboardKey } from '@/features/home/hooks/useHomeDashboard';
-import { ledgerKey, milestonesKey, pointsKey, redemptionsKey } from '@/features/rewards/hooks/useRewards';
+  catalogKey,
+  ledgerKey,
+  milestonesKey,
+  pointsKey,
+  redemptionsKey,
+} from '@/features/rewards/hooks/rewardsKeys';
 import { attendanceKey } from '@/features/checkin/hooks/useCheckin';
+import { classSessionAttendanceKey } from '@/features/attendance/hooks/useClassSessionAttendance';
 
 type MemberActivityInvalidation = {
   classId?: string;
@@ -20,6 +25,7 @@ export function invalidateAfterMemberCheckin(
   options: MemberActivityInvalidation = {},
 ) {
   void queryClient.invalidateQueries({ queryKey: attendanceKey(memberId) });
+  void queryClient.invalidateQueries({ queryKey: classSessionAttendanceKey(memberId) });
   void queryClient.invalidateQueries({ queryKey: homeDashboardKey(memberId) });
   void queryClient.invalidateQueries({ queryKey: beltPathKey(memberId) });
   void queryClient.invalidateQueries({ queryKey: milestonesKey(memberId) });
@@ -38,10 +44,7 @@ export function invalidateAfterMemberCheckin(
 }
 
 /** Belt requirement / promotion writes for a member. */
-export function invalidateAfterBeltProgressChange(
-  queryClient: QueryClient,
-  memberId: string,
-) {
+export function invalidateAfterBeltProgressChange(queryClient: QueryClient, memberId: string) {
   void queryClient.invalidateQueries({ queryKey: homeDashboardKey(memberId) });
   void queryClient.invalidateQueries({ queryKey: beltPathKey(memberId) });
   void queryClient.invalidateQueries({ queryKey: milestonesKey(memberId) });
@@ -51,15 +54,20 @@ export function invalidateAfterBeltProgressChange(
   void queryClient.invalidateQueries({ queryKey: promotionCandidatesKey });
   void queryClient.invalidateQueries({ queryKey: ['coach-dashboard'] });
   void queryClient.invalidateQueries({ queryKey: coachStatsKey });
+  void queryClient.invalidateQueries({ queryKey: ['roll-call'] });
+  void queryClient.invalidateQueries({ queryKey: ['coach-member-search'] });
+  void queryClient.invalidateQueries({ queryKey: ['profile', memberId] });
+  void queryClient.invalidateQueries({ queryKey: ['coach-classes'] });
 }
 
-/** Reward redemption updates points and redemption history only. */
-export function invalidateAfterRewardRedemption(
-  queryClient: QueryClient,
-  userId: string,
-) {
+/**
+ * Reward redemption: points, ledger, history, and catalog (inventory / sold-out).
+ * Catalog staleTime is 24h — must invalidate or stock stays wrong after redeem.
+ */
+export function invalidateAfterRewardRedemption(queryClient: QueryClient, userId: string) {
   void queryClient.invalidateQueries({ queryKey: homeDashboardKey(userId) });
   void queryClient.invalidateQueries({ queryKey: pointsKey(userId) });
   void queryClient.invalidateQueries({ queryKey: ledgerKey(userId) });
   void queryClient.invalidateQueries({ queryKey: redemptionsKey(userId) });
+  void queryClient.invalidateQueries({ queryKey: catalogKey });
 }

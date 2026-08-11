@@ -32,23 +32,9 @@ export const RecentAttendanceSection = memo(function RecentAttendanceSection({
           <Text style={[typography.textPresets.metricLabel, { color: colors.text.tertiary }]}>
             Recent visits
           </Text>
-          {totalHint !== undefined && totalHint > 0 ? (
-            <Text style={[styles.countLabel, { color: colors.text.tertiary }]}>
-              {totalHint} total
-            </Text>
-          ) : null}
         </View>
         {showViewAll ? (
           <View style={styles.headerActions}>
-            <Pressable
-              onPress={() => router.push('/attendance/class-sessions')}
-              accessibilityRole="button"
-              style={({ pressed }) => [styles.viewAllBtn, { opacity: pressed ? 0.7 : 1 }]}
-            >
-              <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.default }]}>
-                Classes
-              </Text>
-            </Pressable>
             <Pressable
               onPress={() => router.push('/attendance')}
               accessibilityRole="button"
@@ -83,7 +69,9 @@ export const RecentAttendanceSection = memo(function RecentAttendanceSection({
             No visits yet
           </Text>
           <Text style={[styles.emptyMessage, { color: colors.text.secondary }]}>
-            {syncing ? 'Syncing your gym history…' : 'Your check-ins will appear here after your first visit.'}
+            {syncing
+              ? 'Syncing your gym history…'
+              : 'Your check-ins will appear here after your first visit.'}
           </Text>
         </View>
       ) : (

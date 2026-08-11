@@ -1,0 +1,302 @@
+{
+  "info": {
+    "name": "971 MMA — NexusOne Realtime Access Control",
+    "_postman_id": "a1b2c3d4-e5f6-7890-abcd-ef1234567890",
+    "description": "# 971 MMA × SALTO NexusOne — Realtime Access Control API\n\nThis collection implements the **Realtime Access Control Integration — API Requirements v1** from SALTO Systems (NexusOne middleware).\n\n## Production base URL\n\n```\n{{base_url}}\n```\n\nAll endpoints are **POST**, **JSON** request/response, **HTTPS** only.\n\n## Authorization\n\n**Bearer token** (server-to-server). NexusOne must send:\n\n```\nAuthorization: Bearer {{api_bearer_token}}\nContent-Type: application/json\n```\n\nWe will provide `api_bearer_token` separately (secure channel). Do not embed it in the mobile app.\n\n## MemberId semantics\n\n`MemberId` accepts either:\n- **971 MMA app user UUID** (primary — from member profile / future biometric mapping), or\n- **Mindbody client ID** (numeric string, e.g. `100006257`)\n\n## QR / Card / PIN (Access by Media)\n\n- **Production path for GT7:** `Type` = `\"QR\"`. `Data` = the full string scanned from the member's phone (issued by the 971 MMA app, ~5 minute TTL).\n- QR format: `971mma:v2:supabase:<userId>:<expEpoch>:<jti>:<signature>`\n- **Card** and **PIN** are accepted by the contract but return `Granted: false` in v1 (not used at this site).\n\n## Access decision (Mindbody back-to-back)\n\nFor **Access by Media** and **Access by Member Id**, membership is validated **live against Mindbody** on each request (not a stale cache). Typical latency: 1–3 seconds.\n\n## Response contract — access endpoints\n\nBoth access endpoints **always return HTTP 200** with:\n\n```json\n{ \"Granted\": true|false, \"Message\": \"...\" }\n```\n\nDenied access is expressed via `Granted: false`, not via HTTP error codes.\n\n## Response contract — profile endpoint\n\nReturns HTTP **200** with profile fields, or HTTP **400/401** with `{ \"error\": { \"code\", \"message\" } }` if member not found or auth fails.\n\n## DeviceId\n\n`DeviceId` must be the identifier of the GT7 / access point (e.g. serial or site label). We allow-list devices on first use; provide your production device IDs before go-live.\n\n## UAT\n\nUse folder **Appendix — UAT examples** for a denied-media sample. For a **granted** QR test, request a fresh sample `Data` value from 971 MMA (expires in 5 minutes).\n\n---\n\n**Contact:** 971 MMA engineering (integration handoff)",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://YOUR_PROJECT.supabase.co/functions/v1"
+    }
+  ],
+  "item": [
+    {
+      "name": "1. Get Profile by Member Id",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"MemberId\": \"{{member_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/salto-profile-by-member-id",
+        "description": "## Get Profile by Member Id\n\nMaps a member for NexusOne local profile / biometric use.\n\n### Request\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| MemberId | String | App user UUID or Mindbody client ID |\n\n### Response (200)\n| Field | Type | Description |\n|-------|------|-------------|\n| FirstName | String | |\n| LastName | String | |\n| FullName | String | Optional |\n| DisplayName | String | Optional |\n| ImageBase64 | String | Optional (profile photo, base64 payload without data-URI prefix) |\n\n### Errors\n- **401** — missing/invalid bearer token\n- **400** — member not found"
+      },
+      "response": [
+        {
+          "name": "Example — success",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_bearer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"MemberId\": \"00000000-0000-0000-0000-000000000001\"\n}"
+            },
+            "url": "{{base_url}}/salto-profile-by-member-id"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"FirstName\": \"Jane\",\n  \"LastName\": \"Member\",\n  \"FullName\": \"Jane Member\",\n  \"DisplayName\": \"Jane Member\",\n  \"ImageBase64\": null\n}"
+        }
+      ]
+    },
+    {
+      "name": "2. Access Control by Member Id",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"MemberId\": \"{{member_id}}\",\n  \"DeviceId\": \"{{device_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/salto-access-by-member-id",
+        "description": "## Access Control by Member Id\n\nReal-time grant/deny when the member is already identified (e.g. biometric resolution). Validates membership live via Mindbody.\n\n### Request\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| MemberId | String | App user UUID or Mindbody client ID |\n| DeviceId | String | GT7 / gate / access point identifier |\n\n### Response (200)\n| Field | Type | Description |\n|-------|------|-------------|\n| Granted | Boolean | Grant or deny physical access |\n| Message | String | User-facing message for display |\n\n### Example messages\n- Granted: `\"Access granted.\"`\n- Denied: `\"No active membership found. Please contact front desk.\"`"
+      },
+      "response": [
+        {
+          "name": "Example — granted",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_bearer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"MemberId\": \"00000000-0000-0000-0000-000000000001\",\n  \"DeviceId\": \"GT7-ENTRY-01\"\n}"
+            },
+            "url": "{{base_url}}/salto-access-by-member-id"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"Granted\": true,\n  \"Message\": \"Access granted.\"\n}"
+        },
+        {
+          "name": "Example — denied",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"MemberId\": \"00000000-0000-0000-0000-000000000001\",\n  \"DeviceId\": \"GT7-ENTRY-01\"\n}"
+            },
+            "url": "{{base_url}}/salto-access-by-member-id"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "body": "{\n  \"Granted\": false,\n  \"Message\": \"No active membership found. Please contact front desk.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "3. Access Control by Card / QR / PIN",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer {{api_bearer_token}}",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"Data\": \"{{qr_data}}\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"{{device_id}}\"\n}",
+          "options": {
+            "raw": {
+              "language": "json"
+            }
+          }
+        },
+        "url": "{{base_url}}/salto-access-by-media",
+        "description": "## Access Control by Card / QR / PIN\n\n**Primary GT7 integration path.** NexusOne sends the scanned media payload; we validate the QR signature and call Mindbody live for the access decision.\n\n### Request\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| Data | String | Scanned payload (full QR string, card number, or PIN) |\n| Type | String | `\"QR\"`, `\"Card\"`, or `\"PIN\"` |\n| DeviceId | String | GT7 / gate / access point identifier |\n\n### Response (200)\n| Field | Type | Description |\n|-------|------|-------------|\n| Granted | Boolean | Grant or deny physical access |\n| Message | String | User-facing message |\n\n### Notes\n- **QR (v1 production):** `Data` is the exact string displayed in the 971 MMA member app. TTL ~5 minutes.\n- **Card / PIN:** contract-supported; v1 returns denied with unsupported message (not deployed at this site).\n- Duplicate scans within ~30s may return `Granted: true` without a second Mindbody write (anti-bounce)."
+      },
+      "response": [
+        {
+          "name": "Example — granted (QR)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_bearer_token}}"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Data\": \"971mma:v2:supabase:00000000-0000-0000-0000-000000000001:1783351137:00000000-0000-0000-0000-000000000002:EXAMPLE_SIGNATURE\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"GT7-ENTRY-01\"\n}"
+            },
+            "url": "{{base_url}}/salto-access-by-media"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [
+            {
+              "key": "Content-Type",
+              "value": "application/json"
+            }
+          ],
+          "body": "{\n  \"Granted\": true,\n  \"Message\": \"Access granted.\"\n}"
+        },
+        {
+          "name": "Example — denied (expired QR)",
+          "originalRequest": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Data\": \"971mma:v2:supabase:...\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"GT7-ENTRY-01\"\n}"
+            },
+            "url": "{{base_url}}/salto-access-by-media"
+          },
+          "status": "OK",
+          "code": 200,
+          "_postman_previewlanguage": "json",
+          "header": [],
+          "body": "{\n  \"Granted\": false,\n  \"Message\": \"QR expired. Refresh your pass in the app.\"\n}"
+        }
+      ]
+    },
+    {
+      "name": "Appendix — UAT examples",
+      "description": "Optional negative-path samples for integration testing. Not part of the NexusOne production contract.",
+      "item": [
+        {
+          "name": "Access by Media — invalid QR (expect Granted false)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_bearer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Data\": \"971mma:v2:supabase:invalid-user:1700000000:00000000-0000-0000-0000-000000000000:bad-signature\",\n  \"Type\": \"QR\",\n  \"DeviceId\": \"{{device_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/salto-access-by-media",
+            "description": "Negative test: tampered or unknown QR signature. Expect HTTP 200 with `Granted: false`."
+          },
+          "response": []
+        },
+        {
+          "name": "Access by Media — unsupported Type Card (expect Granted false)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{api_bearer_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"Data\": \"1234567890\",\n  \"Type\": \"Card\",\n  \"DeviceId\": \"{{device_id}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/salto-access-by-media",
+            "description": "v1: Card media type is not enabled at 971 MMA. Expect denied response."
+          },
+          "response": []
+        }
+      ]
+    }
+  ]
+}

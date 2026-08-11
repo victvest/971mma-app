@@ -6,28 +6,81 @@
   "build": {
     "development": {
       "developmentClient": true,
-      "distribution": "internal"
+      "distribution": "internal",
+      "environment": "development"
     },
     "preview": {
       "distribution": "internal",
       "environment": "preview",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "ANDROID_BUILD_ARCHS": "arm64-v8a",
+        "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
+        "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+      }
+    },
+    "preview-emulator": {
+      "distribution": "internal",
+      "environment": "preview",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ANDROID_BUILD_ARCHS": "x86_64",
+        "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
+        "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+      }
+    },
+    "production-apk": {
+      "autoIncrement": true,
+      "distribution": "internal",
+      "environment": "production",
+      "credentialsSource": "local",
+      "android": {
+        "buildType": "apk"
+      },
+      "env": {
+        "ANDROID_BUILD_ARCHS": "arm64-v8a",
+        "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
+        "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
       }
     },
     "production": {
       "autoIncrement": true,
       "environment": "production",
+      "android": {
+        "credentialsSource": "local",
+        "buildType": "app-bundle"
+      },
+      "ios": {
+        "resourceClass": "m-medium"
+      },
       "env": {
         "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
-        "EXPO_PUBLIC_COACH_DEMO_MODE": "false"
-      },
-      "android": {
-        "buildType": "app-bundle"
+        "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6795595614",
+        "appleTeamId": "394V8MLMQU",
+        "ascApiKeyPath": "./store/AuthKey_K9GL7Z4L4K.p8",
+        "ascApiKeyIssuerId": "eb851b75-e78a-4136-a598-277c6d920aa2",
+        "ascApiKeyId": "K9GL7Z4L4K"
+      },
+      "android": {
+        "serviceAccountKeyPath": "./store/google-service-account.json",
+        "track": "internal",
+        "releaseStatus": "draft"
+      }
+    }
   }
 }

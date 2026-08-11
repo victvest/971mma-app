@@ -1,45 +1,39 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
-import { useAnimatedStyle, useSharedValue, type SharedValue } from 'react-native-reanimated';
+import { useSharedValue, type SharedValue } from 'react-native-reanimated';
 
 export type HomeTabEntrance = {
+  /** React key used by shell-level sections for a bounded refocus visibility failsafe. */
+  replayKey: number;
   /** UI-thread signal — increments on tab refocus; never triggers a React re-render. */
   entranceSignal: SharedValue<number>;
-  coverStyle: ReturnType<typeof useAnimatedStyle>;
 };
 
 /**
- * Home tab entrance orchestration without React state.
- *
- * On blur, an opaque cover hides the frozen `freezeOnBlur` snapshot. On refocus the
- * cover stays up for one frame, then `entranceSignal` bumps and the cover drops —
- * all on the UI thread so the tab switch frame is not blocked by a full Home re-render.
+ * Home tab entrance orchestration. The Home screen intentionally does not use a
+ * full-screen blur cover: with `freezeOnBlur`, a stale native snapshot can
+ * occasionally outlive the focus transition and hide the route body.
  */
 export function useHomeTabEntrance(): HomeTabEntrance {
   const entranceSignal = useSharedValue(0);
-  const coverOpacity = useSharedValue(0);
   const pendingReplayRef = useRef(false);
+  const [replayKey, setReplayKey] = useState(0);
 
   useFocusEffect(
     useCallback(() => {
       if (pendingReplayRef.current) {
         pendingReplayRef.current = false;
         requestAnimationFrame(() => {
+          setReplayKey((current) => current + 1);
           entranceSignal.value += 1;
-          coverOpacity.value = 0;
         });
       }
 
       return () => {
         pendingReplayRef.current = true;
-        coverOpacity.value = 1;
       };
-    }, [coverOpacity, entranceSignal]),
+    }, [entranceSignal]),
   );
 
-  const coverStyle = useAnimatedStyle(() => ({
-    opacity: coverOpacity.value,
-  }));
-
-  return { entranceSignal, coverStyle };
+  return { entranceSignal, replayKey };
 }

@@ -6,7 +6,7 @@ import {
   getMyReferralStatus,
 } from '@/services/database/referrals.repository';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { ledgerKey, pointsKey } from '@/features/rewards/hooks/useRewards';
+import { ledgerKey, pointsKey } from '@/features/rewards/hooks/rewardsKeys';
 import { MEMBER_DASHBOARD_STALE_MS } from '@/lib/queryCachePolicy';
 
 export const referralCodeKey = (userId: string) => ['referral-code', userId] as const;

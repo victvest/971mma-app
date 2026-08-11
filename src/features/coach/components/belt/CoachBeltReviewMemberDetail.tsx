@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
@@ -16,6 +16,7 @@ import { toast } from '@/shared/components/Toast';
 import { useDialog } from '@/shared/components/Dialog/useDialog';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
 import type { RankDisciplineSlug } from '@/features/coach/hooks/useCoachAssignedDisciplines';
 
 type SelectedMember = {
@@ -36,7 +37,7 @@ type Props = {
 const AWARD_BAR_ESTIMATED_HEIGHT = 132;
 
 export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props) {
-  const { colors, inset, gap, layout } = useTheme();
+  const { colors, inset, gap, layout, radius, typography } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const { showAlert, showConfirm } = useDialog();
   const router = useRouter();
@@ -112,7 +113,7 @@ export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props)
       } catch (error) {
         showAlert(
           'Could not update requirement',
-          error instanceof Error ? error.message : 'Please try again.',
+          toUserFacingErrorMessage(error, { fallback: 'Please try again.' }),
         );
       } finally {
         setUpdatingRequirementId(null);
@@ -151,7 +152,7 @@ export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props)
     } catch (error) {
       showAlert(
         'Could not award stripe',
-        error instanceof Error ? error.message : 'Please try again.',
+        toUserFacingErrorMessage(error, { fallback: 'Please try again.' }),
       );
     }
   }, [
@@ -195,11 +196,9 @@ export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props)
           <StateBlock
             kind="error"
             title="Could not load belt progress"
-            message={
-              beltReviewQuery.error instanceof Error
-                ? beltReviewQuery.error.message
-                : 'Please check your connection.'
-            }
+            message={toUserFacingErrorMessage(beltReviewQuery.error, {
+              fallback: USER_FACING_LOAD_ERROR,
+            })}
             actionLabel="Retry"
             onAction={() => beltReviewQuery.refetch()}
           />
@@ -214,6 +213,8 @@ export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props)
               recentCheckIns={selectedMember.recentCheckIns}
               percent={review.percent}
             />
+
+
 
             <CoachBeltReviewRequirementStepper
               requirements={review.requirements}
@@ -236,6 +237,8 @@ export function CoachBeltReviewMemberDetail({ member, reviewDiscipline }: Props)
           onAward={handleAwardStripe}
         />
       ) : null}
+
+
     </View>
   );
 }

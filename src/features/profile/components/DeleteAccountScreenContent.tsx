@@ -1,11 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import {
-  Keyboard,
-  KeyboardAvoidingView,
-  Platform,
-  StyleSheet,
-  Text,
-} from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, StyleSheet, Text } from 'react-native';
 import Animated, {
   Easing,
   useAnimatedStyle,
@@ -18,14 +12,12 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ShieldAlert, Trash2 } from 'lucide-react-native';
 
-import {
-  AuthSubmitButton,
-  AuthTextField,
-} from '@/features/auth/components/AuthExperience';
+import { useAuth } from '@/features/auth/context/AuthContext';
+import { AuthSubmitButton, AuthTextField } from '@/features/auth/components/AuthExperience';
 import { toast } from '@/shared/components/Toast';
 import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
-import { requestAccountDeletion } from '@/services/database/account.repository';
+import { deleteMyAccount } from '@/services/database/account.repository';
 
 const CONFIRM_WORD = 'DELETE';
 
@@ -56,6 +48,7 @@ export function DeleteAccountScreenContent() {
   const { colors, typography, inset, gap } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
+  const { signOut } = useAuth();
 
   const [confirmText, setConfirmText] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -69,21 +62,22 @@ export function DeleteAccountScreenContent() {
     Keyboard.dismiss();
     setSubmitting(true);
     try {
-      await requestAccountDeletion();
+      await deleteMyAccount();
+      await signOut();
       toast.success(
-        'Request submitted',
-        'Staff will review your request. Your account stays active until deletion is completed.',
+        'Account deleted',
+        'Your app account and personal data have been permanently removed.',
       );
-      router.back();
+      router.replace('/(auth)/login');
     } catch {
       toast.error(
-        'Could not submit request',
-        'Please try again or contact the gym front desk.',
+        'Could not delete account',
+        'Please try again or contact info@971mma.com if this keeps happening.',
       );
     } finally {
       setSubmitting(false);
     }
-  }, [canSubmit, router]);
+  }, [canSubmit, router, signOut]);
 
   const introStyle = useEntrance(0);
   const fieldStyle = useEntrance(80);
@@ -108,7 +102,10 @@ export function DeleteAccountScreenContent() {
       >
         <Animated.View style={introStyle}>
           <Text style={[typography.textPresets.body, { color: colors.text.secondary }]}>
-            This submits a request for academy staff to permanently remove your app account, profile, attendance history, belt progress, and points. Your account stays active until staff complete the request. Gym membership is separate — contact the front desk to cancel it.
+            This permanently deletes your 971 MMA app account, profile, attendance history, belt
+            progress, and points. Deletion completes immediately when you confirm below. Gym
+            membership and billing are separate — contact the front desk at info@971mma.com or +971
+            54 332 3980 to cancel those.
           </Text>
         </Animated.View>
 
@@ -142,7 +139,7 @@ export function DeleteAccountScreenContent() {
         ]}
       >
         <AuthSubmitButton
-          label="Submit deletion request"
+          label="Delete my account"
           onPress={handleSubmit}
           loading={submitting}
           disabled={!canSubmit}

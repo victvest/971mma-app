@@ -13,19 +13,14 @@ type Props = {
  * Dark prestige card for belt path / high-value states on light screens.
  * Solid ink surface + shadow reads clearer than dark blur over a light page.
  */
-export function HomeCommandCard({
-  children,
-  padded = true,
-  style,
-  contentStyle,
-}: Props) {
-  const { colors, radius, inset, shadows, layout } = useTheme();
+export function HomeCommandCard({ children, padded = true, style, contentStyle }: Props) {
+  const { colors, radius, inset, surfaceShadow, layout } = useTheme();
 
   return (
     <View
       style={[
         styles.shell,
-        shadows.cardDark,
+        surfaceShadow('cardDark'),
         {
           backgroundColor: colors.surface.promo,
           borderColor: colors.border.onPromo,

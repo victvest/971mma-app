@@ -45,42 +45,24 @@ export function mergeDeckWithServerMembers(
   initialMembers: RollCallDeckMember[],
 ): RollCallDeckMember[] {
   const serverMap = new Map(initialMembers.map((member) => [member.deckKey, member] as const));
+  const localByKey = new Map(current.map((member) => [member.deckKey, member] as const));
   const localPendingWalkIns = current.filter(
     (member) => member.isWalkIn && member.mark === null && !serverMap.has(member.deckKey),
   );
 
-  if (current.length === 0 && initialMembers.length > 0) {
-    return initialMembers;
-  }
-
-  if (current.length === 0) {
-    return localPendingWalkIns;
-  }
-
-  const merged = current.map((member) => {
-    const server = serverMap.get(member.deckKey);
-    if (!server) return member;
+  // Server roster is membership source of truth so removals drop from the deck.
+  // Keep local optimistic marks when the server mark has not caught up yet.
+  const merged = initialMembers.map((server) => {
+    const local = localByKey.get(server.deckKey);
+    if (!local) return server;
 
     return {
-      ...member,
-      displayName: server.displayName,
-      avatarUrl: server.avatarUrl,
-      beltRank: server.beltRank,
-      beltStripes: server.beltStripes,
-      mark: server.mark ?? member.mark,
-      isOnApp: server.isOnApp,
-      isBookedOnRoster: server.isBookedOnRoster,
-      isWalkIn:
-        member.isWalkIn || server.isWalkIn || server.mark?.method === 'walk_in',
-      isGuest: member.isGuest || server.isGuest,
+      ...server,
+      mark: server.mark ?? local.mark,
+      isWalkIn: local.isWalkIn || server.isWalkIn || server.mark?.method === 'walk_in',
+      isGuest: local.isGuest || server.isGuest,
     };
   });
-
-  for (const serverMember of initialMembers) {
-    if (!merged.some((member) => member.deckKey === serverMember.deckKey)) {
-      merged.push(serverMember);
-    }
-  }
 
   const pendingKeys = new Set(localPendingWalkIns.map((member) => member.deckKey));
   const rest = merged.filter((member) => !pendingKeys.has(member.deckKey));

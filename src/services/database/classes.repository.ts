@@ -1,4 +1,4 @@
-import { gymRangeIso } from '@/core/time/gymTime';
+import { gymRangeIso, isGymToday } from '@/core/time/gymTime';
 import {
   getAcademyDemoClassById,
   getAcademyDemoClassesForCoach,
@@ -11,11 +11,11 @@ import {
   selectSchedulePage,
 } from '@/features/schedule/utils/scheduleDaySelectors';
 import type { ScheduleCategory } from '@/features/schedule/utils/scheduleCategory';
+import { isGymUsageClass } from '@/features/schedule/utils/classDisplay';
 import { getSupabaseClient } from '@/services/supabase/client';
 import type { ClassRow } from '@/types/database';
 import type { ClassItem, CoachItem } from '@/types/domain';
 import { getCoachById } from './coaches.repository';
-import { getMemberDisciplines } from './discipline.repository';
 import { mapClassRow } from './mappers';
 
 const CLASS_COLUMNS =
@@ -23,17 +23,47 @@ const CLASS_COLUMNS =
 
 export const HOME_HERO_CLASS_LIMIT = 3;
 
+/**
+ * Member home carousel:
+ * 1) Today's Gym Usage (live preferred, else soonest still-on today)
+ * 2) Next live / upcoming non–Gym Usage classes
+ * Never includes Gym Usage from other days.
+ */
 export function selectUpcomingHeroClasses(
   classes: ClassItem[],
   limit: number,
   now = Date.now(),
 ): ClassItem[] {
-  return classes
-    .filter((item) => new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now)
-    .slice(0, limit);
+  const nowDate = new Date(now);
+  const stillOn = (item: ClassItem) =>
+    new Date(item.startsAt).getTime() + item.durationMinutes * 60_000 > now;
+
+  const upcoming = classes
+    .filter(stillOn)
+    .sort((a, b) => new Date(a.startsAt).getTime() - new Date(b.startsAt).getTime());
+
+  const todayGymUsage = upcoming.filter(
+    (item) => isGymUsageClass(item) && isGymToday(item.startsAt, nowDate),
+  );
+  const liveGym = todayGymUsage.find((item) => {
+    const start = new Date(item.startsAt).getTime();
+    return now >= start && now <= start + item.durationMinutes * 60_000;
+  });
+  const gymLead = liveGym ? [liveGym] : todayGymUsage[0] ? [todayGymUsage[0]] : [];
+  const leadIds = new Set(gymLead.map((item) => item.id));
+
+  // Fill remaining slots with real classes only — never other-day Gym Usage.
+  const nextSessions = upcoming.filter(
+    (item) => !leadIds.has(item.id) && !isGymUsageClass(item),
+  );
+
+  return [...gymLead, ...nextSessions].slice(0, limit);
 }
 
-/** Home hero must never be empty — fall back to demo schedule for guests and stale mirrors. */
+/**
+ * Member home hero only. Does not invent other-day Gym Usage fillers.
+ * Schedule tab / coach mode use their own queries.
+ */
 export function resolveHomeHeroClasses(
   classes: ClassItem[],
   limit: number = HOME_HERO_CLASS_LIMIT,
@@ -42,16 +72,8 @@ export function resolveHomeHeroClasses(
   const upcoming = selectUpcomingHeroClasses(classes, limit, now);
   if (upcoming.length > 0) return upcoming;
 
-  const future = classes
-    .filter((item) => new Date(item.startsAt).getTime() > now)
-    .slice(0, limit);
-  if (future.length > 0) return future;
-
-  if (classes.length > 0) return classes.slice(0, limit);
-
   const demo = getAcademyDemoScheduleClasses(new Date(now));
-  const demoUpcoming = selectUpcomingHeroClasses(demo, limit, now);
-  return demoUpcoming.length > 0 ? demoUpcoming : demo.slice(0, limit);
+  return selectUpcomingHeroClasses(demo, limit, now);
 }
 
 export type SchedulePageInput = {
@@ -87,7 +109,10 @@ export async function fetchScheduleDayClasses(
     );
     if (hasUpcoming) return items;
   }
-  return getAcademyDemoScheduleClasses();
+  if (__DEV__) {
+    return getAcademyDemoScheduleClasses();
+  }
+  return items;
 }
 
 export async function fetchCoachDayClasses(
@@ -109,25 +134,21 @@ export async function fetchCoachDayClasses(
   const matched = selectClassesByCoach(day, coach);
   if (matched.length > 0) return matched;
 
-  return getAcademyDemoClassesForCoach(coach);
+  if (__DEV__) {
+    return getAcademyDemoClassesForCoach(coach);
+  }
+  return [];
 }
 
-/** Next non-cancelled Mindbody classes in the gym-local today/tomorrow window. */
+/** Next non-cancelled Mindbody classes for the member home hero (RPC fallback). */
 export async function fetchUpcomingHeroClasses(
   limit: number,
-  userId?: string,
+  _userId?: string,
 ): Promise<ClassItem[]> {
   const { fromISO, toISO } = gymRangeIso();
   const now = Date.now();
 
-  let enrolledDisciplineIds: string[] | null = null;
-  if (userId) {
-    const disciplines = await getMemberDisciplines(userId);
-    if (disciplines.length > 0) {
-      enrolledDisciplineIds = disciplines.map((item) => item.disciplineId);
-    }
-  }
-
+  // Academy-wide today/tomorrow pool — Gym Usage is pinned client-side.
   const { data, error } = await getSupabaseClient()
     .from('classes')
     .select(CLASS_COLUMNS)
@@ -139,18 +160,10 @@ export async function fetchUpcomingHeroClasses(
 
   if (error) throw error;
 
-  let items = ((data ?? []) as ClassRow[]).map(mapClassRow);
-
+  const items = ((data ?? []) as ClassRow[]).map(mapClassRow);
   if (items.length === 0) {
     return resolveHomeHeroClasses(getAcademyDemoScheduleClasses(), limit, now);
   }
-
-  if (enrolledDisciplineIds) {
-    items = items.filter(
-      (item) => item.disciplineId !== null && enrolledDisciplineIds!.includes(item.disciplineId),
-    );
-  }
-
   return resolveHomeHeroClasses(items, limit, now);
 }
 
@@ -225,5 +238,8 @@ export async function getClassesByCoachId(coachId: string): Promise<ClassItem[]>
   const byStaffOrName = await getClassesByCoach(coach);
   if (byStaffOrName.length > 0) return byStaffOrName;
 
-  return getAcademyDemoClassesForCoach(coach);
+  if (__DEV__) {
+    return getAcademyDemoClassesForCoach(coach);
+  }
+  return [];
 }

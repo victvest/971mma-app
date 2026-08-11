@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.victvest.ninemma",
+      "sha256_cert_fingerprints": [
+        "A1:0E:A8:79:4C:1F:27:CB:8F:37:12:17:DB:D6:70:3B:03:CC:8F:C5:07:8D:2B:6D:BE:8B:07:E7:2C:4F:EB:0F"
+      ]
+    }
+  }
+]

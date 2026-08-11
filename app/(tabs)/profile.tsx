@@ -2,10 +2,13 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Image } from 'expo-image';
 import {
   Pressable,
+  Platform,
   RefreshControl,
+  type StyleProp,
   StyleSheet,
   Text,
   View,
+  type ViewStyle,
 } from 'react-native';
 import Animated, {
   Easing,
@@ -23,6 +26,7 @@ import Animated, {
 import Svg, { Circle } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useFocusEffect, useRouter } from 'expo-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -39,28 +43,39 @@ import { GlassNavChrome } from '@/features/home/components/navigation/GlassNavCh
 import { NAV_CHROME, UAE } from '@/features/home/components/navigation/uaeChrome';
 
 import { useAuth } from '@/features/auth/context/AuthContext';
+import { useActivationRequest } from '@/features/auth/hooks/useActivationRequest';
 import { useProfile } from '@/features/profile/hooks/useProfile';
-import { useDisciplineScore, useMemberPercentileRank } from '@/features/home/hooks/useHomeDashboard';
+import {
+  useDisciplineScore,
+  useMemberPercentileRank,
+} from '@/features/home/hooks/useHomeDashboard';
 import { usePoints } from '@/features/rewards/hooks/useRewards';
 import { useBeltPath } from '@/features/belt/hooks/useBeltPath';
 import { useRankEligibility } from '@/features/auth/hooks/useMemberDisciplines';
-import { useMembership, useMembershipRefresh } from '@/features/profile/hooks/useMembership';
+import {
+  useMembership,
+  useMembershipRefresh,
+  syncMembershipFromMindbody,
+} from '@/features/profile/hooks/useMembership';
 import { MyGuardiansCard } from '@/features/guardian/components/MyGuardiansCard';
-import { useActiveProfileLabel, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import {
+  useActiveMemberId,
+  useActiveProfileLabel,
+  useIsViewingChildProfile,
+} from '@/hooks/useActiveMemberId';
 import { dateOfBirthToAge } from '@/features/onboarding/services/onboardingValidation';
 import { useAuthStore } from '@/stores/useAuthStore';
 import { useIsGuest } from '@/shared/hooks/useIsGuest';
+import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
+import { useOfflineBannerVisible } from '@/shared/hooks/useOfflineBannerVisible';
 import { ProfileSkeleton } from '@/shared/animations';
 import { triggerLightImpact } from '@/shared/haptics';
 import { AppStatusBar } from '@/shared/components/AppStatusBar';
 import { MemberAvatar } from '@/shared/components/MemberAvatar';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
-import {
-  isOfflineWithoutCache,
-  OFFLINE_MESSAGE,
-  OFFLINE_TITLE,
-} from '@/lib/offlineState';
+import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { HomeBeltPathCard } from '@/features/home/components/HomeBeltPathCard';
 import {
   BrandedLucideIconBadge,
@@ -109,20 +124,22 @@ const MembershipCard = React.memo(function MembershipCard({
   colors,
   cardRadius,
 }: MembershipCardProps) {
-  const { shadows, layout } = useTheme();
+  const { surfaceShadow, layout } = useTheme();
   const statusConfig = useMemo(() => {
-    if (status === 'active') return {
-      bg: colors.status.successSubtle,
-      border: colors.status.successBorder,
-      text: colors.status.success,
-      label: 'ACTIVE',
-    };
-    if (status === 'paused') return {
-      bg: colors.status.warningSubtle,
-      border: colors.status.warningBorder,
-      text: colors.status.warning,
-      label: 'PAUSED',
-    };
+    if (status === 'active')
+      return {
+        bg: colors.status.successSubtle,
+        border: colors.status.successBorder,
+        text: colors.status.success,
+        label: 'ACTIVE',
+      };
+    if (status === 'paused')
+      return {
+        bg: colors.status.warningSubtle,
+        border: colors.status.warningBorder,
+        text: colors.status.warning,
+        label: 'PAUSED',
+      };
     return {
       bg: colors.status.errorSubtle,
       border: colors.status.errorBorder,
@@ -135,7 +152,7 @@ const MembershipCard = React.memo(function MembershipCard({
     <View
       style={[
         styles.membershipCard,
-        shadows.card,
+        surfaceShadow('card'),
         {
           backgroundColor: colors.surface.primary,
           borderColor: colors.border.subtle,
@@ -196,7 +213,13 @@ const MembershipCard = React.memo(function MembershipCard({
         <View style={styles.membershipRow}>
           <Text style={[styles.membershipRowLabel, { color: colors.text.tertiary }]}>Expires</Text>
           <Text style={[styles.membershipRowValue, { color: colors.text.primary }]}>
-            {expiresAt ? new Date(expiresAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '—'}
+            {expiresAt
+              ? new Date(expiresAt).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : '—'}
           </Text>
         </View>
 
@@ -205,7 +228,11 @@ const MembershipCard = React.memo(function MembershipCard({
             <View style={[styles.membershipDivider, { backgroundColor: colors.border.subtle }]} />
             <View style={styles.membershipSyncRow}>
               <Text style={[styles.membershipSyncText, { color: colors.text.tertiary }]}>
-                Synced {new Date(lastSyncedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                Synced{' '}
+                {new Date(lastSyncedAt).toLocaleTimeString('en-US', {
+                  hour: '2-digit',
+                  minute: '2-digit',
+                })}
               </Text>
               {isFetching ? (
                 <Text style={[styles.membershipSyncText, { color: colors.accent.default }]}>
@@ -225,12 +252,19 @@ const CardWrapper = React.memo(function CardWrapper({
   style,
 }: {
   children: React.ReactNode;
-  style?: any;
+  style?: StyleProp<ViewStyle>;
 }) {
+  const { colors, layout, surfaceShadow } = useTheme();
+
   return (
     <View
       style={[
         styles.cardWrapper,
+        surfaceShadow('card'),
+        {
+          borderColor: colors.border.subtle,
+          borderWidth: layout.borderWidth,
+        },
         style,
       ]}
     >
@@ -291,19 +325,22 @@ const ProfileActionTile = React.memo(function ProfileActionTile({
   );
 });
 
-
-
-
 // ─── Main screen ──────────────────────────────────────────────────────────────
 export default function ProfileScreen() {
-  const { colors, typography, inset, radius, gap, layout, mode } = useTheme();
+  const { colors, typography, inset, radius, gap, layout, mode, surfaceShadow } = useTheme();
   usePerfRouteMount(PerfMark.routeProfileMount);
   const safeInsets = useSafeAreaInsets();
+  const topInset = useAppTopInset();
+  const offlineBannerVisible = useOfflineBannerVisible();
   const router = useRouter();
   const { signOut, signOutOtherDevices } = useAuth();
   const { showConfirm, showAlert } = useDialog();
   const user = useAuthStore((s) => s.user);
+  const activeMemberId = useActiveMemberId();
+  const queryClient = useQueryClient();
   const { needsActivation } = useIsGuest();
+  const activationRequestQuery = useActivationRequest({ enabled: needsActivation });
+  const hasActivationRequest = Boolean(activationRequestQuery.data);
   const activeProfileLabel = useActiveProfileLabel();
   const viewingChild = useIsViewingChildProfile();
 
@@ -376,38 +413,45 @@ export default function ProfileScreen() {
   const beltNextStripe = beltStripe < beltMaxStripes ? beltStripe + 1 : beltMaxStripes;
 
   const memberSinceYearLabel = useMemo(() => {
-    if (!profile?.memberSince) return 'Member since 2024';
+    if (!profile?.memberSince) return null;
     try {
-      const d = new Date(profile.memberSince);
-      return `Member since ${d.getFullYear()}`;
+      const year = new Date(profile.memberSince).getFullYear();
+      if (!Number.isFinite(year)) return null;
+      return `Member since ${year}`;
     } catch {
-      return 'Member since 2024';
+      return null;
     }
   }, [profile?.memberSince]);
 
   const consistencyRank = useMemo(() => {
     const topPercent = percentileQuery.data;
-    if (topPercent == null) return '—';
+    if (topPercent == null || topPercent <= 0) return '—';
     return `Top ${topPercent}%`;
   }, [percentileQuery.data]);
-
-
 
   // ── Loading / error ───────────────────────────────────────────────────────
   const isLoading = needsActivation
     ? profileQuery.isLoading
-    : profileQuery.isLoading || disciplineQuery.isLoading ||
-      pointsQuery.isLoading || rankEligibilityQuery.isLoading ||
-      (rankEligible && beltPathQuery.isLoading) || membershipQuery.isLoading;
+    : profileQuery.isLoading ||
+      disciplineQuery.isLoading ||
+      pointsQuery.isLoading ||
+      rankEligibilityQuery.isLoading ||
+      (rankEligible && beltPathQuery.isLoading) ||
+      membershipQuery.isLoading;
   const hasError = needsActivation
     ? profileQuery.isError
-    : profileQuery.isError || disciplineQuery.isError ||
-      pointsQuery.isError || rankEligibilityQuery.isError ||
-      (rankEligible && beltPathQuery.isError) || membershipQuery.isError;
+    : profileQuery.isError ||
+      disciplineQuery.isError ||
+      pointsQuery.isError ||
+      rankEligibilityQuery.isError ||
+      (rankEligible && beltPathQuery.isError) ||
+      membershipQuery.isError;
   const hasData = needsActivation
     ? profileQuery.data !== undefined
-    : profileQuery.data !== undefined || disciplineQuery.data !== undefined ||
-      pointsQuery.data !== undefined || rankEligibilityQuery.data !== undefined ||
+    : profileQuery.data !== undefined ||
+      disciplineQuery.data !== undefined ||
+      pointsQuery.data !== undefined ||
+      rankEligibilityQuery.data !== undefined ||
       beltPathQuery.data !== undefined ||
       membershipQuery.data !== undefined;
   const isInitialLoading = isLoading && !hasData;
@@ -421,7 +465,7 @@ export default function ProfileScreen() {
     scrollY.value = ev.contentOffset.y;
   });
 
-  const heroTotalH = PROFILE_HERO_HEIGHT + safeInsets.top;
+  const heroTotalH = PROFILE_HERO_HEIGHT + topInset;
   const headerRevealStart = heroTotalH - 100;
   const headerRevealEnd = heroTotalH - 10;
 
@@ -488,6 +532,10 @@ export default function ProfileScreen() {
         await profileQuery.refetch();
         return;
       }
+      await syncMembershipFromMindbody(queryClient, {
+        activeMemberId,
+        authUserId: user?.id ?? '',
+      });
       await Promise.all([
         profileQuery.refetch(),
         disciplineQuery.refetch(),
@@ -496,7 +544,6 @@ export default function ProfileScreen() {
         rankEligibilityQuery.refetch(),
         beltPathQuery.refetch(),
         membershipQuery.refetch(),
-        membershipRefresh.refetch(),
       ]);
     } finally {
       setRefreshing(false);
@@ -510,16 +557,15 @@ export default function ProfileScreen() {
     rankEligibilityQuery,
     beltPathQuery,
     membershipQuery,
-    membershipRefresh,
+    activeMemberId,
+    queryClient,
+    user?.id,
   ]);
 
   const handleSignOut = useCallback(() => {
-    showConfirm(
-      'Sign out?',
-      'You will need to sign in again to access your account.',
-      signOut,
-      { confirmLabel: 'Sign out' },
-    );
+    showConfirm('Sign out?', 'You will need to sign in again to access your account.', signOut, {
+      confirmLabel: 'Sign out',
+    });
   }, [showConfirm, signOut]);
 
   const handleSignOutAllDevices = useCallback(() => {
@@ -529,7 +575,12 @@ export default function ProfileScreen() {
       async () => {
         const result = await signOutOtherDevices();
         if (result.error) {
-          showAlert('Could not sign out devices', result.error);
+          showAlert(
+            'Could not sign out devices',
+            toUserFacingErrorMessage(result.error, {
+              fallback: 'Please try again, or talk to the front desk for help.',
+            }),
+          );
           return;
         }
         showAlert('Signed out', 'Other devices have been signed out.');
@@ -550,6 +601,10 @@ export default function ProfileScreen() {
       onPress: () => void;
       iconTone?: BrandedIconTone;
     }> = [];
+
+    if (viewingChild) {
+      return list;
+    }
 
     if (needsActivation) {
       list.push({
@@ -579,15 +634,13 @@ export default function ProfileScreen() {
       });
     }
 
-    if (!viewingChild) {
-      list.push({
-        icon: Trash2,
-        iconTone: 'neutral',
-        title: 'Delete Account',
-        subtitle: 'Request account deletion',
-        onPress: handleRequestDeletion,
-      });
-    }
+    list.push({
+      icon: Trash2,
+      iconTone: 'neutral',
+      title: 'Delete Account',
+      subtitle: 'Permanently delete your app account',
+      onPress: handleRequestDeletion,
+    });
 
     if (user) {
       list.push({
@@ -608,8 +661,15 @@ export default function ProfileScreen() {
     });
 
     return list;
-  }, [needsActivation, viewingChild, user, router, handleRequestDeletion, handleSignOutAllDevices, handleSignOut]);
-
+  }, [
+    needsActivation,
+    viewingChild,
+    user,
+    router,
+    handleRequestDeletion,
+    handleSignOutAllDevices,
+    handleSignOut,
+  ]);
 
   // ── Styles with dynamic values ─────────────────────────────────────────────
   const contentPadding = useMemo(
@@ -653,7 +713,7 @@ export default function ProfileScreen() {
         style={[
           styles.headerRoot,
           {
-            top: safeInsets.top + NAV_CHROME.topInset,
+            top: offlineBannerVisible ? 0 : topInset + NAV_CHROME.topInset,
           },
         ]}
         pointerEvents="box-none"
@@ -664,25 +724,20 @@ export default function ProfileScreen() {
           style={styles.headerSoloCluster}
           contentStyle={styles.headerSoloContent}
         >
-          <Ionicons
-            name="chevron-back"
-            size={NAV_CHROME.iconSize}
-            color={UAE.ink}
-          />
+          <Ionicons name="chevron-back" size={NAV_CHROME.iconSize} color={UAE.ink} />
         </GlassNavChrome>
 
         <GlassNavChrome
           accessibilityLabel="Profile actions"
           layout="bar"
           style={styles.headerActionCapsule}
-          contentStyle={[
-            styles.headerActionCapsuleContent,
-            viewingChild && { paddingRight: 16 }
-          ]}
+          contentStyle={[styles.headerActionCapsuleContent, viewingChild && { paddingRight: 16 }]}
           borderRadius={NAV_CHROME.glassRadius}
         >
           <View style={styles.headerTitleWrapper}>
-            <Text style={[typography.textPresets.bodyStrong, { color: UAE.ink, fontWeight: '700' }]}>
+            <Text
+              style={[typography.textPresets.bodyStrong, { color: UAE.ink, fontWeight: '700' }]}
+            >
               Profile
             </Text>
           </View>
@@ -706,7 +761,7 @@ export default function ProfileScreen() {
 
       {/* ── Error state (no data available) ── */}
       {showOfflineOnly ? (
-        <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
+        <View style={[profileScreenStyles.stateCenter, { paddingTop: topInset + 80 }]}>
           <StateBlock
             kind="error"
             title={OFFLINE_TITLE}
@@ -719,7 +774,7 @@ export default function ProfileScreen() {
       ) : null}
 
       {showErrorOnly ? (
-        <View style={[profileScreenStyles.stateCenter, { paddingTop: safeInsets.top + 80 }]}>
+        <View style={[profileScreenStyles.stateCenter, { paddingTop: topInset + 80 }]}>
           <StateBlock
             kind="error"
             title="Could not load profile"
@@ -733,7 +788,12 @@ export default function ProfileScreen() {
 
       {/* ── Initial loading skeleton ── */}
       {showSkeletonOnly ? (
-        <View style={[profileScreenStyles.skeletonWrap, { paddingTop: safeInsets.top + appBarHeight + 16 }]}>
+        <View
+          style={[
+            profileScreenStyles.skeletonWrap,
+            { paddingTop: topInset + appBarHeight + 16 },
+          ]}
+        >
           <ProfileSkeleton />
         </View>
       ) : null}
@@ -750,7 +810,7 @@ export default function ProfileScreen() {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
-              progressViewOffset={safeInsets.top + appBarHeight}
+              progressViewOffset={topInset + appBarHeight}
             />
           }
         >
@@ -759,12 +819,21 @@ export default function ProfileScreen() {
             style={[
               styles.identityContainer,
               {
-                paddingTop: safeInsets.top + NAV_CHROME.clusterHeight + 24,
+                paddingTop: topInset + NAV_CHROME.clusterHeight + 24,
               },
               heroEntrance,
             ]}
           >
-            <View style={styles.avatarGlowContainer}>
+            <View
+              style={[
+                styles.avatarGlowContainer,
+                surfaceShadow('card'),
+                {
+                  borderColor: colors.border.subtle,
+                  borderWidth: layout.borderWidth,
+                },
+              ]}
+            >
               <MemberAvatar
                 name={displayName}
                 avatarUrl={profile?.avatarUrl}
@@ -777,9 +846,7 @@ export default function ProfileScreen() {
               />
             </View>
 
-            <Text style={[styles.centeredName, { color: colors.text.primary }]}>
-              {displayName}
-            </Text>
+            <Text style={[styles.centeredName, { color: colors.text.primary }]}>{displayName}</Text>
 
             {needsActivation && user?.email ? (
               <Text
@@ -793,32 +860,54 @@ export default function ProfileScreen() {
             ) : null}
 
             {/* Member since */}
-            <View style={[needsActivation ? styles.badgesColumn : styles.badgesRow, { gap: gap.sm }]}>
+            <View
+              style={[needsActivation ? styles.badgesColumn : styles.badgesRow, { gap: gap.sm }]}
+            >
               {needsActivation ? (
                 <>
                   {memberAge !== null ? (
                     <View style={styles.memberSinceBadge}>
-                      <Ionicons name="person-outline" size={13} color={colors.text.secondary} style={{ marginRight: 4 }} />
+                      <Ionicons
+                        name="person-outline"
+                        size={13}
+                        color={colors.text.secondary}
+                        style={{ marginRight: 4 }}
+                      />
                       <Text style={[styles.memberSinceText, { color: colors.text.secondary }]}>
                         {memberAge} years old
                       </Text>
                     </View>
                   ) : null}
-                  <View style={[styles.beltBadge, { backgroundColor: colors.status.warningSubtle, borderRadius: radius.pill }]}>
-                    <Ionicons name="time-outline" size={12} color={colors.status.warning} style={{ marginRight: 4 }} />
+                  <View
+                    style={[
+                      styles.beltBadge,
+                      { backgroundColor: colors.status.warningSubtle, borderRadius: radius.pill },
+                    ]}
+                  >
+                    <Ionicons
+                      name="time-outline"
+                      size={12}
+                      color={colors.status.warning}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text style={[styles.beltBadgeText, { color: colors.status.warning }]}>
-                      Pending activation
+                      {hasActivationRequest ? 'Request sent' : 'Activation needed'}
                     </Text>
                   </View>
                 </>
-              ) : (
+              ) : memberSinceYearLabel ? (
                 <View style={styles.memberSinceBadge}>
-                  <Ionicons name="calendar-outline" size={13} color={colors.text.secondary} style={{ marginRight: 4 }} />
+                  <Ionicons
+                    name="calendar-outline"
+                    size={13}
+                    color={colors.text.secondary}
+                    style={{ marginRight: 4 }}
+                  />
                   <Text style={[styles.memberSinceText, { color: colors.text.secondary }]}>
                     {memberSinceYearLabel}
                   </Text>
                 </View>
-              )}
+              ) : null}
             </View>
           </Animated.View>
 
@@ -836,124 +925,124 @@ export default function ProfileScreen() {
           ) : null}
 
           {/* ─ Performance Cards (2x2 Grid) ─ */}
-          {!needsActivation ? (
-          <Animated.View style={[styles.sectionContainer, statsEntrance, { marginBottom: 8 }]}>
-            <View style={[styles.perfCardsGrid, { gap: 12 }]}>
-              {/* Row 1 */}
-              <View style={styles.perfCardsRow}>
-                {/* Card 1: Training Volume */}
-                <View style={styles.cardWrapper}>
-                  {/* Barbell Watermark */}
-                  <View style={styles.watermarkContainer}>
-                    <Ionicons
-                      name="barbell-outline"
-                      size={80}
-                      color="#000000"
-                      style={{ opacity: 0.07, transform: [{ rotate: '-15deg' }] }}
-                    />
-                  </View>
+          {!needsActivation && !viewingChild ? (
+            <Animated.View style={[styles.sectionContainer, statsEntrance, { marginBottom: 8 }]}>
+              <View style={[styles.perfCardsGrid, { gap: 12 }]}>
+                {/* Row 1 */}
+                <View style={styles.perfCardsRow}>
+                  {/* Card 1: Training Volume */}
+                  <View style={styles.cardWrapper}>
+                    {/* Barbell Watermark */}
+                    <View style={styles.watermarkContainer}>
+                      <Ionicons
+                        name="barbell-outline"
+                        size={80}
+                        color="#000000"
+                        style={{ opacity: 0.07, transform: [{ rotate: '-15deg' }] }}
+                      />
+                    </View>
 
-                  <View style={styles.perfCardHeader}>
-                    <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
-                      Training Volume
+                    <View style={styles.perfCardHeader}>
+                      <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
+                        Training Volume
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
+                      {score?.trainingDays ?? 0}
+                    </Text>
+
+                    <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
+                      Classes Completed
                     </Text>
                   </View>
 
-                  <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
-                    {score?.trainingDays ?? 0}
-                  </Text>
+                  {/* Card 2: Consistency */}
+                  <View style={styles.cardWrapper}>
+                    {/* Trending Up Watermark */}
+                    <View style={styles.watermarkContainer}>
+                      <Ionicons
+                        name="trending-up-outline"
+                        size={80}
+                        color="#000000"
+                        style={{ opacity: 0.07, transform: [{ rotate: '-10deg' }] }}
+                      />
+                    </View>
 
-                  <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
-                    Classes Completed
-                  </Text>
+                    <View style={styles.perfCardHeader}>
+                      <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
+                        Consistency
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.perfCardValue, { color: '#00843D' }]}>
+                      {consistencyRank}
+                    </Text>
+
+                    <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
+                      Attendance Rank
+                    </Text>
+                  </View>
                 </View>
 
-                {/* Card 2: Consistency */}
-                <View style={styles.cardWrapper}>
-                  {/* Trending Up Watermark */}
-                  <View style={styles.watermarkContainer}>
-                    <Ionicons
-                      name="trending-up-outline"
-                      size={80}
-                      color="#000000"
-                      style={{ opacity: 0.07, transform: [{ rotate: '-10deg' }] }}
-                    />
-                  </View>
+                {/* Row 2 */}
+                <View style={styles.perfCardsRow}>
+                  {/* Card 3: Current Streak */}
+                  <View style={styles.cardWrapper}>
+                    {/* Flame Watermark */}
+                    <View style={styles.watermarkContainer}>
+                      <Ionicons
+                        name="flame-outline"
+                        size={80}
+                        color="#000000"
+                        style={{ opacity: 0.07, transform: [{ rotate: '-12deg' }] }}
+                      />
+                    </View>
 
-                  <View style={styles.perfCardHeader}>
-                    <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
-                      Consistency
+                    <View style={styles.perfCardHeader}>
+                      <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
+                        Current Streak
+                      </Text>
+                    </View>
+
+                    <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
+                      {score?.currentStreak ?? 0}
+                    </Text>
+
+                    <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
+                      Day Streak
                     </Text>
                   </View>
 
-                  <Text style={[styles.perfCardValue, { color: '#00843D' }]}>
-                    {consistencyRank}
-                  </Text>
+                  {/* Card 4: Points Balance */}
+                  <View style={styles.cardWrapper}>
+                    {/* Diamond Watermark */}
+                    <View style={styles.watermarkContainer}>
+                      <Ionicons
+                        name="diamond-outline"
+                        size={80}
+                        color="#000000"
+                        style={{ opacity: 0.07, transform: [{ rotate: '-8deg' }] }}
+                      />
+                    </View>
 
-                  <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
-                    Attendance Rank
-                  </Text>
-                </View>
-              </View>
+                    <View style={styles.perfCardHeader}>
+                      <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
+                        Points Balance
+                      </Text>
+                    </View>
 
-              {/* Row 2 */}
-              <View style={styles.perfCardsRow}>
-                {/* Card 3: Current Streak */}
-                <View style={styles.cardWrapper}>
-                  {/* Flame Watermark */}
-                  <View style={styles.watermarkContainer}>
-                    <Ionicons
-                      name="flame-outline"
-                      size={80}
-                      color="#000000"
-                      style={{ opacity: 0.07, transform: [{ rotate: '-12deg' }] }}
-                    />
-                  </View>
-
-                  <View style={styles.perfCardHeader}>
-                    <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
-                      Current Streak
+                    <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
+                      {Number(points?.balance ?? 0).toLocaleString()}
                     </Text>
-                  </View>
 
-                  <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
-                    {score?.currentStreak ?? 0}
-                  </Text>
-
-                  <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
-                    Day Streak
-                  </Text>
-                </View>
-
-                {/* Card 4: Points Balance */}
-                <View style={styles.cardWrapper}>
-                  {/* Diamond Watermark */}
-                  <View style={styles.watermarkContainer}>
-                    <Ionicons
-                      name="diamond-outline"
-                      size={80}
-                      color="#000000"
-                      style={{ opacity: 0.07, transform: [{ rotate: '-8deg' }] }}
-                    />
-                  </View>
-
-                  <View style={styles.perfCardHeader}>
-                    <Text style={[styles.perfCardLabel, { color: colors.text.secondary }]}>
+                    <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
                       Points Balance
                     </Text>
                   </View>
-
-                  <Text style={[styles.perfCardValue, { color: colors.text.primary }]}>
-                    {Number(points?.balance ?? 0).toLocaleString()}
-                  </Text>
-
-                  <Text style={[styles.perfCardSub, { color: colors.text.secondary }]}>
-                    Points Balance
-                  </Text>
                 </View>
               </View>
-            </View>
-          </Animated.View>
+            </Animated.View>
           ) : null}
 
           {/* ─ Martial Arts Belt rank card ─ */}
@@ -972,46 +1061,51 @@ export default function ProfileScreen() {
           ) : null}
 
           {/* ─ Account actions ─ */}
-          <Animated.View style={[styles.sectionContainer, membershipEntrance, { marginBottom: 8 }]}>
-            <View
-              style={[
-                styles.actionGroup,
-                {
-                  backgroundColor: colors.surface.primary,
-                  borderColor: actionGroupBorder,
-                  borderRadius: radius.card,
-                  borderWidth: StyleSheet.hairlineWidth,
-                },
-              ]}
+          {accountOptions.length > 0 ? (
+            <Animated.View
+              style={[styles.sectionContainer, membershipEntrance, { marginBottom: 8 }]}
             >
-              {accountOptions.map((opt, index) => (
-                <ProfileActionTile
-                  key={opt.title}
-                  icon={opt.icon}
-                  title={opt.title}
-                  subtitle={opt.subtitle}
-                  onPress={opt.onPress}
-                  iconTone={opt.iconTone}
-                  showDivider={index < accountOptions.length - 1}
-                />
-              ))}
-            </View>
-          </Animated.View>
+              <View
+                style={[
+                  styles.actionGroup,
+                  {
+                    backgroundColor: colors.surface.primary,
+                    borderColor: actionGroupBorder,
+                    borderRadius: radius.card,
+                    borderWidth: StyleSheet.hairlineWidth,
+                  },
+                ]}
+              >
+                {accountOptions.map((opt, index) => (
+                  <ProfileActionTile
+                    key={opt.title}
+                    icon={opt.icon}
+                    title={opt.title}
+                    subtitle={opt.subtitle}
+                    onPress={opt.onPress}
+                    iconTone={opt.iconTone}
+                    showDivider={index < accountOptions.length - 1}
+                  />
+                ))}
+              </View>
+            </Animated.View>
+          ) : null}
 
           {/* ─ Guardians + footer ─ */}
           <Animated.View style={[bottomEntrance, { gap: inset.md }]}>
             {!viewingChild && !needsActivation ? <MyGuardiansCard /> : null}
-            
-            <Text style={[typography.textPresets.caption, { color: colors.text.tertiary, textAlign: 'center', marginTop: 32 }]}>
+
+            <Text
+              style={[
+                typography.textPresets.caption,
+                { color: colors.text.tertiary, textAlign: 'center', marginTop: 32 },
+              ]}
+            >
               {versionLabel}
             </Text>
           </Animated.View>
-
-
         </Animated.ScrollView>
       ) : null}
-
-
     </View>
   );
 }
@@ -1226,13 +1320,16 @@ const styles = StyleSheet.create({
   avatarGlowContainer: {
     alignSelf: 'center',
     borderRadius: 999,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.05,
-    shadowRadius: 16,
-    elevation: 4,
     marginBottom: 16,
     backgroundColor: '#FFFFFF',
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.05,
+        shadowRadius: 16,
+      },
+    }),
   },
   centeredName: {
     fontSize: 26,
@@ -1292,12 +1389,14 @@ const styles = StyleSheet.create({
     padding: 20,
     position: 'relative',
     overflow: 'hidden',
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.04,
-    shadowRadius: 16,
-    elevation: 3,
-    borderWidth: 0,
+    ...Platform.select({
+      ios: {
+        shadowColor: '#000000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.04,
+        shadowRadius: 16,
+      },
+    }),
   },
   watermarkContainer: {
     position: 'absolute',
@@ -1350,5 +1449,4 @@ const styles = StyleSheet.create({
     gap: 2,
     paddingRight: 8,
   },
-
 });

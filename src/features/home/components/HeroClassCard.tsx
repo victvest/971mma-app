@@ -2,12 +2,23 @@ import React, { memo, useMemo } from 'react';
 import { BlurView } from 'expo-blur';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Platform, StyleSheet, Text, useWindowDimensions, View, type StyleProp, type ViewStyle } from 'react-native';
+import {
+  Platform,
+  StyleSheet,
+  Text,
+  useWindowDimensions,
+  View,
+  type StyleProp,
+  type ViewStyle,
+} from 'react-native';
 import { GlassMediaChip, AppScrollView } from '@/shared/components/ui';
 import { UaeBrandAmbientGlow } from '@/shared/components/brand';
 import { HomeAnimatedPressable } from '@/features/home/components/HomeAnimatedPressable';
 import { useTheme } from '@/shared/theme';
 import { academyAssets } from '@/features/academy/assets';
+import { resolveClassImage } from '@/features/schedule/utils/classImages';
+import { isGymUsageClass } from '@/features/schedule/utils/classDisplay';
+import { formatGymTime12h, isGymToday } from '@/core/time/gymTime';
 import type { ClassItem } from '@/types/domain';
 
 const CARD_PEEK = 20;
@@ -15,29 +26,11 @@ const CARD_PEEK = 20;
 const HERO_CARD_HEIGHT_RATIO = (5 / 4) * 0.8;
 const HERO_ACTION_HEIGHT_SCALE = 0.9;
 
-function getGymDateKey(date: Date): string {
-  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const dubaiTime = new Date(utc + 3600000 * 4);
-  const y = dubaiTime.getFullYear();
-  const m = (dubaiTime.getMonth() + 1).toString().padStart(2, '0');
-  const d = dubaiTime.getDate().toString().padStart(2, '0');
-  return `${y}-${m}-${d}`;
-}
-
-function formatShortDay(date: Date): string {
-  const utc = date.getTime() + date.getTimezoneOffset() * 60000;
-  const dubaiTime = new Date(utc + 3600000 * 4);
-  return dubaiTime.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
-}
-
 function formatClassStatus(classItem: ClassItem) {
   const startTime = new Date(classItem.startsAt);
   const now = new Date();
   const diffMs = startTime.getTime() - now.getTime();
   const diffMins = Math.round(diffMs / 60000);
-  const hours = startTime.getHours().toString().padStart(2, '0');
-  const mins = startTime.getMinutes().toString().padStart(2, '0');
-  const timeLabel = `${hours}:${mins}`;
 
   if (diffMins > 0 && diffMins <= 60) {
     return { statusText: `IN ${diffMins} MIN`, isLive: true };
@@ -46,12 +39,20 @@ function formatClassStatus(classItem: ClassItem) {
     return { statusText: 'LIVE NOW', isLive: true };
   }
 
-  const isToday = getGymDateKey(now) === getGymDateKey(startTime);
-  const dayLabel = isToday ? 'TODAY' : formatShortDay(startTime);
+  const timeLabel = formatGymTime12h(classItem.startsAt);
+  const dayLabel = isGymToday(classItem.startsAt, now)
+    ? 'TODAY'
+    : new Intl.DateTimeFormat('en-US', {
+        timeZone: 'Asia/Dubai',
+        weekday: 'short',
+      })
+        .format(startTime)
+        .toUpperCase();
   return { statusText: `${dayLabel} · ${timeLabel}`, isLive: false };
 }
 
 function formatSpots(classItem: ClassItem) {
+  if (isGymUsageClass(classItem)) return 'OPEN FLOOR';
   const remainingSpots = classItem.capacity - classItem.bookedCount;
   if (classItem.capacity <= 0) return 'OPEN FLOOR';
   return remainingSpots > 0 ? `${remainingSpots} spots` : 'Full';
@@ -80,7 +81,13 @@ const HeroGlassActionButton = memo(function HeroGlassActionButton({
         <BlurView intensity={52} tint="systemThinMaterialDark" style={StyleSheet.absoluteFill} />
       ) : null}
       <View pointerEvents="none" style={styles.glassActionVeil} />
-      <Text style={[typography.textPresets.button, styles.glassActionLabel, { color: colors.text.inverse }]}>
+      <Text
+        style={[
+          typography.textPresets.button,
+          styles.glassActionLabel,
+          { color: colors.text.inverse },
+        ]}
+      >
         {label}
       </Text>
     </HomeAnimatedPressable>
@@ -100,19 +107,28 @@ const HeroClassCardItem = memo(function HeroClassCardItem({
   onViewDetails,
   onSeeAll,
 }: HeroClassCardItemProps) {
-  const { colors, typography, radius, shadows, inset, gap, layout } = useTheme();
+  const { colors, typography, radius, surfaceShadow, inset, gap, layout } = useTheme();
   const cardHeight = width * HERO_CARD_HEIGHT_RATIO;
   const actionHeight = layout.coachActionHeight * HERO_ACTION_HEIGHT_SCALE;
 
-  const imageSource = academyAssets.homeCarouselHero;
+  const gymUsageHero = isGymUsageClass(classItem);
+  // Signature instructor photo is reserved for Gym Usage on home only.
+  const imageSource = gymUsageHero
+    ? academyAssets.gymUsageHero
+    : resolveClassImage(classItem.discipline, classItem.imageUrl ?? null, classItem.title);
   const { statusText, isLive } = formatClassStatus(classItem);
   const spotsText = formatSpots(classItem);
 
   return (
-    <View style={[styles.shadowWrap, shadows.mediaHero, { width }]}>
+    <View style={[styles.shadowWrap, surfaceShadow('mediaHero'), { width }]}>
       <View style={[styles.cardShell, { borderRadius: radius.cardLarge }]}>
         <View style={[styles.mediaFrame, { height: cardHeight }]}>
-          <Image source={imageSource} style={styles.mediaImage} contentFit="cover" />
+          <Image
+            source={imageSource}
+            style={styles.mediaImage}
+            contentFit="cover"
+            contentPosition={gymUsageHero ? 'top center' : 'center'}
+          />
           <UaeBrandAmbientGlow variant="photo-card" />
           <LinearGradient
             colors={['rgba(0,0,0,0.08)', 'rgba(0,0,0,0.42)', 'rgba(0,0,0,0.92)']}
@@ -125,18 +141,35 @@ const HeroClassCardItem = memo(function HeroClassCardItem({
               {isLive ? (
                 <View style={[styles.liveDot, { backgroundColor: colors.text.inverse }]} />
               ) : null}
-              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
-                {isLive ? `LIVE · ${statusText}` : statusText}
+              <Text
+                style={[
+                  typography.textPresets.label,
+                  styles.chipText,
+                  { color: colors.text.inverse },
+                ]}
+              >
+                {statusText}
               </Text>
             </GlassMediaChip>
             <GlassMediaChip>
-              <Text style={[typography.textPresets.label, styles.chipText, { color: colors.text.inverse }]}>
+              <Text
+                style={[
+                  typography.textPresets.label,
+                  styles.chipText,
+                  { color: colors.text.inverse },
+                ]}
+              >
                 {spotsText.toUpperCase()}
               </Text>
             </GlassMediaChip>
           </View>
 
-          <View style={[styles.content, { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm }]}>
+          <View
+            style={[
+              styles.content,
+              { bottom: inset.lg, left: inset.lg, right: inset.lg, gap: gap.sm },
+            ]}
+          >
             <Text
               style={[typography.textPresets.hero, styles.title, { color: colors.text.inverse }]}
               numberOfLines={2}
@@ -147,7 +180,9 @@ const HeroClassCardItem = memo(function HeroClassCardItem({
               style={[typography.textPresets.body, styles.meta, { color: colors.text.inverse }]}
               numberOfLines={1}
             >
-              {classItem.level || 'All levels'} · Coach {classItem.coachName}
+              {gymUsageHero
+                ? classItem.level || 'Open floor'
+                : `${classItem.level || 'All levels'} · Coach ${classItem.coachName}`}
             </Text>
 
             <View style={[styles.actionRow, { gap: gap.sm, marginTop: gap.xs }]}>

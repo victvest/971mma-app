@@ -1,15 +1,13 @@
-import { Platform, type ViewStyle } from 'react-native';
+import { type ViewStyle } from 'react-native';
+import { layout } from '@/shared/theme/spacing';
+import { lightColors } from '@/shared/theme/colors';
+import { resolveChromeElevation } from '@/shared/theme/surfaceShadow';
 
-/** Subtle lift for floating liquid-glass chrome on light backgrounds. */
-export const FLOATING_CHROME_ELEVATION: ViewStyle = Platform.select({
-  ios: {
-    shadowColor: '#0F0F0E',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 12,
-  },
-  android: {
-    elevation: 8,
-  },
-  default: {},
-}) ?? {};
+/**
+ * @deprecated Prefer `useTheme().chromeElevation()` so dark mode border color resolves correctly.
+ * Kept for modules that cannot access theme hooks.
+ */
+export const FLOATING_CHROME_ELEVATION: ViewStyle = resolveChromeElevation(
+  lightColors.border.subtle,
+  layout.borderWidth,
+);

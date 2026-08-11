@@ -15,7 +15,6 @@ type RouteFlags = {
   inActivationRequiredRoute: boolean;
   inOnboardingGroup: boolean;
   inCoachGroup: boolean;
-  inGateGroup: boolean;
   inTabsGroup: boolean;
   inDetailGroup: boolean;
   inProtectedGroup: boolean;
@@ -39,10 +38,12 @@ export type AuthenticatedRouteInput = {
 };
 
 function normalizePath(path: string): string {
-  return path
-    .replace(/\/\([^)]+\)/g, '')
-    .replace(/\/+/g, '/')
-    .replace(/\/$/, '') || '/';
+  return (
+    path
+      .replace(/\/\([^)]+\)/g, '')
+      .replace(/\/+/g, '/')
+      .replace(/\/$/, '') || '/'
+  );
 }
 
 function pathnameMatchesScreen(pathname: string, screen: string): boolean {
@@ -72,7 +73,6 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     (inAuthGroup && secondSegment === 'activation-required');
   const inOnboardingGroup = firstSegment === '(onboarding)';
   const inCoachGroup = firstSegment === '(coach)';
-  const inGateGroup = firstSegment === '(gate)';
   const inTabsGroup = firstSegment === '(tabs)';
   const inDetailGroup =
     firstSegment === 'classes' ||
@@ -82,7 +82,6 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     firstSegment === 'notifications' ||
     firstSegment === 'attendance' ||
     firstSegment === 'family-trainees' ||
-    firstSegment === 'communities' ||
     firstSegment === 'edit-profile' ||
     firstSegment === 'delete-account' ||
     firstSegment === 'change-password' ||
@@ -101,10 +100,9 @@ function parseRouteFlags(segments: string[]): RouteFlags {
     inActivationRequiredRoute,
     inOnboardingGroup,
     inCoachGroup,
-    inGateGroup,
     inTabsGroup,
     inDetailGroup,
-    inProtectedGroup: inTabsGroup || inCoachGroup || inGateGroup || inDetailGroup,
+    inProtectedGroup: inTabsGroup || inCoachGroup || inDetailGroup,
   };
 }
 
@@ -141,8 +139,7 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
   } = input;
   const route = parseRouteFlags(segments);
   const inActivationRequiredRoute =
-    route.inActivationRequiredRoute ||
-    isOnAuthScreen(segments, pathname, 'activation-required');
+    route.inActivationRequiredRoute || isOnAuthScreen(segments, pathname, 'activation-required');
   const inChangePasswordRoute =
     route.inChangePasswordRoute || isOnAuthScreen(segments, pathname, 'change-password');
   const inVerifyEmailRoute =
@@ -154,7 +151,6 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
     route.inAuthCallbackRoute || pathnameMatchesScreen(pathname, 'auth/callback');
   const defaultHome = getDefaultHomeRoute(role);
   const canUseCoachRoutes = role === 'coach';
-  const canUseGateRoutes = role === 'gate';
   const canUseChangePasswordRoute = isAuthenticated || passwordRecoveryActive;
   const requiresActivation = memberRequiresActivation(role, accountStatus);
   const authenticatedEntry = getAuthenticatedEntryRoute({ role, accountStatus, needsOnboarding });
@@ -181,12 +177,7 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
     return '/(auth)';
   }
 
-  if (
-    isAuthenticated &&
-    needsOnboarding &&
-    !route.inOnboardingGroup &&
-    !requiresActivation
-  ) {
+  if (isAuthenticated && needsOnboarding && !route.inOnboardingGroup && !requiresActivation) {
     return '/(onboarding)';
   }
 
@@ -203,19 +194,6 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
 
   if (isAuthenticated && route.inCoachGroup && !canUseCoachRoutes) {
     return '/(tabs)';
-  }
-
-  if (isAuthenticated && route.inGateGroup && !canUseGateRoutes) {
-    return defaultHome;
-  }
-
-  if (
-    isAuthenticated &&
-    role === 'gate' &&
-    !needsOnboarding &&
-    (route.inTabsGroup || route.inCoachGroup || route.inDetailGroup)
-  ) {
-    return '/(gate)/display';
   }
 
   if (
@@ -245,11 +223,7 @@ export function resolveNavigationRedirect(input: NavigationGuardInput): Href | n
   return null;
 }
 
-export function isAtNavigationTarget(
-  segments: string[],
-  pathname: string,
-  target: Href,
-): boolean {
+export function isAtNavigationTarget(segments: string[], pathname: string, target: Href): boolean {
   const href = typeof target === 'string' ? target : '';
   if (!href) return false;
 

@@ -49,9 +49,19 @@ export function HeaderProfileAvatar({ label, avatarUrl, onOpenProfile }: HeaderP
 
   const switchRail = canSwitchProfiles ? (
     <View style={styles.switchRail} pointerEvents="none">
-      <View style={[styles.switchTick, { backgroundColor: colors.accent.onAccent, opacity: 0.45 }]} />
-      <View style={[styles.switchTick, styles.switchTickActive, { backgroundColor: colors.accent.onAccent }]} />
-      <View style={[styles.switchTick, { backgroundColor: colors.accent.onAccent, opacity: 0.45 }]} />
+      <View
+        style={[styles.switchTick, { backgroundColor: colors.accent.onAccent, opacity: 0.45 }]}
+      />
+      <View
+        style={[
+          styles.switchTick,
+          styles.switchTickActive,
+          { backgroundColor: colors.accent.onAccent },
+        ]}
+      />
+      <View
+        style={[styles.switchTick, { backgroundColor: colors.accent.onAccent, opacity: 0.45 }]}
+      />
     </View>
   ) : null;
 

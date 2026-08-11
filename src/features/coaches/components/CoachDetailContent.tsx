@@ -13,6 +13,7 @@ import { DetailRevealSection, DetailSectionCard } from '@/shared/components/deta
 import { UaeFlagMark } from '@/shared/components/brand';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
+import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import type { ClassItem, CoachItem } from '@/types/domain';
 
 type Props = {
@@ -43,13 +44,28 @@ function SectionHeader({
   return (
     <View style={styles.sectionHeader}>
       <View style={[styles.sectionHeaderLeft, { gap: gap.sm }]}>
-        <View style={[styles.accentDot, { backgroundColor: colors.accent.default, borderRadius: radius.pill }]} />
+        <View
+          style={[
+            styles.accentDot,
+            { backgroundColor: colors.accent.default, borderRadius: radius.pill },
+          ]}
+        />
         <Text style={[typography.textPresets.label, { color: colors.text.tertiary }]}>{title}</Text>
       </View>
       {linkLabel && onPressLink ? (
-        <Pressable onPress={onPressLink} accessibilityRole="button" style={[styles.link, { gap: gap.xs }]}>
-          <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.pressed }]}>{linkLabel}</Text>
-          <Ionicons name="arrow-forward" size={typography.fontSize.md} color={colors.accent.pressed} />
+        <Pressable
+          onPress={onPressLink}
+          accessibilityRole="button"
+          style={[styles.link, { gap: gap.xs }]}
+        >
+          <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.pressed }]}>
+            {linkLabel}
+          </Text>
+          <Ionicons
+            name="arrow-forward"
+            size={typography.fontSize.md}
+            color={colors.accent.pressed}
+          />
         </Pressable>
       ) : null}
     </View>
@@ -58,6 +74,25 @@ function SectionHeader({
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] ?? name;
+}
+
+function BulletRows({ items }: { items: string[] }) {
+  const { colors, typography, gap } = useTheme();
+
+  return (
+    <View style={{ gap: gap.sm }}>
+      {items.map((item) => (
+        <View key={item} style={[styles.bulletRow, { gap: gap.sm }]}>
+          <View
+            style={[styles.bulletDot, { backgroundColor: colors.accent.default }]}
+          />
+          <Text style={[typography.textPresets.body, styles.bulletText, { color: colors.text.primary }]}>
+            {item}
+          </Text>
+        </View>
+      ))}
+    </View>
+  );
 }
 
 export function CoachDetailContent({
@@ -77,8 +112,15 @@ export function CoachDetailContent({
   const bio = coach.bio?.trim();
 
   const sections: ReactNode[] = [
-    <CoachDetailStats key="stats" coach={coach} classCount={classCount} classesReady={!classesLoading} />,
+    <CoachDetailStats
+      key="stats"
+      coach={coach}
+      classCount={classCount}
+      classesReady={!classesLoading}
+    />,
+  ];
 
+  sections.push(
     <DetailSectionCard key="lineage" title="Belt & lineage" accent="brand">
       <View style={[styles.lineageRow, { gap: gap.md }]}>
         <UaeFlagMark />
@@ -100,11 +142,49 @@ export function CoachDetailContent({
           `${coach.name} leads sessions at 971 MMA across ${getCoachSpecialtyLabel(coach)}. Full profile copy is pending from the academy — class schedule and rank details are available now.`}
       </Text>
     </View>,
-  ];
+  );
+
+  if (coach.statusAchievements.length > 0) {
+    sections.push(
+      <DetailSectionCard key="achievements" title="Status & achievements" accent="brand">
+        <BulletRows items={coach.statusAchievements} />
+      </DetailSectionCard>,
+    );
+  }
+
+  if (coach.experienceHighlights.length > 0) {
+    sections.push(
+      <DetailSectionCard key="experience" title="Experience" accent="brand">
+        <BulletRows items={coach.experienceHighlights} />
+      </DetailSectionCard>,
+    );
+  }
+
+  if (coach.coachingStyle.length > 0) {
+    sections.push(
+      <DetailSectionCard key="style" title="Coaching style" accent="brand">
+        <BulletRows items={coach.coachingStyle} />
+      </DetailSectionCard>,
+    );
+  } else if (coach.coachingPhilosophy?.trim()) {
+    sections.push(
+      <DetailSectionCard key="philosophy" title="Coaching philosophy" accent="brand">
+        <Text style={[typography.textPresets.body, styles.bio, { color: colors.text.primary }]}>
+          {coach.coachingPhilosophy.trim()}
+        </Text>
+      </DetailSectionCard>,
+    );
+  }
 
   const scheduleLink = (
-    <Pressable onPress={onOpenSchedule} accessibilityRole="button" style={[styles.link, { gap: gap.xs }]}>
-      <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.pressed }]}>Schedule</Text>
+    <Pressable
+      onPress={onOpenSchedule}
+      accessibilityRole="button"
+      style={[styles.link, { gap: gap.xs }]}
+    >
+      <Text style={[typography.textPresets.buttonSmall, { color: colors.accent.pressed }]}>
+        Schedule
+      </Text>
       <Ionicons name="arrow-forward" size={typography.fontSize.md} color={colors.accent.pressed} />
     </Pressable>
   );
@@ -117,7 +197,7 @@ export function CoachDetailContent({
         <StateBlock
           kind="error"
           title="Could not load classes"
-          message={classesError instanceof Error ? classesError.message : 'Please try again.'}
+          message={toUserFacingErrorMessage(classesError, { fallback: 'Please try again.' })}
           actionLabel="Retry"
           onAction={onRetryClasses}
         />
@@ -152,7 +232,12 @@ export function CoachDetailContent({
         },
       ]}
     >
-      <View style={[styles.grabber, { backgroundColor: colors.border.strong, borderRadius: radius.pill }]} />
+      <View
+        style={[
+          styles.grabber,
+          { backgroundColor: colors.border.strong, borderRadius: radius.pill },
+        ]}
+      />
 
       {sections.map((section, index) => (
         <DetailRevealSection
@@ -208,5 +293,19 @@ const styles = StyleSheet.create({
   },
   bio: {
     lineHeight: 26,
+  },
+  bulletRow: {
+    alignItems: 'flex-start',
+    flexDirection: 'row',
+  },
+  bulletDot: {
+    borderRadius: 999,
+    height: 6,
+    marginTop: 8,
+    width: 6,
+  },
+  bulletText: {
+    flex: 1,
+    lineHeight: 22,
   },
 });

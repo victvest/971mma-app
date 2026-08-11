@@ -11,11 +11,7 @@ type Props = {
   size?: number;
 };
 
-export function BrandedLucideIconBadge({
-  icon: Icon,
-  tone = 'neutral',
-  size = 44,
-}: Props) {
+export function BrandedLucideIconBadge({ icon: Icon, tone = 'neutral', size = 44 }: Props) {
   const { colors } = useTheme();
   const iconSize = Math.round(size * 0.45);
 

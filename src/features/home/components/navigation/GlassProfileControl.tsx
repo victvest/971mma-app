@@ -17,11 +17,11 @@ import { useActiveProfileStore } from '@/stores/useActiveProfileStore';
 import { triggerLightImpact } from '@/shared/haptics';
 import { animations } from '@/shared/theme/animations';
 import { NAV_CHROME, UAE } from './uaeChrome';
-
 type Props = {
   label: string;
   avatarUrl?: string | null;
   onOpenProfile: () => void;
+  disabled?: boolean;
 };
 
 const SWIPE_THRESHOLD = 28;
@@ -38,7 +38,7 @@ function resolveSwitchDirection(prevIndex: number, nextIndex: number, total: num
   return nextIndex > prevIndex ? 1 : -1;
 }
 
-export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) {
+export function GlassProfileControl({ label, avatarUrl, onOpenProfile, disabled = false }: Props) {
   const activeMemberId = useActiveMemberId();
   const setActiveUserId = useActiveProfileStore((s) => s.setActiveUserId);
   const { options, hasChildren } = useActiveProfileOptions();
@@ -48,8 +48,7 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
     0,
     options.findIndex((option) => option.userId === activeMemberId),
   );
-  const canSwitchProfiles = hasChildren && options.length > 1;
-
+  const canSwitchProfiles = false;
   const avatarOffsetY = useSharedValue(0);
   const hintScale = useSharedValue(1);
   const hintRotate = useSharedValue(0);
@@ -154,11 +153,12 @@ export function GlassProfileControl({ label, avatarUrl, onOpenProfile }: Props) 
   if (!canSwitchProfiles) {
     return (
       <Pressable
-        onPress={onOpenProfile}
+        onPress={disabled ? undefined : onOpenProfile}
         accessibilityLabel="Open profile"
         testID="header-profile"
         hitSlop={8}
         style={styles.hit}
+        disabled={disabled}
       >
         {avatarBody}
       </Pressable>

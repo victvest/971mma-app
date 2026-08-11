@@ -76,4 +76,7 @@ export function useAuthSlideUpAnimation(options: AuthEntranceOptions = {}) {
   return style;
 }
 
-export type AuthEntranceStyle = AnimatedStyle<{ opacity: number; transform: { translateY: number }[] }>;
+export type AuthEntranceStyle = AnimatedStyle<{
+  opacity: number;
+  transform: { translateY: number }[];
+}>;

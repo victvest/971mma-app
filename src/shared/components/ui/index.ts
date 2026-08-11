@@ -38,4 +38,3 @@ export type { PillSegmentOption } from './PillSegmentedTabs';
 
 export { BrandedLucideIconBadge } from './BrandedLucideIconBadge';
 export type { BrandedIconTone } from './BrandedLucideIconBadge';
-

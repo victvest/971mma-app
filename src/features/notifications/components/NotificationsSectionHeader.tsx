@@ -11,10 +11,7 @@ export function NotificationsSectionHeader() {
       <AcademyEyebrow label="Notifications" accent showFlag={false} />
       <TabHeroTitle
         collapseOnWide
-        lines={[
-          [{ text: 'Stay in the ' }],
-          [{ text: 'loop.', accent: true }],
-        ]}
+        lines={[[{ text: 'Stay in the ' }], [{ text: 'loop.', accent: true }]]}
       />
     </View>
   );

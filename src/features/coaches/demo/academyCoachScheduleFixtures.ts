@@ -128,7 +128,8 @@ const CLASS_SEEDS: ClassSeed[] = [
     hour: 9,
     minute: 0,
     title: 'Kids BJJ (Ages 9–12)',
-    description: 'Expanded technique library with controlled sparring for developing youth athletes.',
+    description:
+      'Expanded technique library with controlled sparring for developing youth athletes.',
     level: 'Kids',
     durationMinutes: 60,
     capacity: 18,
@@ -222,7 +223,8 @@ const CLASS_SEEDS: ClassSeed[] = [
     hour: 12,
     minute: 30,
     title: 'MMA Wrestling for MMA',
-    description: 'Takedown entries, cage wrestling, and mat returns tailored for mixed rules competition.',
+    description:
+      'Takedown entries, cage wrestling, and mat returns tailored for mixed rules competition.',
     level: 'All Levels',
     durationMinutes: 75,
     capacity: 22,
@@ -300,7 +302,8 @@ const CLASS_SEEDS: ClassSeed[] = [
     hour: 19,
     minute: 30,
     title: 'Wrestling Live Rounds',
-    description: 'Situational wrestling and live go rounds with emphasis on mat returns and control.',
+    description:
+      'Situational wrestling and live go rounds with emphasis on mat returns and control.',
     level: 'Intermediate',
     durationMinutes: 75,
     capacity: 18,
@@ -315,7 +318,8 @@ const CLASS_SEEDS: ClassSeed[] = [
     hour: 10,
     minute: 30,
     title: 'Takedown Clinic',
-    description: 'Deep dive on double-leg, single-leg, and chain wrestling for BJJ and MMA athletes.',
+    description:
+      'Deep dive on double-leg, single-leg, and chain wrestling for BJJ and MMA athletes.',
     level: 'All Levels',
     durationMinutes: 90,
     capacity: 22,

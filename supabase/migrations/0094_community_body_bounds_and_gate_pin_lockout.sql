@@ -2,17 +2,25 @@
 
 -- 1) Community post/reply body: enforce an upper bound in addition to non-empty.
 --    (The prior inline check only guaranteed length > 0.)
-alter table public.community_posts
-  drop constraint if exists community_posts_body_check;
-alter table public.community_posts
-  add constraint community_posts_body_check
-  check (char_length(trim(body)) between 1 and 5000);
+do $guard$
+begin
+  if to_regclass('public.community_posts') is not null then
+    alter table public.community_posts
+      drop constraint if exists community_posts_body_check;
+    alter table public.community_posts
+      add constraint community_posts_body_check
+      check (char_length(trim(body)) between 1 and 5000);
+  end if;
 
-alter table public.community_replies
-  drop constraint if exists community_replies_body_check;
-alter table public.community_replies
-  add constraint community_replies_body_check
-  check (char_length(trim(body)) between 1 and 5000);
+  if to_regclass('public.community_replies') is not null then
+    alter table public.community_replies
+      drop constraint if exists community_replies_body_check;
+    alter table public.community_replies
+      add constraint community_replies_body_check
+      check (char_length(trim(body)) between 1 and 5000);
+  end if;
+end;
+$guard$;
 
 -- 2) Gate exit PIN: 4 digits = 10k combinations. Add a per-caller attempt
 --    counter with a 5-minute lockout after 5 consecutive failures.

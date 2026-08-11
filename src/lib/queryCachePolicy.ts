@@ -21,9 +21,11 @@ export const ATTENDANCE_STALE_MS = 60 * 1000;
 export const ATTENDANCE_MIRROR_STALE_MS = 5 * 60 * 1000;
 export const ATTENDANCE_MIRROR_GC_MS = 10 * 60 * 1000;
 
-/** Membership summary and Mindbody membership mirror. */
-export const MEMBERSHIP_STALE_MS = 5 * 60 * 1000;
+/** Membership summary from Supabase mirror (UI read). */
+export const MEMBERSHIP_STALE_MS = 60 * 1000;
 export const MEMBERSHIP_GC_MS = 30 * 60 * 1000;
+/** Mindbody → Supabase membership mirror sync (force on focus). */
+export const MEMBERSHIP_MIRROR_STALE_MS = 60 * 1000;
 export const MEMBERSHIP_MIRROR_GC_MS = 10 * 60 * 1000;
 
 /** Profile reads. */
@@ -53,8 +55,10 @@ export const SECURE_QUERY_OPTIONS = {
 
 export const DEFAULT_QUERY_OPTIONS = {
   staleTime: DEFAULT_STALE_MS,
+  gcTime: 24 * 60 * 60 * 1000,
   retry: 2,
   retryDelay: (attempt: number) => Math.min(1_000 * 2 ** attempt, 10_000),
   refetchOnWindowFocus: true,
   refetchOnReconnect: true,
+  networkMode: 'offlineFirst' as const,
 } as const;

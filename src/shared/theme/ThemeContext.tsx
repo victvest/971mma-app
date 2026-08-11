@@ -8,10 +8,22 @@ import React, {
 } from 'react';
 import { useColorScheme } from 'react-native';
 import { lightColors, darkColors, type AppColors } from './colors';
-import { textPresets, fontFamily, fontWeight, fontSize, letterSpacing, fontStacks, resolveFontFamily, resolveFontRole, displayMinFontSize } from './typography';
+import {
+  textPresets,
+  fontFamily,
+  fontWeight,
+  fontSize,
+  letterSpacing,
+  fontStacks,
+  resolveFontFamily,
+  resolveFontRole,
+  displayMinFontSize,
+} from './typography';
 import { spacing, inset, gap, layout } from './spacing';
 import { radii, radius } from './radii';
 import { shadows } from './shadows';
+import { resolveAppBarShadow, resolveChromeElevation, resolveShadow } from './surfaceShadow';
+import type { ShadowKey } from './shadows';
 import { animations } from './animations';
 
 const staticTokens = {
@@ -46,6 +58,12 @@ export type StaticTokens = typeof staticTokens;
 export type Theme = StaticTokens & {
   colors: AppColors;
   mode: 'light' | 'dark';
+  /** iOS shadow / Android grey border (check-in recent-visit tile style). */
+  surfaceShadow: (key?: ShadowKey) => import('react-native').ViewStyle;
+  /** Floating chrome buttons and tab bar. */
+  chromeElevation: () => import('react-native').ViewStyle;
+  /** Push/floating app bars — bottom edge only on Android. */
+  appBarShadow: () => import('react-native').ViewStyle;
 };
 
 export type ThemeMode = 'light' | 'dark' | 'system';
@@ -78,6 +96,22 @@ export function ThemeProvider({ children, initialMode = 'light' }: Props) {
       colors: resolvedMode === 'dark' ? darkColors : lightColors,
       mode: resolvedMode,
       ...staticTokens,
+      surfaceShadow: (key: ShadowKey = 'card') =>
+        resolveShadow(
+          resolvedMode === 'dark' ? darkColors.border.subtle : lightColors.border.subtle,
+          key,
+          layout.borderWidth,
+        ),
+      chromeElevation: () =>
+        resolveChromeElevation(
+          resolvedMode === 'dark' ? darkColors.border.subtle : lightColors.border.subtle,
+          layout.borderWidth,
+        ),
+      appBarShadow: () =>
+        resolveAppBarShadow(
+          resolvedMode === 'dark' ? darkColors.border.subtle : lightColors.border.subtle,
+          layout.borderWidth,
+        ),
       setMode,
     }),
     [resolvedMode, setMode],
@@ -103,6 +137,10 @@ export function DarkThemeScope({ children }: { children: ReactNode }) {
       ...parent,
       colors: darkColors,
       mode: 'dark',
+      surfaceShadow: (key: ShadowKey = 'card') =>
+        resolveShadow(darkColors.border.subtle, key, layout.borderWidth),
+      chromeElevation: () => resolveChromeElevation(darkColors.border.subtle, layout.borderWidth),
+      appBarShadow: () => resolveAppBarShadow(darkColors.border.subtle, layout.borderWidth),
     }),
     [parent],
   );
