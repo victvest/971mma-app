@@ -80,3 +80,10 @@ jest.config.js
 .cursor/
 .vscode/
 *.log
+
+# Local development outputs and temporary assets
+dogfood-output/
+WhatsApp Video *.mp4
+Screenshot *.png
+*Screenshot*
+
