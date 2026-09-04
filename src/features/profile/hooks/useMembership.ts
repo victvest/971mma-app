@@ -36,11 +36,11 @@ export function useMembershipRefresh(enabled = true) {
   return useQuery({
     queryKey: membershipRefreshKey(activeMemberId),
     queryFn: async () => {
-      // Always force Mindbody → mirror so Check-in / Profile status matches gate access.
+      // Reads from Supabase mirror if fresh; pulls from Mindbody only if stale. Pull-to-refresh forces live sync.
       const body =
         activeMemberId !== authUserId
-          ? { force: true, targetUserId: activeMemberId }
-          : { force: true };
+          ? { force: false, targetUserId: activeMemberId }
+          : { force: false };
       const result = await invokeEdge<MembershipRefreshResponse>('mb-membership', body);
       if (shouldInvalidateAfterMirrorSync(result, true)) {
         await Promise.all([

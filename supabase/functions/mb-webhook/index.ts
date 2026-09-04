@@ -8,8 +8,15 @@ type WebhookPayload = Record<string, unknown>;
 
 const GYM_TIME_ZONE = 'Asia/Dubai';
 
-const SIGNATURE_HEADER = 'X-Mindbody-Signature';
-const KNOWN_EVENT_PREFIXES = ['classRosterBookingStatus.', 'classSchedule.', 'client.', 'staff.'];
+const KNOWN_EVENT_PREFIXES = [
+  'classRosterBookingStatus.',
+  'classSchedule.',
+  'client.',
+  'clientContract.',
+  'clientMembership.',
+  'clientMembershipAssignment.',
+  'staff.',
+];
 
 function bytesToHex(bytes: Uint8Array): string {
   return Array.from(bytes)
@@ -209,7 +216,7 @@ async function bestEffortStaffMirror(_payload: WebhookPayload): Promise<void> {
 }
 
 async function bestEffortClassMirror(payload: WebhookPayload): Promise<void> {
-  const eventType = readString(payload, ['eventType', 'EventType', 'type']);
+  const eventType = readString(payload, ['eventType', 'EventType', 'type', 'eventId', 'EventId']);
   if (
     !eventType ||
     (!eventType.startsWith('classSchedule.') &&
@@ -326,11 +333,21 @@ async function bestEffortClassMirror(payload: WebhookPayload): Promise<void> {
 }
 
 async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
-  const eventType = readString(payload, ['eventType', 'EventType', 'type']);
-  if (!eventType?.startsWith('client.')) return;
+  const eventType = readString(payload, ['eventType', 'EventType', 'type', 'eventId', 'EventId']);
+  if (
+    !eventType ||
+    (!eventType.startsWith('client.') &&
+      !eventType.startsWith('clientContract.') &&
+      !eventType.startsWith('clientMembership.') &&
+      !eventType.startsWith('clientMembershipAssignment.'))
+  ) {
+    return;
+  }
 
-  const client = nestedPayload(payload, ['client', 'Client', 'data', 'Data']);
-  const clientId = readString(client, ['Id', 'id', 'ClientId', 'clientId']);
+  const client = nestedPayload(payload, ['client', 'Client', 'data', 'Data', 'eventData', 'EventData']);
+  const clientId =
+    readString(client, ['ClientId', 'clientId', 'Id', 'id', 'ClientUniqueId']) ??
+    readString(payload, ['ClientId', 'clientId']);
   if (!clientId) return;
 
   const svc = serviceClient();
@@ -343,28 +360,31 @@ async function bestEffortClientMirror(payload: WebhookPayload): Promise<void> {
 
   if (!link?.user_id) return;
 
-  const { data: existingProfile } = await svc
-    .from('profiles')
-    .select('avatar_url')
-    .eq('id', link.user_id)
-    .maybeSingle<{ avatar_url: string | null }>();
+  if (eventType.startsWith('client.')) {
+    const { data: existingProfile } = await svc
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', link.user_id)
+      .maybeSingle<{ avatar_url: string | null }>();
 
-  const firstName = readString(client, ['FirstName', 'firstName']);
-  const lastName = readString(client, ['LastName', 'lastName']);
-  const fullName =
-    readString(client, ['Name', 'name', 'FullName', 'fullName']) ??
-    [firstName, lastName].filter(Boolean).join(' ');
+    const firstName = readString(client, ['FirstName', 'firstName']);
+    const lastName = readString(client, ['LastName', 'lastName']);
+    const fullName =
+      readString(client, ['Name', 'name', 'FullName', 'fullName']) ??
+      [firstName, lastName].filter(Boolean).join(' ');
 
-  const patch: Record<string, unknown> = { mindbody_synced_at: new Date().toISOString() };
-  if (fullName) patch.full_name = fullName;
-  const phone = readString(client, ['MobilePhone', 'mobilePhone', 'HomePhone', 'homePhone']);
-  if (phone) patch.phone = phone;
-  const avatarUrl = readString(client, ['PhotoUrl', 'photoUrl', 'ImageUrl', 'imageUrl']);
-  const currentAvatar = existingProfile?.avatar_url?.trim() ?? '';
-  const hasUserUploadedAvatar = currentAvatar.includes('/storage/v1/object/public/avatars/');
-  if (avatarUrl && !hasUserUploadedAvatar) patch.avatar_url = avatarUrl;
+    const patch: Record<string, unknown> = { mindbody_synced_at: new Date().toISOString() };
+    if (fullName) patch.full_name = fullName;
+    const phone = readString(client, ['MobilePhone', 'mobilePhone', 'HomePhone', 'homePhone']);
+    if (phone) patch.phone = phone;
+    const avatarUrl = readString(client, ['PhotoUrl', 'photoUrl', 'ImageUrl', 'imageUrl']);
+    const currentAvatar = existingProfile?.avatar_url?.trim() ?? '';
+    const hasUserUploadedAvatar = currentAvatar.includes('/storage/v1/object/public/avatars/');
+    if (avatarUrl && !hasUserUploadedAvatar) patch.avatar_url = avatarUrl;
 
-  await svc.from('profiles').update(patch).eq('id', link.user_id);
+    await svc.from('profiles').update(patch).eq('id', link.user_id);
+  }
+
   await enqueueMembershipRefreshJob(svc, link.user_id, `webhook:${eventType}`);
 }
 
@@ -398,8 +418,8 @@ Deno.serve(async (req) => {
   }
 
   const bodyText = new TextDecoder().decode(rawBody);
-  const payload = parsePayload(bodyText);
-  const eventType = readString(payload, ['eventType', 'EventType', 'type']) ?? 'unknown';
+  const eventType =
+    readString(payload, ['eventType', 'EventType', 'type', 'eventId', 'EventId']) ?? 'unknown';
   const eventId =
     readString(payload, ['eventId', 'EventId', 'id', 'Id', 'messageId', 'MessageId']) ??
     `${eventType}:${await sha256Hex(rawBody)}`;

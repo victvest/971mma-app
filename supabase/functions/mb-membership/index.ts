@@ -11,7 +11,7 @@ import {
 import { serviceClient } from '../_shared/supabase.ts';
 
 /** Soft-cache TTL — must stay aligned with MEMBERSHIP_FRESH_MS below. */
-const MEMBERSHIP_CACHE_TTL_SEC = 5 * 60;
+const MEMBERSHIP_CACHE_TTL_SEC = 15 * 60;
 /** Re-hit Mindbody when mirror/cache lastSyncedAt is older than this (non-force). */
 const MEMBERSHIP_FRESH_MS = MEMBERSHIP_CACHE_TTL_SEC * 1000;
 
