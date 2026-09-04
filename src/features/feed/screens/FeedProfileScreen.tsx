@@ -10,6 +10,7 @@ import {
 import { StateBlock } from '@/shared/components/StateBlock';
 import { toast } from '@/shared/components/Toast';
 import { useDialog } from '@/shared/components/Dialog';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useFloatingAppBarContentInset } from '@/shared/hooks/useFloatingAppBarContentInset';
 import { useTheme } from '@/shared/theme';
 import {
@@ -58,6 +59,7 @@ export function FeedProfileScreen({ userId }: Props) {
   const posts = useMemo(() => pages.flatMap((page) => page.posts), [pages]);
 
   const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
     setRefreshing(true);
     try {
       await profileQuery.refetch();
@@ -238,7 +240,9 @@ export function FeedProfileScreen({ userId }: Props) {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
+            progressViewOffset={screenPaddingTop}
             tintColor={colors.accent.default}
+            colors={[colors.accent.default]}
           />
         }
         drawDistance={360}

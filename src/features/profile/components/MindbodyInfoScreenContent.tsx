@@ -1,5 +1,5 @@
-import React, { memo, useCallback, useMemo } from 'react';
-import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
+import React, { memo, useCallback, useMemo, useState } from 'react';
+import { Pressable, RefreshControl, StyleSheet, Text, useWindowDimensions, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import Barcode from 'react-native-barcode-svg';
 import { useFocusEffect } from 'expo-router';
@@ -143,6 +143,17 @@ export function MindbodyInfoScreenContent() {
   const viewingChild = useIsViewingChildProfile();
   const { data, error, isLoading, isError, refetch } = useMindbodyClientInfo();
   const [replayKey, setReplayKey] = React.useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refetch]);
 
   useFocusEffect(
     useCallback(() => {
@@ -172,7 +183,18 @@ export function MindbodyInfoScreenContent() {
     (error as { rawCode?: string }).rawCode === 'NOT_LINKED';
 
   return (
-    <AppScrollView contentContainerStyle={contentPadding} showsVerticalScrollIndicator={false}>
+    <AppScrollView
+      contentContainerStyle={contentPadding}
+      showsVerticalScrollIndicator={false}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          tintColor={colors.accent.default}
+          colors={[colors.accent.default]}
+        />
+      }
+    >
       <RevealOnMount replayKey={replayKey} delay={0}>
         <View style={{ gap: gap.sm }}>
           <AcademyEyebrow label="Mindbody" />

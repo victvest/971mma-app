@@ -153,7 +153,15 @@ export default function CoachHomeScreen() {
         showsHorizontalScrollIndicator={false}
         alwaysBounceHorizontal={false}
         directionalLockEnabled
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            progressViewOffset={headerBottom}
+            tintColor={colors.accent.default}
+            colors={[colors.accent.default]}
+          />
+        }
       >
         {hasError && hasData ? <HomeSyncBanner onRetry={handleRefresh} /> : null}
 

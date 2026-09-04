@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, RefreshControl, StyleSheet, View } from 'react-native';
 import { AppSafeAreaView } from '@/shared/components/AppSafeAreaView';
 import { FlashList } from '@shopify/flash-list';
 import { useLocalSearchParams } from 'expo-router';
@@ -18,6 +18,7 @@ import { StateBlock } from '@/shared/components/StateBlock';
 import {
   FLASH_LIST_ESTIMATES,
 } from '@/shared/constants/flashListEstimates';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useTheme } from '@/shared/theme';
 import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
@@ -37,6 +38,7 @@ export default function AttendanceHistoryScreen() {
   const [activeTab, setActiveTab] = useState<AttendanceHistoryTab>(
     params.tab === 'classes' ? 'classes' : 'gate',
   );
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     if (params.tab === 'classes' || params.tab === 'gate') {
@@ -46,6 +48,16 @@ export default function AttendanceHistoryScreen() {
 
   const { isOnline, networkStatusKnown } = useNetworkStatus();
   const history = useAttendanceHistory(activeTab);
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await history.refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [history]);
 
   const renderItem = useCallback(
     ({ item }: { item: AttendanceListEntry<ListItem> }) => {
@@ -176,6 +188,14 @@ export default function AttendanceHistoryScreen() {
           ListHeaderComponent={listHeader}
           contentContainerStyle={{ paddingHorizontal: inset.lg, paddingBottom: inset.lg }}
           ItemSeparatorComponent={AttendanceListSeparator}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.accent.default}
+              colors={[colors.accent.default]}
+            />
+          }
           onEndReached={() => {
             if (history.hasNextPage && !history.isFetchingNextPage) {
               history.fetchNextPage();

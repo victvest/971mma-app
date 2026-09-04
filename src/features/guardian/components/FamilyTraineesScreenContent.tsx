@@ -13,6 +13,7 @@ import { useAccountActionSheet } from '@/shared/hooks/useAccountActionSheet';
 import { useIsGuest } from '@/shared/hooks/useIsGuest';
 import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useOfflineRetry } from '@/shared/hooks/useOfflineRetry';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import {
   isOfflineWithoutCache,
@@ -159,6 +160,7 @@ export function FamilyTraineesScreenContent() {
   const isSelfSelected = !selectedTraineeId;
 
   const handleRefreshBase = useCallback(async () => {
+    triggerLightImpact();
     setRefreshing(true);
     try {
       await linksQuery.refetch();
@@ -218,7 +220,14 @@ export function FamilyTraineesScreenContent() {
       ) : (
         <AppScrollView
           contentContainerStyle={[styles.scrollContent, { padding: inset.lg, gap: gap.lg }]}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              tintColor={colors.accent.default}
+              colors={[colors.accent.default]}
+            />
+          }
           showsVerticalScrollIndicator={false}
         >
           <View style={{ gap: gap.xs }}>

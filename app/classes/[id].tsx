@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ClassDetailView } from '@/features/schedule/components/ClassDetailView';
@@ -6,6 +6,7 @@ import { useClassDetail } from '@/features/schedule/hooks/useSchedule';
 import { findCoachIdForClass, isGymUsageClass } from '@/features/schedule/utils/classDisplay';
 import { useCoachDetail, useCoaches } from '@/features/coaches/hooks/useCoaches';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
 import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 
@@ -15,6 +16,7 @@ export default function ClassDetailScreen() {
   const { id, origin } = useLocalSearchParams<{ id: string; origin?: string }>();
   const classId = typeof id === 'string' ? id : undefined;
   const fromSchedule = origin === 'schedule';
+  const [refreshing, setRefreshing] = useState(false);
 
   const classQuery = useClassDetail(classId);
   const item = classQuery.data;
@@ -27,6 +29,16 @@ export default function ClassDetailScreen() {
     [coachesQuery.data, hideCoach, item],
   );
   const coachQuery = useCoachDetail(coachId ?? undefined);
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await Promise.all([classQuery.refetch(), coachQuery.refetch()]);
+    } finally {
+      setRefreshing(false);
+    }
+  }, [classQuery, coachQuery]);
 
   const openCoach = useCallback(() => {
     if (coachId) router.push(`/coaches/${coachId}?origin=coaches`);
@@ -94,6 +106,8 @@ export default function ClassDetailScreen() {
       coachLoading={Boolean(coachId) && coachQuery.isLoading}
       canOpenCoach={Boolean(coachId)}
       fromSchedule={fromSchedule}
+      refreshing={refreshing}
+      onRefresh={handleRefresh}
       onOpenCoach={openCoach}
       onBackToSchedule={backToSchedule}
     />

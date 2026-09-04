@@ -1,5 +1,5 @@
-import React, { memo, useCallback, useEffect, useMemo } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { RefreshControl, StyleSheet, Text, View } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 import { FlashListScrollComponent } from '@/shared/components/ui';
 import { useAppTopInset } from '@/shared/hooks/useAppTopInset';
@@ -22,6 +22,7 @@ import { openRunClassHub } from '@/features/coach/roll-call/utils/rollCallNaviga
 import { ScheduleClassCard } from '@/features/schedule/components/ScheduleClassCard';
 import { ScheduleListRow } from '@/features/schedule/components/ScheduleListRow';
 import { StateBlock } from '@/shared/components/StateBlock';
+import { triggerLightImpact } from '@/shared/haptics';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTheme } from '@/shared/theme';
 import { toUserFacingErrorMessage, USER_FACING_LOAD_ERROR } from '@/lib/userFacingError';
@@ -179,8 +180,19 @@ export default function CoachClassesScreen() {
   const topInset = useAppTopInset();
   const { contentBottomInset } = useResponsiveLayout();
   const classesQuery = useCoachClasses();
+  const [refreshing, setRefreshing] = useState(false);
 
   const { entranceSignal } = useTabEntrance();
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await classesQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [classesQuery]);
 
   const sections = useMemo(() => {
     const all = classesQuery.data ?? [];
@@ -371,6 +383,15 @@ export default function CoachClassesScreen() {
       ListHeaderComponent={listHeader}
       contentContainerStyle={listContentStyle}
       ListEmptyComponent={listEmptyComponent}
+      refreshControl={
+        <RefreshControl
+          refreshing={refreshing}
+          onRefresh={handleRefresh}
+          progressViewOffset={headerBottom}
+          tintColor={colors.accent.default}
+          colors={[colors.accent.default]}
+        />
+      }
     />
   );
 

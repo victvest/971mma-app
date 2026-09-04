@@ -325,6 +325,17 @@ export default function NotificationsScreen() {
   const markAllMutation = useMarkAllNotificationsRead();
 
   const [activeFilter, setActiveFilter] = useState<NotificationFilterId>('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await notificationsQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [notificationsQuery]);
 
   useEffect(() => {
     if (!guestBroadcastMode || !notificationsQuery.isSuccess) return;
@@ -472,10 +483,11 @@ export default function NotificationsScreen() {
         ]}
         refreshControl={
           <RefreshControl
-            refreshing={notificationsQuery.isRefetching}
-            onRefresh={() => notificationsQuery.refetch()}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
             progressViewOffset={scrollTopInset}
             tintColor={colors.accent.default}
+            colors={[colors.accent.default]}
           />
         }
       >

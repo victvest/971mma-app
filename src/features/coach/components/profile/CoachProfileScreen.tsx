@@ -236,6 +236,8 @@ export function CoachProfileScreen() {
               refreshing={refreshing}
               onRefresh={handleRefresh}
               progressViewOffset={safeInsets.top + appBarHeight}
+              tintColor={colors.accent.default}
+              colors={[colors.accent.default]}
             />
           }
         >

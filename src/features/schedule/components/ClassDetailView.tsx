@@ -6,6 +6,7 @@ import {
   Pressable,
   Linking,
   Platform,
+  RefreshControl,
   useWindowDimensions,
   Share,
 } from 'react-native';
@@ -55,6 +56,8 @@ type Props = {
   coachLoading: boolean;
   canOpenCoach: boolean;
   fromSchedule?: boolean;
+  refreshing?: boolean;
+  onRefresh?: () => void;
   onOpenCoach: () => void;
   onBackToSchedule: () => void;
   onShowQrPass?: () => void;
@@ -66,6 +69,8 @@ export function ClassDetailView({
   coachLoading,
   canOpenCoach,
   fromSchedule = false,
+  refreshing = false,
+  onRefresh,
   onOpenCoach,
 }: Props) {
   const router = useRouter();
@@ -192,6 +197,18 @@ export function ClassDetailView({
           styles.scrollContent,
           showSubscribeBar && { paddingBottom: safeInsets.bottom + CLASS_REMINDER_BAR_HEIGHT },
         ]}
+        refreshControl={
+          onRefresh ? (
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#FFFFFF"
+              colors={['#007A33']}
+              progressBackgroundColor="#FFFFFF"
+              progressViewOffset={safeInsets.top + NAV_CHROME.topInset + NAV_CHROME.clusterHeight + 8}
+            />
+          ) : undefined
+        }
       >
         {/* Hero Image */}
         <View style={[styles.hero, { height: heroHeight }]}>

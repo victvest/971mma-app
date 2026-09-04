@@ -82,6 +82,7 @@ export function PostCommentsScreen({ postId }: Props) {
   }, []);
 
   const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
     setRefreshing(true);
     try {
       await Promise.all([threadQuery.refetch(), commentsQuery.refetch()]);
@@ -326,7 +327,9 @@ export function PostCommentsScreen({ postId }: Props) {
             <RefreshControl
               refreshing={refreshing}
               onRefresh={handleRefresh}
+              progressViewOffset={screenPaddingTop}
               tintColor={colors.accent.default}
+              colors={[colors.accent.default]}
             />
           }
           drawDistance={360}
