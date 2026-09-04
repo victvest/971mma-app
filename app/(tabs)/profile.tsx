@@ -811,6 +811,7 @@ export default function ProfileScreen() {
               refreshing={refreshing}
               onRefresh={handleRefresh}
               progressViewOffset={topInset + appBarHeight}
+              tintColor={colors.accent.default}
             />
           }
         >

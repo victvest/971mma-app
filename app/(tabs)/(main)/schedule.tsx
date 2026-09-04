@@ -23,6 +23,7 @@ import { ScheduleEmptyState } from '@/features/schedule/components/ScheduleEmpty
 import { ScheduleFilterBar } from '@/features/schedule/components/ScheduleFilterBar';
 import { ScheduleListRow } from '@/features/schedule/components/ScheduleListRow';
 import { ScheduleSectionHeader } from '@/features/schedule/components/ScheduleSectionHeader';
+import { triggerLightImpact } from '@/shared/haptics';
 import {
   forceScheduleRefresh,
   schedulePagesKey,
@@ -172,6 +173,7 @@ export default function ScheduleScreen() {
   }, [todayRange, rangeIso, category, queryClient, refreshQuery, scheduleQuery]);
 
   const handlePullRefresh = useCallback(async () => {
+    triggerLightImpact();
     setPullRefreshing(true);
     try {
       await syncScheduleMirror(true);
@@ -326,10 +328,11 @@ export default function ScheduleScreen() {
       <RefreshControl
         refreshing={pullRefreshing}
         onRefresh={handlePullRefresh}
+        progressViewOffset={headerBottom}
         tintColor={colors.accent.default}
       />
     ),
-    [colors.accent.default, handlePullRefresh, pullRefreshing],
+    [colors.accent.default, handlePullRefresh, headerBottom, pullRefreshing],
   );
 
   // ── Render ──────────────────────────────────────────────────────────────

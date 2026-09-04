@@ -35,7 +35,10 @@ import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { isOfflineWithoutCache, OFFLINE_MESSAGE, OFFLINE_TITLE } from '@/lib/offlineState';
 import { useHomeTabEntrance } from '@/features/home/hooks/useHomeTabEntrance';
 import { PerfMark, usePerfOnceReady, usePerfRouteMount } from '@/shared/performance';
-import { useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import { useActiveMemberId, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuthStore } from '@/stores/useAuthStore';
+import { syncMembershipFromMindbody } from '@/features/profile/hooks/useMembership';
 
 function getGymDateKey(date: Date): string {
   const utc = date.getTime() + date.getTimezoneOffset() * 60000;
@@ -68,6 +71,9 @@ export default function HomeScreen() {
     return `Top ${topPercent}%`;
   }, [percentileQuery.data]);
 
+  const queryClient = useQueryClient();
+  const activeMemberId = useActiveMemberId();
+  const authUserId = useAuthStore((s) => s.user?.id ?? '');
   const { entranceSignal, replayKey } = useHomeTabEntrance();
   const [refreshing, setRefreshing] = useState(false);
 
@@ -93,7 +99,10 @@ export default function HomeScreen() {
     setRefreshing(true);
     try {
       if (!viewingChild) {
-        await syncScheduleMirror(true);
+        await Promise.allSettled([
+          syncScheduleMirror(true),
+          syncMembershipFromMindbody(queryClient, { activeMemberId, authUserId }),
+        ]);
       }
       await Promise.all([
         dashboardQuery.refetch(),
@@ -105,12 +114,15 @@ export default function HomeScreen() {
       setRefreshing(false);
     }
   }, [
+    activeMemberId,
+    authUserId,
     coachesQuery,
     dashboardQuery,
+    percentileQuery,
+    queryClient,
     scheduleDayQuery,
     syncScheduleMirror,
     viewingChild,
-    percentileQuery,
   ]);
 
   const isToday = useMemo(() => {
@@ -251,8 +263,14 @@ export default function HomeScreen() {
         contentContainerStyle={screenPadding}
         showsHorizontalScrollIndicator={false}
         alwaysBounceHorizontal={false}
-        directionalLockEnabled
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            progressViewOffset={headerBottom}
+            tintColor={colors.accent.default}
+          />
+        }
       >
         {hasError && hasData ? <HomeSyncBanner onRetry={onRefresh} /> : null}
 

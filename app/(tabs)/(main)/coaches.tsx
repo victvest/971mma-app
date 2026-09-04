@@ -1,9 +1,10 @@
-import React, { memo, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import React, { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   ActivityIndicator,
   Pressable,
+  RefreshControl,
   StyleSheet,
   Text,
   useWindowDimensions,
@@ -366,9 +367,16 @@ export default function CoachesScreen() {
   const coachesQuery = useCoaches();
   const { isOnline, networkStatusKnown } = useNetworkStatus();
   const { entranceSignal } = useTabEntrance();
+  const [refreshing, setRefreshing] = useState(false);
 
   const handleRefresh = useCallback(async () => {
-    await coachesQuery.refetch();
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await coachesQuery.refetch();
+    } finally {
+      setRefreshing(false);
+    }
   }, [coachesQuery]);
 
   const coaches = useMemo(() => coachesQuery.data ?? [], [coachesQuery.data]);
@@ -558,6 +566,14 @@ export default function CoachesScreen() {
           numColumns={2}
           contentContainerStyle={listContentStyle}
           ListHeaderComponent={listHeader}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={handleRefresh}
+              progressViewOffset={headerBottom}
+              tintColor={colors.accent.default}
+            />
+          }
           ListEmptyComponent={
             loading ? null : hasError ? null : !featuredCoach ? (
               <StateBlock

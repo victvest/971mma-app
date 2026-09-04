@@ -9,6 +9,7 @@ import { useNetworkStatus } from '@/shared/hooks/useNetworkStatus';
 import { useResponsiveLayout } from '@/shared/layout/useResponsiveLayout';
 import { useTabEntrance } from '@/shared/navigation/useTabEntranceReplay';
 import { useTheme } from '@/shared/theme';
+import { triggerLightImpact } from '@/shared/haptics';
 import {
   isOfflineWithoutCache,
   isQueryActivelyLoading,
@@ -77,6 +78,7 @@ export function FeedScreen() {
   );
 
   const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
     setRefreshing(true);
     try {
       await Promise.all([disciplinesQuery.refetch(), feedQuery.refetch()]);
@@ -227,6 +229,7 @@ export function FeedScreen() {
         viewingChild={viewingChild}
         refreshing={refreshing}
         onRefresh={handleRefresh}
+        progressViewOffset={headerBottom}
         isFetchingNextPage={feedQuery.isFetchingNextPage}
         onLoadMore={handleEndReached}
         onLike={handleLike}

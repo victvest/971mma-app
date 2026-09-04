@@ -25,6 +25,7 @@ type Props = {
   viewingChild: boolean;
   refreshing: boolean;
   onRefresh: () => void;
+  progressViewOffset?: number;
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
   onLike: (post: FeedPost) => void;
@@ -43,6 +44,7 @@ export function FeedPostList({
   viewingChild,
   refreshing,
   onRefresh,
+  progressViewOffset,
   isFetchingNextPage,
   onLoadMore,
   onLike,
@@ -115,6 +117,7 @@ export function FeedPostList({
         <RefreshControl
           refreshing={refreshing}
           onRefresh={onRefresh}
+          progressViewOffset={progressViewOffset}
           tintColor={colors.accent.default}
         />
       }
