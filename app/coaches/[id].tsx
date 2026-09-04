@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   StyleSheet,
   View,
   Text,
   Pressable,
   ScrollView,
+  RefreshControl,
   Share,
   useWindowDimensions,
   Platform,
@@ -13,6 +14,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import {
+  forceCoachesRefresh,
   useCoachClasses,
   useCoachDetail,
   useCoachDisciplines,
@@ -139,6 +141,7 @@ export default function CoachDetailScreen() {
   const router = useRouter();
   const safeInsets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
+  const [refreshing, setRefreshing] = useState(false);
 
   const coachId = typeof id === 'string' ? id : undefined;
   useCoachScheduleFocusSync(Boolean(coachId));
@@ -149,6 +152,23 @@ export default function CoachDetailScreen() {
   const disciplinesQuery = useCoachDisciplines(coachId);
   const classes = useMemo(() => classesQuery.data ?? [], [classesQuery.data]);
   const visibleClasses = useMemo(() => classes.slice(0, 5), [classes]);
+
+  const handleRefresh = useCallback(async () => {
+    triggerLightImpact();
+    setRefreshing(true);
+    try {
+      await forceCoachesRefresh().catch(() => {});
+      await Promise.all([
+        coachQuery.refetch(),
+        classesQuery.refetch(),
+        disciplinesQuery.refetch(),
+      ]);
+    } catch {
+      // Query state handles errors gracefully
+    } finally {
+      setRefreshing(false);
+    }
+  }, [coachQuery, classesQuery, disciplinesQuery]);
 
   const openClass = useCallback(
     (classId: string) => {
@@ -204,14 +224,19 @@ export default function CoachDetailScreen() {
   }
 
   if (coachQuery.error || !coach) {
+    const isError = Boolean(coachQuery.error);
     return (
       <View style={[styles.container, styles.center]}>
         <StateBlock
           kind="error"
-          title={!coach ? 'Coach not found' : 'Could not load coach'}
-          message="Please check your connection and try again."
-          actionLabel="Go Back"
-          onAction={() => router.back()}
+          title={isError ? 'Could not load coach' : 'Coach not found'}
+          message={
+            isError
+              ? 'Please check your connection and try again.'
+              : 'This coach profile is unavailable.'
+          }
+          actionLabel={isError ? 'Retry' : 'Go Back'}
+          onAction={() => (isError ? coachQuery.refetch() : router.back())}
         />
       </View>
     );
@@ -222,7 +247,20 @@ export default function CoachDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            tintColor="#FFFFFF"
+            colors={['#007A33']}
+            progressBackgroundColor="#FFFFFF"
+            progressViewOffset={safeInsets.top + NAV_CHROME.topInset + NAV_CHROME.clusterHeight + 8}
+          />
+        }
+      >
         <View style={[styles.heroContainer, { height: heroHeight }]}>
           <Image
             source={getCoachImageSource(coach)}

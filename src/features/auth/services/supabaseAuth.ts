@@ -25,22 +25,6 @@ async function signInDirect(email: string, password: string) {
     return { error: formatAuthError(error) };
   }
 
-  // The primary path (auth-sign-in edge function) refuses admin accounts on the
-  // member app. This fallback must enforce the same rule so a network blip can't
-  // become an admin-login bypass.
-  const userId = data.user?.id;
-  if (userId) {
-    const { data: profile } = await client
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .maybeSingle<{ role: string | null }>();
-    if (profile?.role === 'admin') {
-      await client.auth.signOut();
-      return { error: formatAuthError({ rawCode: 'INVALID_CREDENTIALS' }) };
-    }
-  }
-
   return { error: null };
 }
 

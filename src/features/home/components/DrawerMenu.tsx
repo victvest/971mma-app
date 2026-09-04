@@ -130,7 +130,7 @@ export function DrawerMenu({ visible, onClose, blurTargetRef, onLockedRoute }: D
   const rankEligibilityQuery = useRankEligibility();
   const { hasLimitedAccess, isAnonymousGuest, needsActivation } = useIsGuest();
   const viewingChild = useIsViewingChildProfile();
-  const canCoach = !viewingChild && (role === 'coach' || role === 'admin');
+  const canCoach = !viewingChild && role === 'coach';
   const navItems = useMemo(
     () => (viewingChild ? CHILD_PROFILE_NAV_ITEMS : NAV_ITEMS),
     [viewingChild],

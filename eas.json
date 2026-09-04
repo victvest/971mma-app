@@ -19,7 +19,9 @@
         "ANDROID_BUILD_ARCHS": "arm64-v8a",
         "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
         "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
-        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1060100094714-mrtg2qojn5nas008fach6ppsra1275a5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1060100094714-s7lltm8hsftl6een8lfc9o3b9l4qjeke.apps.googleusercontent.com"
       }
     },
     "preview-emulator": {
@@ -32,7 +34,9 @@
         "ANDROID_BUILD_ARCHS": "x86_64",
         "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
         "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
-        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1060100094714-mrtg2qojn5nas008fach6ppsra1275a5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1060100094714-s7lltm8hsftl6een8lfc9o3b9l4qjeke.apps.googleusercontent.com"
       }
     },
     "production-apk": {
@@ -47,7 +51,9 @@
         "ANDROID_BUILD_ARCHS": "arm64-v8a",
         "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
         "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
-        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1060100094714-mrtg2qojn5nas008fach6ppsra1275a5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1060100094714-s7lltm8hsftl6een8lfc9o3b9l4qjeke.apps.googleusercontent.com"
       }
     },
     "production": {
@@ -63,7 +69,9 @@
       "env": {
         "EXPO_PUBLIC_SKIP_ACTIVATION_GATING": "false",
         "EXPO_PUBLIC_COACH_DEMO_MODE": "false",
-        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true"
+        "EXPO_PUBLIC_PERSONA_ASSISTANT_ENABLED": "true",
+        "EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID": "1060100094714-mrtg2qojn5nas008fach6ppsra1275a5.apps.googleusercontent.com",
+        "EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID": "1060100094714-s7lltm8hsftl6een8lfc9o3b9l4qjeke.apps.googleusercontent.com"
       }
     }
   },

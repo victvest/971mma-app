@@ -61,7 +61,7 @@ function sourceUsername(): string {
   return `_${name}`;
 }
 
-function isUsableToken(row: TokenRow | null): row is Required<TokenRow> {
+function isUsableToken(row: TokenRow | null): row is TokenRow & { access_token: string; expires_at: string } {
   if (!row?.access_token || !row.expires_at) return false;
   return new Date(row.expires_at).getTime() > Date.now() + TOKEN_REFRESH_SKEW_MS;
 }
@@ -96,7 +96,7 @@ async function issueToken(svc: SupabaseClient): Promise<string> {
   await assertQuota(svc);
 
   const res = await withConcurrencyLimit(() =>
-    fetch(`${baseUrl()}/usertoken/issue`, {
+    fetchWithUsageLog(`${baseUrl()}/usertoken/issue`, {
       method: 'POST',
       headers: baseHeaders(),
       body: JSON.stringify({
@@ -173,6 +173,28 @@ function retryDelayMs(retryAfter: string | null, attempt: number): number {
   return Math.min(250 * 2 ** attempt, 2_000);
 }
 
+/** Count actual outbound attempts, including retries, without logging member data or credentials. */
+async function fetchWithUsageLog(url: string, init: RequestInit): Promise<Response> {
+  const startedAt = performance.now();
+  let status: number | null = null;
+  try {
+    const response = await fetch(url, init);
+    status = response.status;
+    return response;
+  } finally {
+    // Mindbody routes have two static segments. Never log query strings, bodies,
+    // headers, or arbitrary URLs supplied by a caller.
+    const route = new URL(url).pathname.match(/\/(client|class|site|staff|usertoken)\/([a-z]+)$/i);
+    console.info(JSON.stringify({
+      event: 'mindbody_request',
+      endpoint: route ? `/${route[1].toLowerCase()}/${route[2].toLowerCase()}` : 'other',
+      method: (init.method ?? 'GET').toUpperCase(),
+      status,
+      durationMs: Math.round(performance.now() - startedAt),
+    }));
+  }
+}
+
 async function fetchMindbody<T>(
   path: string,
   init: RequestInit,
@@ -185,7 +207,7 @@ async function fetchMindbody<T>(
   if (token) headers.set('Authorization', `Bearer ${token}`);
 
   const res = await withConcurrencyLimit(() =>
-    fetch(buildUrl(path), {
+    fetchWithUsageLog(buildUrl(path), {
       ...init,
       headers,
     }),
@@ -202,6 +224,7 @@ export async function mbFetch<T>(
 ): Promise<T> {
   const readMethod = isReadMethod(init.method);
   let forceTokenRefresh = false;
+  let hasRefreshedToken = false;
   let useKeyOnly = false;
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt += 1) {
@@ -210,6 +233,10 @@ export async function mbFetch<T>(
     if (!useKeyOnly) {
       try {
         token = await getToken(svc, forceTokenRefresh);
+        if (forceTokenRefresh) {
+          hasRefreshedToken = true;
+          forceTokenRefresh = false;
+        }
       } catch (error) {
         if (!readMethod) throw error;
         useKeyOnly = true;
@@ -226,7 +253,7 @@ export async function mbFetch<T>(
     if (status >= 200 && status < 300) return body;
 
     if (status === 401 && token && !useKeyOnly) {
-      if (!forceTokenRefresh) {
+      if (!hasRefreshedToken) {
         forceTokenRefresh = true;
         continue;
       }

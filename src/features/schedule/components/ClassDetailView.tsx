@@ -13,7 +13,7 @@ import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
-import { AlertTriangle, Calendar, MapPin } from 'lucide-react-native';
+import { Calendar, MapPin } from 'lucide-react-native';
 import Animated, {
   useAnimatedScrollHandler,
   useSharedValue,
@@ -78,8 +78,6 @@ export function ClassDetailView({
 
   const imageSource = resolveClassImage(item.discipline, item.imageUrl);
   const live = isClassLiveNow(item.startsAt, item.durationMinutes);
-
-  const openSpots = item.capacity > 0 ? Math.max(item.capacity - item.bookedCount, 0) : null;
 
   const hideCoachSection = isGymUsageClass(item);
 
@@ -146,17 +144,6 @@ export function ClassDetailView({
     ],
   }));
 
-  // Capacity calculations
-  const isFull = openSpots === 0;
-  const isAlmostFull = openSpots !== null && openSpots > 0 && openSpots <= 5;
-  const statusColor = isFull || isAlmostFull ? '#D71920' : '#007A33';
-  const spotsRemainingLabel =
-    openSpots === null
-      ? 'Open floor session'
-      : openSpots === 0
-        ? 'No spots remaining'
-        : `${openSpots} spot${openSpots === 1 ? '' : 's'} remaining`;
-
   const coachRoleLabel = useMemo(() => {
     if (coachLoading) return 'Loading profile…';
     const specialty = (coach?.specialty?.split(',')[0] ?? item.discipline) || 'MMA';
@@ -169,10 +156,6 @@ export function ClassDetailView({
     }
     return `${specialty} Instructor${rating}`;
   }, [coach, coach?.isHeadCoach, coach?.rating, coach?.specialty, coachLoading, item.discipline]);
-
-  const capacityTotal = item.capacity > 0 ? item.capacity : 30;
-  const statusHeadline = isFull ? 'Full' : isAlmostFull ? 'Almost Full' : 'Open';
-  const showStatusWarning = isFull || isAlmostFull;
 
   const openLocation = () => {
     triggerLightImpact();
@@ -198,9 +181,6 @@ export function ClassDetailView({
   const canSubscribeToClass = !item.isCancelled && isClassUpcoming(item.startsAt);
   const userId = useAuthStore((state) => state.user?.id);
   const showSubscribeBar = Boolean(userId) && canSubscribeToClass;
-
-  const capacityFraction = item.bookedCount / capacityTotal;
-  const progressPercentage = Math.min(Math.max(capacityFraction, 0), 1) * 100;
 
   return (
     <View style={styles.container}>
@@ -335,54 +315,6 @@ export function ClassDetailView({
             </View>
           </GlassSurface>
 
-          {/* Capacity card */}
-          <GlassSurface
-            borderRadius={32}
-            style={styles.detailCardGlass}
-            contentStyle={[styles.detailCardContent, styles.detailCardCapacity]}
-          >
-            <View style={styles.capacityTopRow}>
-              <View style={styles.capacityColumn}>
-                <Text style={styles.capacityMetricLabel}>CAPACITY</Text>
-                <Text style={styles.capacityMetricValue}>
-                  {item.bookedCount}/{capacityTotal}
-                </Text>
-              </View>
-              <View style={[styles.capacityColumn, styles.capacityColumnRight]}>
-                <Text
-                  style={[
-                    styles.capacityMetricLabel,
-                    showStatusWarning ? styles.statusMetricLabel : null,
-                  ]}
-                >
-                  STATUS
-                </Text>
-                <View style={styles.statusValueRow}>
-                  {showStatusWarning ? (
-                    <AlertTriangle size={14} color={statusColor} strokeWidth={2.5} />
-                  ) : null}
-                  <Text style={[styles.statusMetricValue, { color: statusColor }]}>
-                    {statusHeadline}
-                  </Text>
-                </View>
-              </View>
-            </View>
-
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  {
-                    width: `${progressPercentage}%`,
-                    backgroundColor: isFull ? '#D71920' : '#007A33',
-                  },
-                ]}
-              />
-            </View>
-
-            <Text style={styles.spotsRemaining}>{spotsRemainingLabel}</Text>
-            <View style={styles.capacityDivider} />
-          </GlassSurface>
         </View>
       </Animated.ScrollView>
 
@@ -591,9 +523,6 @@ const styles = StyleSheet.create({
   detailCardCompact: {
     paddingVertical: 22,
   },
-  detailCardCapacity: {
-    paddingBottom: 0,
-  },
   instructorAvatarLarge: {
     alignSelf: 'center',
     backgroundColor: '#EFEFEF',
@@ -665,64 +594,5 @@ const styles = StyleSheet.create({
   locationActionPressed: {
     opacity: 0.85,
     transform: [{ scale: 0.97 }],
-  },
-  capacityTopRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 16,
-  },
-  capacityColumn: {
-    gap: 6,
-  },
-  capacityColumnRight: {
-    alignItems: 'flex-end',
-  },
-  capacityMetricLabel: {
-    color: '#9CA3AF',
-    fontFamily: 'Inter_700Bold',
-    fontSize: 11,
-    letterSpacing: 1,
-  },
-  statusMetricLabel: {
-    color: '#D71920',
-  },
-  capacityMetricValue: {
-    color: '#000000',
-    fontFamily: 'GeneralSans-Bold',
-    fontSize: 28,
-    letterSpacing: -0.5,
-  },
-  statusValueRow: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    gap: 4,
-  },
-  statusMetricValue: {
-    fontFamily: 'Inter_600SemiBold',
-    fontSize: 15,
-  },
-  progressTrack: {
-    backgroundColor: '#ECEFF3',
-    borderRadius: 999,
-    height: 8,
-    marginBottom: 12,
-    overflow: 'hidden',
-    width: '100%',
-  },
-  progressFill: {
-    borderRadius: 999,
-    height: '100%',
-  },
-  spotsRemaining: {
-    color: '#7A7A7A',
-    fontFamily: 'Inter_500Medium',
-    fontSize: 13,
-    marginBottom: 20,
-    textAlign: 'center',
-  },
-  capacityDivider: {
-    backgroundColor: '#ECEFF3',
-    height: StyleSheet.hairlineWidth,
-    width: '100%',
   },
 });

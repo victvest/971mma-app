@@ -58,8 +58,12 @@ type MemberAccessContext = {
   fullName: string | null;
   avatarUrl: string | null;
   membershipStatus: string | null;
+  membershipExpiresAt: string | null;
   membershipLastSyncedAt: string | null;
+  membershipSource: string | null;
   mindbodyClientId: string | null;
+  isUnlimitedAccess?: boolean;
+  hasActiveMirrorRow?: boolean;
 };
 
 type EvaluateAccessInput = {
@@ -97,6 +101,8 @@ type GateAccessAttemptLog = {
 };
 
 type ArrivalResponse = {
+  ArrivalAdded?: boolean;
+  ClientService?: { Id?: unknown };
   Visit?: { Id?: unknown };
 };
 
@@ -106,6 +112,80 @@ type MindbodyAccessErrorResult = {
   membershipStatus: string | null;
   message: string;
 };
+
+const MAX_LOCAL_MIRROR_STALE_MS = 48 * 60 * 60 * 1000; // 48 hours
+const LIVE_FALLBACK_TIMEOUT_MS = 2200; // 2.2 seconds (under Gantner's 3.0s hardware limit)
+
+export function isLocallyEligibleMembership(member: MemberAccessContext): boolean {
+  if (member.isUnlimitedAccess || member.membershipSource === 'unlimited') {
+    return true;
+  }
+
+  if (member.membershipStatus !== 'active') {
+    return false;
+  }
+
+  if (member.membershipExpiresAt) {
+    const expiresEpoch = new Date(member.membershipExpiresAt).getTime();
+    if (Number.isFinite(expiresEpoch) && expiresEpoch < Date.now()) {
+      return false;
+    }
+  }
+
+  if (!member.membershipLastSyncedAt) {
+    return false;
+  }
+  const lastSyncedEpoch = new Date(member.membershipLastSyncedAt).getTime();
+  if (!Number.isFinite(lastSyncedEpoch) || Date.now() - lastSyncedEpoch > MAX_LOCAL_MIRROR_STALE_MS) {
+    return false;
+  }
+
+  if (!member.hasActiveMirrorRow && member.membershipSource !== 'mindbody') {
+    return false;
+  }
+
+  return true;
+}
+
+function runBackground(promise: Promise<unknown>): void {
+  // @ts-ignore EdgeRuntime is provided by Deno Deploy / Supabase Edge Functions
+  if (typeof EdgeRuntime !== 'undefined' && EdgeRuntime?.waitUntil) {
+    // @ts-ignore
+    EdgeRuntime.waitUntil(promise);
+  } else {
+    promise.catch((err: unknown) => console.warn('[accessControl] background task failed', err));
+  }
+}
+
+async function writeMindbodyArrivalAndRecord(
+  svc: SupabaseClient,
+  clientId: string,
+  checkInId: string,
+): Promise<void> {
+  try {
+    const visitId = await writeMindbodyArrival(svc, clientId);
+    if (visitId) {
+      await svc
+        .from('check_ins')
+        .update({ mindbody_visit_id: visitId })
+        .eq('id', checkInId);
+    }
+  } catch (error) {
+    console.warn('[accessControl] async arrival write failed, queuing sync job', error);
+    await enqueueSyncJob(
+      svc,
+      'mindbody_arrival',
+      {
+        checkInId,
+        clientId,
+        locationId: parseInt(Deno.env.get('MINDBODY_LOCATION_ID') ?? '1', 10),
+      },
+      { dedupeField: 'checkInId' },
+    ).catch((jobErr) => {
+      console.warn('[accessControl] failed to enqueue arrival job', jobErr);
+    });
+  }
+}
 
 function envNumber(key: string, fallback: number): number {
   const raw = Deno.env.get(key);
@@ -341,25 +421,42 @@ async function readMemberAccessContextByUserId(
   svc: SupabaseClient,
   userId: string,
 ): Promise<MemberAccessContext | null> {
-  const [{ data: profile, error: profileError }, { data: link, error: linkError }] =
-    await Promise.all([
-      svc
-        .from('profiles')
-        .select('id, full_name, avatar_url, membership_status, membership_last_synced_at')
-        .eq('id', userId)
-        .maybeSingle<{
-          id: string;
-          full_name: string | null;
-          avatar_url: string | null;
-          membership_status: string | null;
-          membership_last_synced_at: string | null;
-        }>(),
-      svc
-        .from('mindbody_links')
-        .select('mindbody_client_id')
-        .eq('user_id', userId)
-        .maybeSingle<{ mindbody_client_id: string }>(),
-    ]);
+  const [
+    { data: profile, error: profileError },
+    { data: link, error: linkError },
+    { data: unlimited, error: unlimitedError },
+    { data: memberships },
+  ] = await Promise.all([
+    svc
+      .from('profiles')
+      .select('id, full_name, avatar_url, membership_status, membership_expires_at, membership_last_synced_at, membership_source')
+      .eq('id', userId)
+      .maybeSingle<{
+        id: string;
+        full_name: string | null;
+        avatar_url: string | null;
+        membership_status: string | null;
+        membership_expires_at: string | null;
+        membership_last_synced_at: string | null;
+        membership_source: string | null;
+      }>(),
+    svc
+      .from('mindbody_links')
+      .select('mindbody_client_id')
+      .eq('user_id', userId)
+      .maybeSingle<{ mindbody_client_id: string }>(),
+    svc
+      .from('unlimited_access_members')
+      .select('id, is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle<{ id: string; is_active: boolean }>(),
+    svc
+      .from('member_memberships')
+      .select('id, status, end_date')
+      .eq('user_id', userId)
+      .eq('status', 'active'),
+  ]);
 
   if (profileError) {
     throw new MbError('UPSTREAM_ERROR', 'Unable to read member profile.');
@@ -367,15 +464,27 @@ async function readMemberAccessContextByUserId(
   if (linkError) {
     throw new MbError('UPSTREAM_ERROR', 'Unable to read member link.');
   }
+  if (unlimitedError) {
+    throw new MbError('UPSTREAM_ERROR', 'Unable to read unlimited access status.');
+  }
   if (!profile) return null;
+
+  const hasActiveMirrorRow = (memberships ?? []).some((m: { end_date?: string | null }) => {
+    if (!m.end_date) return true;
+    return new Date(m.end_date).getTime() >= Date.now();
+  });
 
   return {
     userId: profile.id,
     fullName: profile.full_name,
     avatarUrl: profile.avatar_url,
     membershipStatus: profile.membership_status,
+    membershipExpiresAt: profile.membership_expires_at ?? null,
     membershipLastSyncedAt: profile.membership_last_synced_at,
+    membershipSource: profile.membership_source ?? null,
     mindbodyClientId: link?.mindbody_client_id ?? null,
+    isUnlimitedAccess: Boolean(unlimited?.is_active),
+    hasActiveMirrorRow,
   };
 }
 
@@ -615,7 +724,11 @@ async function recordGateEntry(
   return { kind: 'granted', checkInId, isRepeatFacilityToday: hadFacilityToday };
 }
 
-async function writeMindbodyArrival(svc: SupabaseClient, clientId: string): Promise<string | null> {
+async function writeMindbodyArrival(
+  svc: SupabaseClient,
+  clientId: string,
+  init: RequestInit = {},
+): Promise<string | null> {
   const locationId = parseInt(Deno.env.get('MINDBODY_LOCATION_ID') ?? '1', 10);
   const arrival = await mbFetch<ArrivalResponse>(svc, '/client/addarrival', {
     method: 'POST',
@@ -623,11 +736,12 @@ async function writeMindbodyArrival(svc: SupabaseClient, clientId: string): Prom
       ClientId: clientId,
       LocationId: locationId,
     }),
+    ...init,
   });
 
-  const visitId = arrival.Visit?.Id;
-  if (visitId === undefined || visitId === null) return null;
-  return String(visitId);
+  const rawId = arrival.Visit?.Id ?? arrival.ClientService?.Id;
+  if (rawId === undefined || rawId === null) return null;
+  return String(rawId);
 }
 
 function buildDecision(
@@ -696,7 +810,7 @@ async function evaluateResolvedMemberGateAccess(
     });
   }
 
-  if (!input.member.mindbodyClientId) {
+  if (!input.member.mindbodyClientId && !input.member.isUnlimitedAccess) {
     return buildDecision(base, {
       granted: false,
       message: 'Membership unavailable. Please contact front desk.',
@@ -731,12 +845,63 @@ async function evaluateResolvedMemberGateAccess(
     }
   }
 
+  const isEligibleLocally = isLocallyEligibleMembership(input.member);
+
+  if (isEligibleLocally) {
+    // FAST PATH: Member is confirmed active locally (< 150ms).
+    const entry = await recordGateEntry(
+      svc,
+      input.member,
+      input.tokenJti,
+      null, // VisitId will be attached asynchronously in the background
+      hadFacilityToday,
+    );
+
+    if (entry.kind === 'token_spent') {
+      return buildDecision(base, {
+        granted: false,
+        message: 'This pass was already used. Open the app to refresh your QR.',
+        reasonCode: 'token_already_used',
+      });
+    }
+
+    // Write Mindbody arrival in the background for first daily facility entry
+    if (input.member.mindbodyClientId && !hadFacilityToday) {
+      runBackground(
+        writeMindbodyArrivalAndRecord(
+          svc,
+          input.member.mindbodyClientId,
+          entry.checkInId,
+        ),
+      );
+    }
+
+    return buildDecision(base, {
+      granted: true,
+      message: 'Access granted.',
+      reasonCode: entry.isRepeatFacilityToday ? 'already_checked_in_today' : 'granted',
+      membershipStatus: 'active',
+      checkInId: entry.checkInId,
+    });
+  }
+
+  // FALLBACK: Local mirror does not confirm fresh active membership.
+  // Query Mindbody live with a strict 2.2-second timeout to protect against Gantner GT7 hardware timeout.
   try {
-    // First facility arrival of the day writes Mindbody arrival; later arrivals are
-    // local history only (MB often rejects a second AddArrival the same day).
-    const mindbodyVisitId = hadFacilityToday
-      ? null
-      : await writeMindbodyArrival(svc, input.member.mindbodyClientId);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), LIVE_FALLBACK_TIMEOUT_MS);
+
+    let mindbodyVisitId: string | null = null;
+    try {
+      mindbodyVisitId = hadFacilityToday
+        ? null
+        : await writeMindbodyArrival(svc, input.member.mindbodyClientId, {
+          signal: controller.signal,
+        });
+    } finally {
+      clearTimeout(timeoutId);
+    }
+
     const entry = await recordGateEntry(
       svc,
       input.member,
@@ -759,8 +924,21 @@ async function evaluateResolvedMemberGateAccess(
       reasonCode: entry.isRepeatFacilityToday ? 'already_checked_in_today' : 'granted',
       membershipStatus: 'active',
       checkInId: entry.checkInId,
+      shouldEnqueueMembershipRefresh: true,
     });
   } catch (error) {
+    if (
+      error instanceof Error &&
+      (error.name === 'AbortError' || error.message?.toLowerCase().includes('abort'))
+    ) {
+      return buildDecision(base, {
+        granted: false,
+        message: 'Membership validation busy. Please contact front desk.',
+        reasonCode: 'mindbody_unavailable',
+        shouldEnqueueMembershipRefresh: true,
+      });
+    }
+
     const classified = classifyMindbodyAccessError(error);
 
     if (classified.granted) {

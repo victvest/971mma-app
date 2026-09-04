@@ -15,7 +15,9 @@ import {
   useToggleFeedLike,
   useFeedDisciplines,
 } from '@/features/feed/hooks/useFeed';
-import type { FeedPost, FeedSearchUser } from '@/features/feed/types';
+import type { FeedMediaItem, FeedPost, FeedSearchUser } from '@/features/feed/types';
+import { FeedImageViewerModal } from '@/features/feed/components/FeedImageViewerModal';
+import { FeedLikesBottomSheet } from '@/features/feed/components/FeedLikesBottomSheet';
 import { FeedPostCard } from '@/features/feed/components/FeedPostCard';
 import { FeedSearchChrome } from '@/features/feed/components/FeedSearchChrome';
 import { FeedUserRow } from '@/features/feed/components/FeedUserRow';
@@ -166,6 +168,10 @@ export function FeedSearchScreen() {
   const { showConfirm } = useDialog();
   const inputRef = useRef<TextInput>(null);
   const [query, setQuery] = useState('');
+  const [likesPostId, setLikesPostId] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<{ items: FeedMediaItem[]; index: number } | null>(
+    null,
+  );
   const loadingMoreRef = useRef(false);
 
   const trimmedQuery = query.trim();
@@ -283,10 +289,12 @@ export function FeedSearchScreen() {
         <FeedPostCard
           post={item.post}
           onLike={(post) => likeMutation.mutate(post)}
+          onOpenLikes={(post) => setLikesPostId(post.id)}
           onOpenComments={(post) => router.push(`/feed/post/${post.id}`)}
           onOpenAuthor={(authorId) => router.push(`/feed/user/${authorId}`)}
           onShare={handleShare}
           onDelete={handleDelete}
+          onPressImage={(media, index) => setActiveMedia({ items: media, index })}
         />
       );
     },
@@ -385,6 +393,20 @@ export function FeedSearchScreen() {
           drawDistance={360}
         />
       </View>
+
+      <FeedLikesBottomSheet
+        postId={likesPostId}
+        visible={Boolean(likesPostId)}
+        onClose={() => setLikesPostId(null)}
+        onSelectUser={(userId) => router.push(`/feed/user/${userId}`)}
+      />
+
+      <FeedImageViewerModal
+        visible={Boolean(activeMedia)}
+        media={activeMedia?.items ?? []}
+        initialIndex={activeMedia?.index ?? 0}
+        onClose={() => setActiveMedia(null)}
+      />
     </View>
   );
 }

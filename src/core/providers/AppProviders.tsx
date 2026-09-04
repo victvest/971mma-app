@@ -23,7 +23,7 @@ import { exposePerfToolsOnGlobal, PerfMark, perfMarkOnce } from '@/shared/perfor
 
 function RollCallOfflineFlushMonitor() {
   const role = useAuthStore((state) => state.role);
-  const enabled = role === 'coach' || role === 'admin';
+  const enabled = role === 'coach';
   useRollCallOfflineFlush(enabled);
   return null;
 }

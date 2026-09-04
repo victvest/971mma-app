@@ -1,16 +1,26 @@
 import { handleOptions, jsonResponse } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { mindbodyLocalDateTimeToIso } from '../_shared/gymTime.ts';
+import { createInFlightDeduplicator } from '../_shared/inFlight.ts';
 import { cacheGet, cacheSet, mbPaginate } from '../_shared/mindbody.ts';
 import { serviceClient } from '../_shared/supabase.ts';
 
-const SCHEDULE_TTL_SEC = 2 * 60;
+const SCHEDULE_TTL_SEC = 5 * 60;
 
 type ScheduleRequest = {
   startDate?: string;
   endDate?: string;
   force?: boolean;
 };
+
+type ScheduleResult = {
+  refreshed: boolean;
+  count: number;
+  mindbodyFetched?: number;
+  tombstoned?: number;
+};
+
+const shareScheduleRefresh = createInFlightDeduplicator<ScheduleResult>();
 
 type MbStaff = {
   Id?: unknown;
@@ -50,6 +60,7 @@ type MbClass = {
 
 type ClassesResponse = {
   Classes?: MbClass[];
+  PaginationResponse?: { TotalResults?: unknown };
 };
 
 type ResolvedProgram = {
@@ -247,28 +258,19 @@ async function tombstoneMissingClasses(
   return tombstoned;
 }
 
-Deno.serve(async (req) => {
-  const options = handleOptions(req);
-  if (options) return options;
+export async function syncSchedule(
+  svc: ReturnType<typeof serviceClient>,
+  body: ScheduleRequest,
+): Promise<ScheduleResult> {
+  const { startDate, endDate } = parseRange(body);
+  const force = body.force === true;
+  const cacheKey = `schedule:${startDate}:${endDate}`;
 
-  if (req.method !== 'POST') {
-    return jsonResponse(
-      { error: { code: 'BAD_REQUEST', message: 'POST required.' } },
-      { status: 405 },
-    );
-  }
-
-  try {
-    const body = (await req.json().catch(() => ({}))) as ScheduleRequest;
-    const { startDate, endDate } = parseRange(body);
-    const force = body.force === true;
-    const svc = serviceClient();
-    const cacheKey = `schedule:${startDate}:${endDate}`;
-
+  const refresh = async (): Promise<ScheduleResult> => {
     if (!force) {
       const cached = await cacheGet<{ refreshed: boolean }>(svc, cacheKey);
       if (cached) {
-        return jsonResponse({ refreshed: false, count: 0 });
+        return { refreshed: false, count: 0 };
       }
     }
 
@@ -317,17 +319,42 @@ Deno.serve(async (req) => {
       if (upsertError) {
         throw new MbError('UPSTREAM_ERROR', `Unable to upsert classes mirror: ${upsertError.message}`);
       }
-      await cacheSet(svc, cacheKey, { refreshed: true }, SCHEDULE_TTL_SEC);
     }
 
     const tombstoned = await tombstoneMissingClasses(svc, startDate, endDate, fetchedIds, syncedAt);
 
-    return jsonResponse({
+    // Publish the cache marker only after every mirror update has succeeded.
+    if (rows.length > 0) {
+      await cacheSet(svc, cacheKey, { refreshed: true }, SCHEDULE_TTL_SEC);
+    }
+
+    return {
       refreshed: true,
       count: rows.length,
       mindbodyFetched: classes.length,
       tombstoned,
-    });
+    };
+  };
+
+  // Explicit refreshes always start their own live read. Ordinary callers can
+  // share a refresh already running for this exact range in the same isolate.
+  return force ? await refresh() : await shareScheduleRefresh(cacheKey, refresh);
+}
+
+Deno.serve(async (req) => {
+  const options = handleOptions(req);
+  if (options) return options;
+
+  if (req.method !== 'POST') {
+    return jsonResponse(
+      { error: { code: 'BAD_REQUEST', message: 'POST required.' } },
+      { status: 405 },
+    );
+  }
+
+  try {
+    const body = (await req.json().catch(() => ({}))) as ScheduleRequest;
+    return jsonResponse(await syncSchedule(serviceClient(), body));
   } catch (error) {
     return toErrorResponse(error);
   }

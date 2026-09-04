@@ -138,13 +138,7 @@ function NavigationGuard() {
     setBugTelemetryRoute(pathname);
   }, [pathname]);
 
-  useEffect(() => {
-    if (initializing) return;
-    if (isAuthenticated && role === 'admin') {
-      void signOut();
-      authToast.error('Access Denied', 'Admins must use the Admin Web Portal.');
-    }
-  }, [initializing, isAuthenticated, role, signOut]);
+
 
   const redirectTarget = useMemo(() => {
     if (initializing) return null;

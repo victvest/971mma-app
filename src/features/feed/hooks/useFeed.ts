@@ -15,6 +15,7 @@ import {
   getFeedProfile,
   listFeedComments,
   listFeedDisciplines,
+  listFeedPostLikes,
   listFeedPosts,
   recordFeedShare,
   searchFeed,
@@ -25,6 +26,8 @@ import type {
   FeedComment,
   FeedCommentsPage,
   FeedCursor,
+  FeedDiscipline,
+  FeedLikeUser,
   FeedMediaItem,
   FeedPost,
   FeedPostsPage,
@@ -60,6 +63,8 @@ export const feedProfileKey = (userId: string, targetUserId?: string | null) =>
   ['feed-profile', userId, targetUserId ?? 'self'] as const;
 export const feedSearchKey = (query: string, type: FeedSearchType) =>
   ['feed-search', query, type] as const;
+export const feedPostLikesKey = (postId: string) =>
+  ['feed-post-likes', postId] as const;
 
 function pageParamToCursor(pageParam: unknown): FeedCursor | null {
   if (!pageParam || typeof pageParam !== 'object') return null;
@@ -490,6 +495,15 @@ export function useToggleFeedFollow(followeeId: string) {
     onSettled: () => {
       void queryClient.invalidateQueries({ queryKey: feedProfileKey(followeeId, targetUserId) });
     },
+  });
+}
+
+export function useFeedPostLikes(postId: string | null) {
+  return useQuery({
+    queryKey: feedPostLikesKey(postId ?? ''),
+    queryFn: () => listFeedPostLikes(postId!),
+    enabled: Boolean(postId),
+    staleTime: 30_000,
   });
 }
 

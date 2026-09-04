@@ -5,7 +5,7 @@ export function normalizeAuthEmail(email: string): string {
 }
 
 export function shouldBlockAdminMobileSignIn(role: string | undefined | null): boolean {
-  return role === 'admin';
+  return false;
 }
 
 export function isEmailConfirmed(confirmedAt: string | null | undefined): boolean {

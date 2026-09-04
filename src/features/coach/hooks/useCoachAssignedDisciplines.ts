@@ -9,7 +9,7 @@ export const coachAssignedDisciplinesKey = (coachId: string) =>
   ['coach-assigned-disciplines', coachId] as const;
 
 function canUseCoachTools(role: string | null | undefined): boolean {
-  return role === 'coach' || role === 'admin';
+  return role === 'coach';
 }
 
 export function useCoachAssignedDisciplines() {

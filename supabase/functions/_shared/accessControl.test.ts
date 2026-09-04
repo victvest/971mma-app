@@ -258,6 +258,7 @@ function baseSeed(): Record<string, Row[]> {
       },
     ],
     mindbody_links: [{ user_id: MEMBER_ID, mindbody_client_id: 'mb-1' }],
+    unlimited_access_members: [],
     gate_access_attempts: [],
     check_ins: [],
     qr_tokens: [],
@@ -500,3 +501,38 @@ Deno.test('MemberId path grants without any token consumption', async () => {
   assertEquals(decision.tokenJti, null);
   assertEquals(seed.check_ins.length, 1);
 });
+
+Deno.test('unlimited access member is granted gate access without Mindbody link', async () => {
+  const UNLINKED_VIP_ID = '22222222-2222-4222-8222-222222222222';
+  const exp = Math.floor(Date.now() / 1000) + 300;
+  const jti = 'jti-vip-fresh';
+  const seed = baseSeed();
+  seed.profiles.push({
+    id: UNLINKED_VIP_ID,
+    full_name: 'VIP Guest',
+    avatar_url: null,
+    membership_status: 'active',
+    membership_last_synced_at: null,
+  });
+  // NOT in mindbody_links!
+  seed.unlimited_access_members.push({
+    id: 'uam-1',
+    user_id: UNLINKED_VIP_ID,
+    is_active: true,
+    reason: 'VIP Sponsor',
+  });
+  seed.qr_tokens.push({ id: 'q-vip', jti, user_id: UNLINKED_VIP_ID, expires_at: '', consumed_at: null });
+
+  const svc = makeFakeSvc(seed);
+  const token = await signMemberQrToken('supabase', UNLINKED_VIP_ID, exp, jti);
+
+  // deno-lint-ignore no-explicit-any
+  const decision = await evaluateGateAccess({ svc: svc as any, deviceId: 'reader-1', token, rawType: 'QR' });
+
+  assertEquals(decision.granted, true);
+  assertEquals(decision.reasonCode, 'granted');
+  const consumed = seed.qr_tokens.find((t) => t.jti === jti)?.consumed_at;
+  assert(consumed, 'VIP member token should be consumed after gate grant');
+  assertEquals(seed.check_ins.length, 1);
+});
+

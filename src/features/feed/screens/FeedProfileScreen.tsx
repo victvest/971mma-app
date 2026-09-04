@@ -20,7 +20,9 @@ import {
   useToggleFeedFollow,
 } from '@/features/feed/hooks/useFeed';
 import { useAuthStore } from '@/stores/useAuthStore';
-import type { FeedPost } from '@/features/feed/types';
+import type { FeedMediaItem, FeedPost } from '@/features/feed/types';
+import { FeedImageViewerModal } from '@/features/feed/components/FeedImageViewerModal';
+import { FeedLikesBottomSheet } from '@/features/feed/components/FeedLikesBottomSheet';
 import { FeedPostCard } from '@/features/feed/components/FeedPostCard';
 import { FeedProfileHeader } from '@/features/feed/components/FeedProfileHeader';
 import { useActiveMemberId, useIsViewingChildProfile } from '@/hooks/useActiveMemberId';
@@ -37,6 +39,10 @@ export function FeedProfileScreen({ userId }: Props) {
   const activeMemberId = useActiveMemberId();
   const viewingChild = useIsViewingChildProfile();
   const [refreshing, setRefreshing] = useState(false);
+  const [likesPostId, setLikesPostId] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<{ items: FeedMediaItem[]; index: number } | null>(
+    null,
+  );
   const loadingMoreRef = useRef(false);
 
   const profileQuery = useFeedProfile(userId);
@@ -101,6 +107,7 @@ export function FeedProfileScreen({ userId }: Props) {
       <FeedPostCard
         post={item}
         onLike={(post) => likeMutation.mutate(post)}
+        onOpenLikes={(post) => setLikesPostId(post.id)}
         onOpenComments={(post) => router.push(`/feed/post/${post.id}`)}
         onOpenAuthor={(authorId) => {
           if (!viewingChild || authorId === activeMemberId) {
@@ -109,6 +116,7 @@ export function FeedProfileScreen({ userId }: Props) {
         }}
         onShare={handleShare}
         onDelete={handleDelete}
+        onPressImage={(media, index) => setActiveMedia({ items: media, index })}
         actionsMode={viewingChild ? 'comments-only' : 'full'}
       />
     ),
@@ -234,6 +242,24 @@ export function FeedProfileScreen({ userId }: Props) {
           />
         }
         drawDistance={360}
+      />
+
+      <FeedLikesBottomSheet
+        postId={likesPostId}
+        visible={Boolean(likesPostId)}
+        onClose={() => setLikesPostId(null)}
+        onSelectUser={(targetId) => {
+          if (targetId !== userId) {
+            router.push(`/feed/user/${targetId}`);
+          }
+        }}
+      />
+
+      <FeedImageViewerModal
+        visible={Boolean(activeMedia)}
+        media={activeMedia?.items ?? []}
+        initialIndex={activeMedia?.index ?? 0}
+        onClose={() => setActiveMedia(null)}
       />
     </View>
   );

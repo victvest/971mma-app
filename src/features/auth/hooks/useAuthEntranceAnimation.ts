@@ -18,10 +18,10 @@ export function useAuthEntranceAnimation(options: AuthEntranceOptions = {}) {
   const { animations, layout } = useTheme();
   const delay = options.delay ?? 0;
   const offset = options.offset ?? layout.authEntranceOffset;
-  const opacity = useSharedValue<number>(animations.alpha.hidden);
-  const translateY = useSharedValue<number>(offset);
   const visibleAlpha = animations.alpha.visible;
   const idleState = animations.interactionState.idle;
+  const opacity = useSharedValue<number>(visibleAlpha);
+  const translateY = useSharedValue<number>(idleState);
 
   useEffect(() => {
     opacity.value = withDelay(delay, withTiming(visibleAlpha, animations.timing.page));
@@ -49,10 +49,10 @@ export function useAuthSlideUpAnimation(options: AuthEntranceOptions = {}) {
   const { animations, layout } = useTheme();
   const delay = options.delay ?? 0;
   const offset = options.offset ?? layout.authEntranceOffset;
-  const opacity = useSharedValue<number>(animations.alpha.hidden);
-  const translateY = useSharedValue<number>(offset);
   const visibleAlpha = animations.alpha.visible;
   const idleState = animations.interactionState.idle;
+  const opacity = useSharedValue<number>(visibleAlpha);
+  const translateY = useSharedValue<number>(idleState);
 
   useEffect(() => {
     opacity.value = withDelay(delay, withTiming(visibleAlpha, animations.timing.page));

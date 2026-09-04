@@ -22,8 +22,10 @@ import {
   useRecordFeedShare,
   useToggleFeedLike,
 } from '@/features/feed/hooks/useFeed';
-import type { FeedPost } from '@/features/feed/types';
+import type { FeedMediaItem, FeedPost } from '@/features/feed/types';
 import { FeedDisciplineFilter } from '@/features/feed/components/FeedDisciplineFilter';
+import { FeedImageViewerModal } from '@/features/feed/components/FeedImageViewerModal';
+import { FeedLikesBottomSheet } from '@/features/feed/components/FeedLikesBottomSheet';
 import { FeedPostList } from '@/features/feed/components/FeedPostList';
 import { FeedSectionHeader } from '@/features/feed/components/FeedSectionHeader';
 import { FeedSkeleton } from '@/features/feed/components/FeedSkeleton';
@@ -41,6 +43,10 @@ export function FeedScreen() {
   const { isOnline, networkStatusKnown } = useNetworkStatus();
   const [selectedDisciplineId, setSelectedDisciplineId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [likesPostId, setLikesPostId] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<{ items: FeedMediaItem[]; index: number } | null>(
+    null,
+  );
   const loadingMoreRef = useRef(false);
   const feedFilterKey = selectedDisciplineId ?? 'all';
 
@@ -119,6 +125,14 @@ export function FeedScreen() {
     },
     [likeMutation],
   );
+
+  const handleOpenLikes = useCallback((post: FeedPost) => {
+    setLikesPostId(post.id);
+  }, []);
+
+  const handlePressImage = useCallback((media: FeedMediaItem[], index: number) => {
+    setActiveMedia({ items: media, index });
+  }, []);
 
   const listHeader = useMemo(
     () => (
@@ -216,8 +230,24 @@ export function FeedScreen() {
         isFetchingNextPage={feedQuery.isFetchingNextPage}
         onLoadMore={handleEndReached}
         onLike={handleLike}
+        onOpenLikes={handleOpenLikes}
         onShare={handleShare}
         onDelete={handleDelete}
+        onPressImage={handlePressImage}
+      />
+
+      <FeedLikesBottomSheet
+        postId={likesPostId}
+        visible={Boolean(likesPostId)}
+        onClose={() => setLikesPostId(null)}
+        onSelectUser={(userId) => router.push(`/feed/user/${userId}`)}
+      />
+
+      <FeedImageViewerModal
+        visible={Boolean(activeMedia)}
+        media={activeMedia?.items ?? []}
+        initialIndex={activeMedia?.index ?? 0}
+        onClose={() => setActiveMedia(null)}
       />
     </View>
   );

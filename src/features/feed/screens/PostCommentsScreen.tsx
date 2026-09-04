@@ -21,8 +21,10 @@ import {
   useRecordFeedShare,
   useToggleFeedLike,
 } from '@/features/feed/hooks/useFeed';
-import type { FeedComment, FeedPost } from '@/features/feed/types';
+import type { FeedComment, FeedMediaItem, FeedPost } from '@/features/feed/types';
 import { FeedCommentRow } from '@/features/feed/components/FeedCommentRow';
+import { FeedImageViewerModal } from '@/features/feed/components/FeedImageViewerModal';
+import { FeedLikesBottomSheet } from '@/features/feed/components/FeedLikesBottomSheet';
 import { FeedPostCard } from '@/features/feed/components/FeedPostCard';
 import {
   MAX_COMMENT_CHARS,
@@ -47,6 +49,10 @@ export function PostCommentsScreen({ postId }: Props) {
   const [comment, setComment] = useState('');
   const [refreshing, setRefreshing] = useState(false);
   const [composerHeight, setComposerHeight] = useState(80);
+  const [likesPostId, setLikesPostId] = useState<string | null>(null);
+  const [activeMedia, setActiveMedia] = useState<{ items: FeedMediaItem[]; index: number } | null>(
+    null,
+  );
   const loadingMoreRef = useRef(false);
 
   const childAuthorId = viewingChild ? activeMemberId : null;
@@ -95,12 +101,12 @@ export function PostCommentsScreen({ postId }: Props) {
   }, [commentsQuery]);
 
   const handleShare = useCallback(
-    async (item: FeedPost) => {
+    async (targetPost: FeedPost) => {
       try {
         await Share.share({
-          message: `${item.authorName} in ${item.disciplineName}: ${item.body}`,
+          message: `${targetPost.authorName} in ${targetPost.disciplineName}: ${targetPost.body}`,
         });
-        shareMutation.mutate(item.id);
+        shareMutation.mutate(targetPost.id);
       } catch {
         toast.error('Could not share post', 'Please try again.');
       }
@@ -109,11 +115,17 @@ export function PostCommentsScreen({ postId }: Props) {
   );
 
   const handleDeletePost = useCallback(
-    (item: FeedPost) => {
+    (targetPost: FeedPost) => {
       showConfirm(
         'Delete post?',
         'This removes the post and its comments from the feed.',
-        () => deletePostMutation.mutate(item.id, { onSuccess: () => router.back() }),
+        () => {
+          deletePostMutation.mutate(targetPost.id, {
+            onSuccess: () => {
+              router.back();
+            },
+          });
+        },
         { confirmLabel: 'Delete', destructive: true },
       );
     },
@@ -168,12 +180,14 @@ export function PostCommentsScreen({ postId }: Props) {
         <FeedPostCard
           post={post}
           onLike={(item) => likeMutation.mutate(item)}
+          onOpenLikes={(item) => setLikesPostId(item.id)}
           onOpenComments={() => undefined}
           onOpenAuthor={(authorId) => {
             if (!viewingChild) router.push(`/feed/user/${authorId}`);
           }}
           onShare={handleShare}
           onDelete={handleDeletePost}
+          onPressImage={(media, index) => setActiveMedia({ items: media, index })}
           actionsMode={viewingChild ? 'none' : 'full'}
         />
         <View style={[styles.sectionHeader, { marginBottom: gap.md }]}>
@@ -332,6 +346,20 @@ export function PostCommentsScreen({ postId }: Props) {
           </View>
         ) : null}
       </View>
+
+      <FeedLikesBottomSheet
+        postId={likesPostId}
+        visible={Boolean(likesPostId)}
+        onClose={() => setLikesPostId(null)}
+        onSelectUser={(userId) => router.push(`/feed/user/${userId}`)}
+      />
+
+      <FeedImageViewerModal
+        visible={Boolean(activeMedia)}
+        media={activeMedia?.items ?? []}
+        initialIndex={activeMedia?.index ?? 0}
+        onClose={() => setActiveMedia(null)}
+      />
     </View>
   );
 }

@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/useAuthStore';
 export const coachMemberNotesKey = (classId: string) => ['coach-member-notes', classId] as const;
 
 function canUseCoachTools(role: string | null | undefined): boolean {
-  return role === 'coach' || role === 'admin';
+  return role === 'coach';
 }
 
 export function useCoachMemberNotes(classId: string | null) {

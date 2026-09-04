@@ -11,7 +11,7 @@ import {
 import { FlashListScrollComponent } from '@/shared/components/ui';
 import { StateBlock } from '@/shared/components/StateBlock';
 import { useTheme } from '@/shared/theme';
-import type { FeedPost } from '@/features/feed/types';
+import type { FeedMediaItem, FeedPost } from '@/features/feed/types';
 import { FeedPostCard } from '@/features/feed/components/FeedPostCard';
 import { FeedSkeleton } from '@/features/feed/components/FeedSkeleton';
 
@@ -28,8 +28,10 @@ type Props = {
   isFetchingNextPage: boolean;
   onLoadMore: () => void;
   onLike: (post: FeedPost) => void;
-  onShare: (post: FeedPost) => void;
+  onOpenLikes?: (post: FeedPost) => void;
+  onShare?: (post: FeedPost) => void;
   onDelete: (post: FeedPost) => void;
+  onPressImage?: (media: FeedMediaItem[], index: number) => void;
 };
 
 export function FeedPostList({
@@ -44,8 +46,10 @@ export function FeedPostList({
   isFetchingNextPage,
   onLoadMore,
   onLike,
+  onOpenLikes,
   onShare,
   onDelete,
+  onPressImage,
 }: Props) {
   const { colors } = useTheme();
   const router = useRouter();
@@ -62,15 +66,17 @@ export function FeedPostList({
         <FeedPostCard
           post={item}
           onLike={onLike}
+          onOpenLikes={onOpenLikes}
           onOpenComments={(post) => router.push(`/feed/post/${post.id}`)}
           onOpenAuthor={(authorId) => router.push(`/feed/user/${authorId}`)}
           onShare={onShare}
           onDelete={onDelete}
+          onPressImage={onPressImage}
           actionsMode={viewingChild ? 'comments-only' : 'full'}
         />
       </ScrollRevealCard>
     ),
-    [entranceSignal, onDelete, onLike, onShare, router, viewingChild],
+    [entranceSignal, onDelete, onLike, onOpenLikes, onPressImage, onShare, router, viewingChild],
   );
 
   return (

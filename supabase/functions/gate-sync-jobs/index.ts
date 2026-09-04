@@ -22,6 +22,8 @@ type WorkerRequest = {
 };
 
 type ArrivalResponse = {
+  ArrivalAdded?: boolean;
+  ClientService?: { Id?: unknown };
   Visit?: { Id?: unknown };
 };
 
@@ -78,7 +80,7 @@ async function processArrivalJob(
     }),
   });
 
-  const visitId = arrival.Visit?.Id;
+  const visitId = arrival.Visit?.Id ?? arrival.ClientService?.Id;
   if (visitId === undefined || visitId === null) {
     return;
   }

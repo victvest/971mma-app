@@ -53,7 +53,6 @@ export function useMembershipRefresh(enabled = true) {
     enabled: enabled && Boolean(activeMemberId),
     staleTime: MEMBERSHIP_MIRROR_STALE_MS,
     gcTime: MEMBERSHIP_MIRROR_GC_MS,
-    refetchOnMount: 'always',
     meta: { persist: false },
   });
 }

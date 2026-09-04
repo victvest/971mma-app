@@ -478,6 +478,9 @@ type AuthGoogleButtonProps = {
 };
 
 export function AuthGoogleButton({ onPress, loading, disabled }: AuthGoogleButtonProps) {
+  if (Platform.OS === 'android') {
+    return null;
+  }
   const { colors, typography, inset, gap, layout, radius, animations } = useTheme();
   const scale = useSharedValue<number>(animations.scale.resting);
   const [pressed, setPressed] = useState(false);
@@ -548,6 +551,9 @@ export function AuthGoogleButton({ onPress, loading, disabled }: AuthGoogleButto
 }
 
 export function AuthOrDivider() {
+  if (Platform.OS === 'android') {
+    return null;
+  }
   const { colors, typography, inset } = useTheme();
 
   return (

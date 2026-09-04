@@ -40,6 +40,53 @@ Deno.serve((req) => withCors(req, async () => {
     const userId = await resolveTargetUserId(svc, callerUserId, body.targetUserId);
     const cacheKey = `membership:${userId}`;
 
+    const { data: unlimited } = await svc
+      .from('unlimited_access_members')
+      .select('id, reason, is_active')
+      .eq('user_id', userId)
+      .eq('is_active', true)
+      .maybeSingle<{ id: string; reason: string | null; is_active: boolean }>();
+
+    if (unlimited?.is_active) {
+      const syncedAt = new Date().toISOString();
+      const expiresAt = '2099-12-31T23:59:59.000Z';
+      const summary: MembershipSummary = {
+        planName: unlimited.reason || 'VIP Unlimited Access',
+        status: 'active',
+        expiresAt,
+        autoRenew: true,
+        source: 'mindbody',
+        lastSyncedAt: syncedAt,
+        count: 1,
+      };
+      await Promise.all([
+        cacheSet(svc, cacheKey, summary, MEMBERSHIP_CACHE_TTL_SEC),
+        svc
+          .from('profiles')
+          .update({
+            membership_status: 'active',
+            membership_name: summary.planName,
+            membership_source: 'unlimited',
+            membership_expires_at: expiresAt,
+            membership_last_synced_at: syncedAt,
+          })
+          .eq('id', userId),
+        svc
+          .from('member_memberships')
+          .update({
+            end_date: expiresAt,
+            last_synced_at: syncedAt,
+          })
+          .eq('user_id', userId)
+          .eq('mindbody_record_id', `vip-${userId}`),
+      ]);
+      return jsonResponse({
+        refreshed: true,
+        summary,
+        disciplinesSynced: 0,
+      });
+    }
+
     if (!force) {
       const cached = await cacheGet<MembershipSummary>(svc, cacheKey);
       if (cached && isMembershipSummaryFresh(cached)) {

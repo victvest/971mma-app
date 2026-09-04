@@ -39,8 +39,12 @@ export function formatGoogleNativeError(
       case statusCodes.SIGN_IN_REQUIRED:
         return 'Please choose a Google account to continue.';
       default:
-        break;
+        return `Google authentication failed (${error.code}). Please try again.`;
     }
+  }
+
+  if (error instanceof Error && error.message) {
+    return `Google authentication failed (${error.message}). Please try again.`;
   }
 
   return 'Google authentication failed. Please try again.';

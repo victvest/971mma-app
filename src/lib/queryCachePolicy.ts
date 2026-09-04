@@ -5,10 +5,10 @@ export const DEFAULT_STALE_MS = 5 * 60 * 1000;
 export const MEMBER_DASHBOARD_STALE_MS = 60 * 1000;
 
 /** Schedule list rows and class detail in Supabase. */
-export const SCHEDULE_PAGE_STALE_MS = 2 * 60 * 1000;
+export const SCHEDULE_PAGE_STALE_MS = 5 * 60 * 1000;
 
 /** Mindbody → Supabase schedule mirror sync. */
-export const SCHEDULE_MIRROR_STALE_MS = 2 * 60 * 1000;
+export const SCHEDULE_MIRROR_STALE_MS = 5 * 60 * 1000;
 
 /** Coaches, programs, and other rarely changing directory data. */
 export const STATIC_DIRECTORY_STALE_MS = 24 * 60 * 60 * 1000;
@@ -18,8 +18,8 @@ export const STATIC_DIRECTORY_GC_MS = 48 * 60 * 60 * 1000;
 export const ATTENDANCE_STALE_MS = 60 * 1000;
 
 /** Mindbody visits mirror sync. */
-export const ATTENDANCE_MIRROR_STALE_MS = 5 * 60 * 1000;
-export const ATTENDANCE_MIRROR_GC_MS = 10 * 60 * 1000;
+export const ATTENDANCE_MIRROR_STALE_MS = 15 * 60 * 1000;
+export const ATTENDANCE_MIRROR_GC_MS = 30 * 60 * 1000;
 
 /** Membership summary from Supabase mirror (UI read). */
 export const MEMBERSHIP_STALE_MS = 60 * 1000;

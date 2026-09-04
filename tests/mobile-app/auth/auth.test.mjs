@@ -62,18 +62,14 @@ suite('Auth / sign-in', () => {
     assertEqual(b.status, 400, 'missing password must be 400');
   });
 
-  test('admin accounts cannot sign in through the mobile app (even with correct password)', async (ctx) => {
-    // The shared TEST_USER *is* an admin and we know its real password, so this is
-    // the strongest possible assertion of the control: correct credentials, still
-    // rejected, and rejected indistinguishably from bad credentials. Force the
-    // shared user to admin first — earlier scenarios may have flipped its role.
+  test('admin accounts can sign in through the mobile app (with correct password)', async (ctx) => {
     await ctx.setRole('admin');
     const res = await ctx.callEdgePublic('auth-sign-in', {
       email: ctx.env.TEST_USER_EMAIL,
       password: ctx.env.TEST_USER_PASSWORD,
     });
-    assertEqual(res.status, 401, 'admin must be blocked from mobile sign-in');
-    assertEqual(res.body?.error?.code, 'INVALID_CREDENTIALS', 'admin block must look like bad creds');
+    assert(res.ok, `expected 200, got ${res.status}: ${JSON.stringify(res.body)}`);
+    assert(res.body?.session?.access_token, 'response missing session.access_token');
   });
 });
 

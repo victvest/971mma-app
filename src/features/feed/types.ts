@@ -50,6 +50,18 @@ export type FeedComment = {
   createdAt: string;
 };
 
+export type FeedLikeUser = {
+  id: string;
+  name: string;
+  avatarUrl: string | null;
+  bio: string | null;
+  role: string | null;
+  isVerifiedCoach: boolean;
+  beltRank: string | null;
+  beltStripes: number;
+  likedAt: string;
+};
+
 export type FeedProfile = {
   id: string;
   name: string;

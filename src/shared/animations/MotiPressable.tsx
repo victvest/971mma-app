@@ -11,6 +11,8 @@ import { animations } from '@/shared/theme/animations';
 type Props = {
   children: ReactNode;
   onPress?: () => void;
+  onLongPress?: () => void;
+  delayLongPress?: number;
   disabled?: boolean;
   style?: StyleProp<ViewStyle>;
   accessibilityLabel?: string;
@@ -27,6 +29,8 @@ const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
 export function MotiPressable({
   children,
   onPress,
+  onLongPress,
+  delayLongPress,
   disabled,
   style,
   accessibilityLabel,
@@ -58,6 +62,8 @@ export function MotiPressable({
   return (
     <AnimatedPressable
       onPress={onPress}
+      onLongPress={onLongPress}
+      delayLongPress={delayLongPress}
       onPressIn={handlePressIn}
       onPressOut={handlePressOut}
       disabled={disabled}

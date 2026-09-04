@@ -60,7 +60,7 @@ function StatCell({ value, label }: { value: string; label: string }) {
 export const FeedProfileHeader = memo(function FeedProfileHeader({ profile }: Props) {
   const { colors, typography, inset, gap, radius, layout, surfaceShadow } = useTheme();
 
-  const roleLabel = profile.role === 'coach' ? 'Coach' : 'Member';
+  const roleLabel = profile.role === 'admin' ? 'Admin' : profile.role === 'coach' ? 'Coach' : 'Member';
   const beltLine = useMemo(
     () => formatFeedBeltLine(profile.beltRank, profile.beltStripes),
     [profile.beltRank, profile.beltStripes],

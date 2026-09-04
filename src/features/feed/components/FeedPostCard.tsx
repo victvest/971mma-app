@@ -11,7 +11,7 @@ import Animated, {
 import { MotiPressable } from '@/shared/animations';
 import { triggerLightImpact, triggerSelectionHaptic } from '@/shared/haptics';
 import { useTheme } from '@/shared/theme';
-import type { FeedPost } from '@/features/feed/types';
+import type { FeedMediaItem, FeedPost } from '@/features/feed/types';
 import { formatCompactCount, formatRelativeTime } from '@/features/feed/utils/feedFormat';
 import { FeedImageGrid } from './FeedImageGrid';
 import { MemberAvatarWithCoachBadge } from './MemberAvatarWithCoachBadge';
@@ -19,10 +19,12 @@ import { MemberAvatarWithCoachBadge } from './MemberAvatarWithCoachBadge';
 type Props = {
   post: FeedPost;
   onLike: (post: FeedPost) => void;
+  onOpenLikes?: (post: FeedPost) => void;
   onOpenComments: (post: FeedPost) => void;
   onOpenAuthor: (userId: string) => void;
-  onShare: (post: FeedPost) => void;
+  onShare?: (post: FeedPost) => void;
   onDelete?: (post: FeedPost) => void;
+  onPressImage?: (media: FeedMediaItem[], index: number) => void;
   actionsMode?: 'full' | 'comments-only' | 'none';
 };
 
@@ -33,9 +35,10 @@ type ActionProps = {
   active?: boolean;
   destructive?: boolean;
   onPress: () => void;
+  onLongPress?: () => void;
 };
 
-function PostAction({ icon, activeIcon, label, active, destructive, onPress }: ActionProps) {
+function PostAction({ icon, activeIcon, label, active, destructive, onPress, onLongPress }: ActionProps) {
   const { colors, typography, gap } = useTheme();
   const scale = useSharedValue(1);
 
@@ -57,12 +60,20 @@ function PostAction({ icon, activeIcon, label, active, destructive, onPress }: A
       ? colors.brand.red
       : colors.text.secondary;
 
+  const handleLongPress = useCallback(() => {
+    if (!onLongPress) return;
+    triggerLightImpact();
+    onLongPress();
+  }, [onLongPress]);
+
   return (
     <MotiPressable
       onPress={() => {
         triggerSelectionHaptic();
         onPress();
       }}
+      onLongPress={onLongPress ? handleLongPress : undefined}
+      delayLongPress={260}
       accessibilityRole="button"
       accessibilityLabel={label}
       style={[styles.action, { gap: gap.xs }]}
@@ -80,10 +91,12 @@ function PostAction({ icon, activeIcon, label, active, destructive, onPress }: A
 export const FeedPostCard = memo(function FeedPostCard({
   post,
   onLike,
+  onOpenLikes,
   onOpenComments,
   onOpenAuthor,
   onShare,
   onDelete,
+  onPressImage,
   actionsMode = 'full',
 }: Props) {
   const { colors, typography, inset, gap, radius, layout, surfaceShadow } = useTheme();
@@ -103,6 +116,13 @@ export const FeedPostCard = memo(function FeedPostCard({
     triggerLightImpact();
     if (!post.myLiked) onLike(post);
   }, [actionsMode, onLike, post]);
+
+  const handlePressImage = useCallback(
+    (index: number) => {
+      onPressImage?.(post.media, index);
+    },
+    [onPressImage, post.media],
+  );
 
   return (
     <Animated.View
@@ -196,7 +216,11 @@ export const FeedPostCard = memo(function FeedPostCard({
         ) : null}
       </Animated.View>
 
-      <FeedImageGrid media={post.media} onDoubleTap={handleDoubleTap} />
+      <FeedImageGrid
+        media={post.media}
+        onDoubleTap={handleDoubleTap}
+        onPressImage={handlePressImage}
+      />
 
       {actionsMode !== 'none' ? (
         <View
@@ -209,6 +233,7 @@ export const FeedPostCard = memo(function FeedPostCard({
               label={likeLabel}
               active={post.myLiked}
               onPress={handleLike}
+              onLongPress={onOpenLikes ? () => onOpenLikes(post) : undefined}
             />
           ) : null}
           <PostAction
@@ -216,9 +241,6 @@ export const FeedPostCard = memo(function FeedPostCard({
             label={commentLabel}
             onPress={() => onOpenComments(post)}
           />
-          {actionsMode === 'full' ? (
-            <PostAction icon="share-outline" label="Share" onPress={() => onShare(post)} />
-          ) : null}
         </View>
       ) : null}
     </Animated.View>

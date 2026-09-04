@@ -20,7 +20,7 @@ export const coachStatsKey = ['coach-stats'] as const;
 export const promotionCandidatesKey = ['promotion-candidates'] as const;
 
 function canUseCoachTools(role: string | null | undefined): boolean {
-  return role === 'coach' || role === 'admin';
+  return role === 'coach';
 }
 
 function emptyClassRoster(classId = ''): ClassRosterResponse {

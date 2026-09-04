@@ -11,8 +11,8 @@ describe('auth-sign-in integration policy', () => {
     expect(normalizeAuthEmail('  Member@Example.COM ')).toBe('member@example.com');
   });
 
-  it('blocks admin accounts from mobile sign-in', () => {
-    expect(shouldBlockAdminMobileSignIn('admin')).toBe(true);
+  it('allows admin accounts to sign in via mobile', () => {
+    expect(shouldBlockAdminMobileSignIn('admin')).toBe(false);
     expect(shouldBlockAdminMobileSignIn('member')).toBe(false);
     expect(shouldBlockAdminMobileSignIn('coach')).toBe(false);
   });
@@ -36,7 +36,7 @@ describe('auth-sign-in integration policy', () => {
         emailConfirmedAt: null,
         bannedUntil: '2099-01-01T00:00:00Z',
       }),
-    ).toBe('admin_blocked');
+    ).toBe('email_not_confirmed');
 
     expect(
       resolveAuthSignInBlock({

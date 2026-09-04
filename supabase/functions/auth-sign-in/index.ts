@@ -98,9 +98,7 @@ Deno.serve(async (req) => {
       .eq('id', user.id)
       .maybeSingle();
 
-    if (profile?.role === 'admin') {
-      return await rejectInvalidCredentials(startedAt);
-    }
+
 
     if (!user.email_confirmed_at) {
       await ensureMinResponseDelay(startedAt);

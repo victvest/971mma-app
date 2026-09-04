@@ -5,6 +5,7 @@ import type {
   FeedCommentsPage,
   FeedCursor,
   FeedDiscipline,
+  FeedLikeUser,
   FeedMediaItem,
   FeedPost,
   FeedPostsPage,
@@ -357,5 +358,70 @@ export async function toggleFeedFollow(followeeId: string): Promise<{ isFollowin
     if (insertError) throw insertError;
     return { isFollowing: true };
   }
+}
+
+export function mapFeedLikeUser(value: unknown): FeedLikeUser {
+  const row = asRecord(value);
+  return {
+    id: coerceString(row.id),
+    name: coerceString(row.name, 'Member'),
+    avatarUrl: asStringOrNull(row.avatarUrl),
+    bio: asStringOrNull(row.bio),
+    role: asStringOrNull(row.role),
+    isVerifiedCoach: row.isVerifiedCoach === true,
+    beltRank: asStringOrNull(row.beltRank),
+    beltStripes: coerceNumber(row.beltStripes),
+    likedAt: coerceString(row.likedAt, new Date().toISOString()),
+  };
+}
+
+export async function listFeedPostLikes(postId: string): Promise<FeedLikeUser[]> {
+  try {
+    const { data, error } = await getSupabaseClient().rpc('list_feed_post_likes', {
+      p_post_id: postId,
+    });
+    if (!error && data) {
+      const row = asRecord(data);
+      return asArray(row.likes).map(mapFeedLikeUser);
+    }
+  } catch {
+    // Fall back to direct table query if RPC is not deployed yet.
+  }
+
+  const { data, error } = await getSupabaseClient()
+    .from('feed_likes')
+    .select(`
+      created_at,
+      user_id,
+      profiles:user_id (
+        id,
+        full_name,
+        avatar_url,
+        bio,
+        role,
+        belt_rank,
+        belt_stripes
+      )
+    `)
+    .eq('post_id', postId)
+    .order('created_at', { ascending: false });
+
+  if (error) throw error;
+
+  return (data || []).map((item: Record<string, unknown>) => {
+    const p = asRecord(item.profiles);
+    const role = asStringOrNull(p.role);
+    return {
+      id: coerceString(p.id, coerceString(item.user_id)),
+      name: coerceString(p.full_name, 'Member'),
+      avatarUrl: asStringOrNull(p.avatar_url),
+      bio: asStringOrNull(p.bio),
+      role,
+      isVerifiedCoach: role === 'coach' || role === 'admin' || role === 'head_coach',
+      beltRank: asStringOrNull(p.belt_rank),
+      beltStripes: coerceNumber(p.belt_stripes),
+      likedAt: coerceString(item.created_at, new Date().toISOString()),
+    };
+  });
 }
 

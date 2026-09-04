@@ -166,6 +166,15 @@ Deno.serve(async (req) => {
 
     let mindbodyVisitId: string | null = null;
     if (shouldWriteArrivals()) {
+      const { data: unlimited } = await svc
+        .from('unlimited_access_members')
+        .select('id, is_active')
+        .eq('user_id', targetUserId)
+        .eq('is_active', true)
+        .maybeSingle<{ id: string; is_active: boolean }>();
+
+      const isUnlimited = Boolean(unlimited?.is_active);
+
       try {
         const clientId = await resolveClientId(svc, targetUserId);
         const locationId = parseInt(Deno.env.get('MINDBODY_LOCATION_ID') ?? '1', 10);
@@ -176,14 +185,16 @@ Deno.serve(async (req) => {
         const visitId = arrival.Visit?.Id;
         if (visitId !== undefined && visitId !== null) mindbodyVisitId = String(visitId);
       } catch (error) {
-        console.warn('[mb-checkin] Mindbody AddArrival failed', {
-          hasClassId: Boolean(body.classId),
-          reason: error instanceof Error ? error.name : 'unknown',
-        });
-        throw new MbError(
-          'UPSTREAM_ERROR',
-          'Mindbody arrival write-back failed. Attendance was not recorded.',
-        );
+        if (!isUnlimited) {
+          console.warn('[mb-checkin] Mindbody AddArrival failed', {
+            hasClassId: Boolean(body.classId),
+            reason: error instanceof Error ? error.name : 'unknown',
+          });
+          throw new MbError(
+            'UPSTREAM_ERROR',
+            'Mindbody arrival write-back failed. Attendance was not recorded.',
+          );
+        }
       }
     }
 

@@ -244,23 +244,26 @@ export async function readMembershipSummaryFromMirror(
   if (!profile?.membership_last_synced_at) return null;
 
   const rowCount = count ?? 0;
+  const isUnlimited = profile.membership_source === 'unlimited';
   const status =
-    rowCount === 0
-      ? 'none'
-      : profile.membership_status === 'active' ||
-          profile.membership_status === 'paused' ||
-          profile.membership_status === 'expired'
-        ? profile.membership_status
-        : 'none';
+    isUnlimited
+      ? 'active'
+      : rowCount === 0
+        ? 'none'
+        : profile.membership_status === 'active' ||
+            profile.membership_status === 'paused' ||
+            profile.membership_status === 'expired'
+          ? profile.membership_status
+          : 'none';
 
   return {
     planName: profile.membership_name,
     status,
     expiresAt: profile.membership_expires_at,
-    autoRenew: false,
-    source: profile.membership_source === 'mindbody' ? 'mindbody' : null,
+    autoRenew: isUnlimited ? true : false,
+    source: isUnlimited ? 'unlimited' : profile.membership_source === 'mindbody' ? 'mindbody' : null,
     lastSyncedAt: profile.membership_last_synced_at,
-    count: rowCount,
+    count: isUnlimited ? Math.max(rowCount, 1) : rowCount,
   };
 }
 
@@ -319,7 +322,46 @@ export async function refreshMembershipMirror(
   svc: SupabaseClient,
   userId: string,
 ): Promise<RefreshMembershipResult> {
-  const clientId = await resolveClientId(svc, userId);
+  const { data: unlimited } = await svc
+    .from('unlimited_access_members')
+    .select('id, reason, is_active')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle<{ id: string; reason: string | null; is_active: boolean }>();
+
+  const isUnlimited = Boolean(unlimited?.is_active);
+
+  let clientId: string | null = null;
+  try {
+    clientId = await resolveClientId(svc, userId);
+  } catch (err) {
+    if (isUnlimited) {
+      const syncedAt = new Date().toISOString();
+      const summary: MembershipSummary = {
+        planName: unlimited?.reason || 'VIP Unlimited Access',
+        status: 'active',
+        expiresAt: null,
+        autoRenew: true,
+        source: 'unlimited',
+        lastSyncedAt: syncedAt,
+        count: 1,
+      };
+      await svc
+        .from('profiles')
+        .update({
+          membership_name: summary.planName,
+          membership_status: 'active',
+          membership_expires_at: null,
+          membership_source: 'unlimited',
+          membership_last_synced_at: syncedAt,
+        })
+        .eq('id', userId);
+
+      return { summary, rows: [], disciplinesSynced: 0 };
+    }
+    throw err;
+  }
+
   const query = new URLSearchParams({ 'request.clientId': clientId });
 
   const [membershipsResponse, contractsResponse] = await Promise.all([
@@ -358,18 +400,19 @@ export async function refreshMembershipMirror(
   }
 
   const summary = pickSummary(rows, syncedAt);
-  const profileStatus =
-    summary.status === 'active' || summary.status === 'paused' || summary.status === 'expired'
+  const profileStatus = isUnlimited
+    ? 'active'
+    : summary.status === 'active' || summary.status === 'paused' || summary.status === 'expired'
       ? summary.status
       : 'expired';
 
   const { error: profileError } = await svc
     .from('profiles')
     .update({
-      membership_name: summary.planName,
+      membership_name: isUnlimited ? (unlimited?.reason || 'VIP Unlimited Access') : summary.planName,
       membership_status: profileStatus,
-      membership_expires_at: summary.expiresAt,
-      membership_source: summary.source,
+      membership_expires_at: isUnlimited ? null : summary.expiresAt,
+      membership_source: isUnlimited ? 'unlimited' : summary.source,
       membership_last_synced_at: syncedAt,
     })
     .eq('id', userId);

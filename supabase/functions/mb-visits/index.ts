@@ -10,7 +10,7 @@ type VisitsRequest = {
   targetUserId?: string;
 };
 
-const VISITS_CACHE_TTL_SEC = 5 * 60;
+const VISITS_CACHE_TTL_SEC = 15 * 60;
 const HISTORY_DAYS = 365;
 const VISIT_METHOD = 'mindbody_visit';
 
