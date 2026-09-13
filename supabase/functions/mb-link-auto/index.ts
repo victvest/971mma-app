@@ -286,9 +286,19 @@ Deno.serve((req) => withCors(req, async () => {
       );
       result = stored;
     } else if (emailMatch.availableCount > 1) {
+      await svc.from('mindbody_link_attempts').insert({
+        user_id: userId,
+        verified_email: email,
+        verified_phone: phone,
+        match_basis: 'email',
+        match_count: emailMatch.availableCount,
+        status: 'ambiguous',
+        raw_matches: emailMatch.rawMatches,
+      });
+
       throw new MbError(
         'AMBIGUOUS_MATCH',
-        'More than one Mindbody profile matches this email. Enter the correct client ID manually.',
+        'Multiple Mindbody profiles match this email. Select the correct profile to link.',
       );
     } else if (emailMatch.exactCount > 0 && emailMatch.linkedElsewhereCount > 0) {
       throw new MbError(
