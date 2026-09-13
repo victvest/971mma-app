@@ -115,17 +115,35 @@ function applyMembershipFilter(
   return clients;
 }
 
+function getClientPriority(client: NormalizedClient): number {
+  const inApp = Boolean(client.appUserId);
+  const linked = Boolean(client.mindbodyClientId);
+  const activeMb = client.active !== false;
+  const activeMembership = isActiveMembership(client.appMembershipStatus);
+
+  if (inApp && linked && activeMb && activeMembership) return 0;
+  if (inApp && linked && activeMb) return 1;
+  if (inApp) return 2;
+  if (linked && activeMb && activeMembership) return 3;
+  if (linked) return 4;
+  return 5;
+}
+
 function sortClients(
   clients: NormalizedClient[],
   orderBy: AdminClientsRequest['orderBy'],
 ): NormalizedClient[] {
   const sorted = [...clients];
 
-  if (orderBy === 'points') {
-    return sorted.sort((a, b) => (b.pointsBalance ?? 0) - (a.pointsBalance ?? 0));
-  }
-
   return sorted.sort((a, b) => {
+    const pA = getClientPriority(a);
+    const pB = getClientPriority(b);
+    if (pA !== pB) return pA - pB;
+
+    if (orderBy === 'points') {
+      return (b.pointsBalance ?? 0) - (a.pointsBalance ?? 0);
+    }
+
     const bDate = b.appCreatedAt ?? b.createdAt ?? '';
     const aDate = a.appCreatedAt ?? a.createdAt ?? '';
     return bDate.localeCompare(aDate);
