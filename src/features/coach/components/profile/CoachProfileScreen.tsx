@@ -50,7 +50,7 @@ export function CoachProfileScreen() {
   const { colors, typography, inset, radius, layout, mode } = useTheme();
   const safeInsets = useSafeAreaInsets();
   const router = useRouter();
-  const { signOut } = useAuth();
+  const { signOut, hasPassword } = useAuth();
   const { showConfirm } = useDialog();
   const user = useAuthStore((s) => s.user);
   const { isOnline, networkStatusKnown } = useNetworkStatus();
@@ -130,8 +130,8 @@ export function CoachProfileScreen() {
       {
         icon: ShieldCheck,
         iconTone: 'neutral',
-        title: 'Change Password',
-        subtitle: 'Update security credentials',
+        title: hasPassword ? 'Change Password' : 'Set password',
+        subtitle: hasPassword ? 'Update security credentials' : 'Add a password to your account',
         onPress: () => router.push('/change-password'),
       },
       {

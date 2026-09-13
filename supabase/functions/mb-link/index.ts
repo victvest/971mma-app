@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse } from '../_shared/cors.ts';
+import { jsonResponse, withCors } from '../_shared/cors.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireUser } from '../_shared/jwt.ts';
 import { mbFetch, getToken } from '../_shared/mindbody.ts';
@@ -357,8 +357,12 @@ async function createClient(
   userId: string,
   email: string,
   profile: ProfileRow,
+  phone: string | null,
 ): Promise<{ client: MbClient; method: LinkMethod }> {
   if (!allowClientCreate()) {
+    throw new MbError('NOT_LINKED', 'No matching Mindbody client found.');
+  }
+  if (!phone?.trim()) {
     throw new MbError('NOT_LINKED', 'No matching Mindbody client found.');
   }
 
@@ -373,7 +377,7 @@ async function createClient(
           LastName: lastName,
           Email: email,
           BirthDate: defaultBirthDate(),
-          MobilePhone: profile.phone ?? undefined,
+          MobilePhone: phone,
           ReactivateInactiveClient: true,
         }),
       });
@@ -410,10 +414,7 @@ async function createClient(
   throw new MbError('UPSTREAM_ERROR', 'Unable to create Mindbody client.');
 }
 
-Deno.serve(async (req) => {
-  const options = handleOptions(req);
-  if (options) return options;
-
+Deno.serve((req) => withCors(req, async () => {
   if (req.method !== 'POST') {
     return jsonResponse(
       { error: { code: 'BAD_REQUEST', message: 'POST required.' } },
@@ -463,6 +464,7 @@ Deno.serve(async (req) => {
     if (!email) {
       throw new MbError('BAD_REQUEST', 'Account email is required before linking Mindbody.');
     }
+    const phone = profile.phone;
 
     // 1. Search by exact email
     const emailClients = await searchClients(email);
@@ -479,8 +481,7 @@ Deno.serve(async (req) => {
       matchBasis = 'email';
     } else if (availableEmailClients.length === 0) {
       // 2. Fall back to phone if email has zero matches
-      if (profile.phone) {
-        const phone = profile.phone;
+      if (phone) {
         const phoneClients = await searchClients(phone);
         const phoneMatches = filterByExactPhone(phoneClients, phone);
         const availablePhoneClients = await getAvailableClients(svc, user.userId, email, phoneMatches);
@@ -498,7 +499,7 @@ Deno.serve(async (req) => {
     // If no exact match, try creating client (only if allowClientCreate() is true, i.e. local/dev with permission)
     if (!matchClient && allowClientCreate()) {
       try {
-        const created = await createClient(svc, user.userId, email, profile);
+        const created = await createClient(svc, user.userId, email, profile, phone);
         matchClient = created.client;
         matchBasis = 'email';
         matchCount = 1;
@@ -540,7 +541,7 @@ Deno.serve(async (req) => {
       await svc.from('mindbody_link_attempts').insert({
         user_id: user.userId,
         verified_email: email,
-        verified_phone: profile.phone,
+        verified_phone: phone,
         match_basis: matchBasis,
         match_count: 1,
         status: 'linked',
@@ -567,7 +568,7 @@ Deno.serve(async (req) => {
         await svc.from('mindbody_link_attempts').insert({
           user_id: user.userId,
           verified_email: email,
-          verified_phone: profile.phone,
+          verified_phone: phone,
           match_basis: matchBasis,
           match_count: 0,
           status: 'failed',
@@ -593,7 +594,7 @@ Deno.serve(async (req) => {
       await svc.from('mindbody_link_attempts').insert({
         user_id: user.userId,
         verified_email: email,
-        verified_phone: profile.phone,
+        verified_phone: phone,
         match_basis: matchBasis,
         match_count: matchCount,
         status: status,
@@ -613,4 +614,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return toErrorResponse(error);
   }
-});
+}));

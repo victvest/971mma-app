@@ -157,6 +157,7 @@
     "verify:gate-all": "npm run verify:gate-entry",
     "verify:qr-suite": "node e2e/scripts/run-qr-suite.mjs",
     "verify:qr-gate": "node scripts/verify-gate-entry.mjs",
+    "test:smtp": "node scripts/test-smtp.mjs",
     "configure:auth-smtp": "node scripts/configure-auth-smtp.mjs",
     "push:auth-config": "node scripts/push-auth-config.mjs",
     "reset:supabase": "bash scripts/reset-supabase-safe.sh",

@@ -53,7 +53,7 @@ function useEntrance(delayMs: number) {
 export default function ChangePasswordScreen() {
   const { colors, inset, gap } = useTheme();
   const safeInsets = useSafeAreaInsets();
-  const { signIn, updatePassword, configError } = useAuth();
+  const { signIn, updatePassword, configError, hasPassword } = useAuth();
   const userEmail = useAuthStore((s) => s.user?.email);
 
   const nextRef = useRef<TextInput>(null);
@@ -72,8 +72,11 @@ export default function ChangePasswordScreen() {
 
   const canSubmit = useMemo(
     () =>
-      current.trim().length > 0 && isPasswordValid(next) && confirm.length > 0 && next === confirm,
-    [current, next, confirm],
+      (!hasPassword || current.trim().length > 0) &&
+      isPasswordValid(next) &&
+      confirm.length > 0 &&
+      next === confirm,
+    [current, next, confirm, hasPassword],
   );
 
   const showPasswordError = useCallback((message: string) => {
@@ -82,7 +85,7 @@ export default function ChangePasswordScreen() {
   }, []);
 
   const handleSave = useCallback(async () => {
-    if (!current.trim()) {
+    if (hasPassword && !current.trim()) {
       showPasswordError('Enter your current password.');
       return;
     }
@@ -93,17 +96,19 @@ export default function ChangePasswordScreen() {
       return;
     }
 
-    if (!userEmail) {
-      showPasswordError('Please sign out and back in.');
-      return;
-    }
-
     setSaving(true);
     try {
-      const authResult = await signIn(userEmail, current);
-      if (authResult.error) {
-        showPasswordError('Current password is incorrect.');
-        return;
+      if (hasPassword) {
+        if (!userEmail) {
+          showPasswordError('Please sign out and back in.');
+          return;
+        }
+
+        const authResult = await signIn(userEmail, current);
+        if (authResult.error) {
+          showPasswordError('Current password is incorrect.');
+          return;
+        }
       }
 
       const updateResult = await updatePassword(next);
@@ -113,13 +118,16 @@ export default function ChangePasswordScreen() {
       }
 
       Keyboard.dismiss();
-      authToast.success('Password updated', 'Your new password is active.');
+      authToast.success(
+        hasPassword ? 'Password updated' : 'Password set',
+        'Your password is active.',
+      );
     } catch (error) {
       showPasswordError(formatAuthError(error));
     } finally {
       setSaving(false);
     }
-  }, [current, next, confirm, userEmail, signIn, updatePassword, showPasswordError]);
+  }, [current, next, confirm, hasPassword, userEmail, signIn, updatePassword, showPasswordError]);
 
   const field1Style = useEntrance(0);
   const field2Style = useEntrance(80);
@@ -131,7 +139,7 @@ export default function ChangePasswordScreen() {
       style={[styles.safe, { backgroundColor: colors.background.primary }]}
       edges={['top']}
     >
-      <AppBar title="Change Password" showBackButton />
+      <AppBar title={hasPassword ? 'Change Password' : 'Set password'} showBackButton />
 
       <KeyboardAvoidingView
         style={styles.flex}
@@ -149,23 +157,25 @@ export default function ChangePasswordScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
-          <Animated.View style={field1Style}>
-            <AuthTextField
-              label="Current password"
-              value={current}
-              onChangeText={setCurrent}
-              placeholder="Your current password"
-              password
-              autoComplete="current-password"
-              textContentType="password"
-              icon={Lock}
-              returnKeyType="next"
-              blurOnSubmit={false}
-              onSubmitEditing={() => nextRef.current?.focus()}
-            />
-          </Animated.View>
+          {hasPassword ? (
+            <Animated.View style={field1Style}>
+              <AuthTextField
+                label="Current password"
+                value={current}
+                onChangeText={setCurrent}
+                placeholder="Your current password"
+                password
+                autoComplete="current-password"
+                textContentType="password"
+                icon={Lock}
+                returnKeyType="next"
+                blurOnSubmit={false}
+                onSubmitEditing={() => nextRef.current?.focus()}
+              />
+            </Animated.View>
+          ) : null}
 
-          <Animated.View style={field2Style}>
+          <Animated.View style={hasPassword ? field2Style : field1Style}>
             <AuthTextField
               ref={nextRef}
               label="New password"
@@ -183,7 +193,7 @@ export default function ChangePasswordScreen() {
             />
           </Animated.View>
 
-          <Animated.View style={field3Style}>
+          <Animated.View style={hasPassword ? field3Style : field2Style}>
             <AuthTextField
               ref={confirmRef}
               label="Confirm new password"
@@ -214,7 +224,7 @@ export default function ChangePasswordScreen() {
           ]}
         >
           <AuthSubmitButton
-            label="Update password"
+            label={hasPassword ? 'Update password' : 'Set password'}
             onPress={handleSave}
             loading={saving}
             disabled={!canSubmit || Boolean(configError)}

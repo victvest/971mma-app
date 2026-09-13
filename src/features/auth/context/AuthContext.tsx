@@ -21,6 +21,7 @@ import { PerfMark, perfMarkOnce } from '@/shared/performance';
 type AuthContextValue = {
   session: Session | null;
   user: AuthUser | null;
+  hasPassword: boolean;
   initializing: boolean;
   configError: string | null;
   completingSignupVerification: boolean;
@@ -295,6 +296,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const needsOnboarding = useAuthStore((state) => state.needsOnboarding);
 
+  // Supabase exposes the email identity when an account has email/password
+  // authentication enabled. OAuth-only accounts (such as Google sign-in)
+  // do not have this identity until a password is added.
+  const hasPassword = Boolean(
+    session?.user?.identities?.some((identity) => identity.provider === 'email') ||
+      (Array.isArray(session?.user?.app_metadata?.providers) &&
+        session.user.app_metadata.providers.includes('email')),
+  );
+
   const markOnboardingComplete = useCallback(
     (patch: { fullName: string; avatarUrl: string | null }) => {
       useAuthStore.getState().markOnboardingComplete(patch);
@@ -306,6 +316,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       session,
       user: session?.user ?? null,
+      hasPassword,
       initializing,
       configError,
       completingSignupVerification,
@@ -332,6 +343,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }),
     [
       session,
+      hasPassword,
       initializing,
       configError,
       completingSignupVerification,

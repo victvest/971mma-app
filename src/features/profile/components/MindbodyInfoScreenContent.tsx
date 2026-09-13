@@ -93,6 +93,7 @@ const MemberBarcodeCard = memo(function MemberBarcodeCard({
               },
             ]}
           >
+
             <Ionicons name="barcode-outline" size={18} color={colors.accent.default} />
           </View>
           <Text style={[typography.textPresets.label, { color: colors.text.secondary }]}>

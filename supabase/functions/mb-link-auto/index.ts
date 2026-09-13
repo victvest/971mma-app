@@ -1,4 +1,4 @@
-import { handleOptions, jsonResponse } from '../_shared/cors.ts';
+import { jsonResponse, withCors } from '../_shared/cors.ts';
 import { writeAdminAudit } from '../_shared/adminAudit.ts';
 import { MbError, toErrorResponse } from '../_shared/errors.ts';
 import { requireRole, requireUser } from '../_shared/jwt.ts';
@@ -26,8 +26,12 @@ type ClientSearchResponse = {
   Clients?: MbClient[];
 };
 
-type AddClientResponse = {
-  Client?: MbClient;
+type EmailMatchResult = {
+  client: MbClient | null;
+  exactCount: number;
+  availableCount: number;
+  linkedElsewhereCount: number;
+  rawMatches: MbClient[];
 };
 
 function cleanUserId(value: string | undefined): string {
@@ -76,31 +80,6 @@ function phonesMatch(left: string, right: string): boolean {
     return left.endsWith(right) || right.endsWith(left);
   }
   return false;
-}
-
-function defaultBirthDate(): string {
-  const configured = Deno.env.get('MB_DEFAULT_BIRTH_DATE')?.trim();
-  if (configured) return configured;
-  return '1990-01-01T00:00:00';
-}
-
-function splitName(
-  fullName: string | null,
-  email: string,
-): { firstName: string; lastName: string } {
-  const cleaned = fullName?.trim();
-  if (!cleaned) {
-    const fallback = email.split('@')[0] || '971';
-    return { firstName: fallback, lastName: 'Member' };
-  }
-
-  const parts = cleaned.split(/\s+/);
-  if (parts.length === 1) return { firstName: parts[0], lastName: 'Member' };
-  return { firstName: parts[0], lastName: parts.slice(1).join(' ') };
-}
-
-function isDuplicateClientError(error: unknown): boolean {
-  return error instanceof MbError && error.message.includes('InvalidClientCreation');
 }
 
 async function searchClients(searchText: string): Promise<MbClient[]> {
@@ -154,72 +133,39 @@ async function findLinkableEmailMatch(
   svc: ReturnType<typeof serviceClient>,
   userId: string,
   email: string,
-): Promise<MbClient | null> {
+): Promise<EmailMatchResult> {
   const target = normalizeEmail(email);
   const matches = (await searchClients(email)).filter(
     (client) => clientEmail(client) === target,
   );
 
   const available: MbClient[] = [];
+  let linkedElsewhereCount = 0;
   for (const client of matches) {
     const id = clientId(client);
     if (!id) continue;
     const owner = await getMindbodyLinkOwner(svc, id);
-    if (!owner || owner === userId) available.push(client);
-  }
-
-  return available.length === 1 ? available[0] : null;
-}
-
-// Mirrors mb-link: creating Mindbody clients from the app is opt-out via
-// MB_ALLOW_CLIENT_CREATE=false. Both link paths must honor it, otherwise
-// disabling creation in one place silently leaks through the other.
-function allowClientCreate(): boolean {
-  return Deno.env.get('MB_ALLOW_CLIENT_CREATE')?.toLowerCase() !== 'false';
-}
-
-async function createMindbodyClient(
-  email: string,
-  profile: ProfileRow,
-): Promise<MbClient> {
-  const { firstName, lastName } = splitName(profile.full_name, email);
-
-  for (let attempt = 0; attempt < 2; attempt += 1) {
-    try {
-      const response = await mbFetch<AddClientResponse>(serviceClient(), '/client/addclient', {
-        method: 'POST',
-        body: JSON.stringify({
-          FirstName: firstName,
-          LastName: lastName,
-          Email: email,
-          BirthDate: defaultBirthDate(),
-          MobilePhone: profile.phone ?? undefined,
-          ReactivateInactiveClient: true,
-        }),
-      });
-
-      if (!response.Client || !clientId(response.Client)) {
-        throw new MbError('UPSTREAM_ERROR', 'Mindbody did not return a created client.');
-      }
-
-      return response.Client;
-    } catch (error) {
-      if (!isDuplicateClientError(error)) throw error;
-      if (attempt === 1) break;
+    if (!owner || owner === userId) {
+      available.push(client);
+    } else {
+      linkedElsewhereCount += 1;
     }
   }
 
-  throw new MbError(
-    'AMBIGUOUS_MATCH',
-    'A Mindbody profile with this email already exists. Use manual link with the existing client ID.',
-  );
+  return {
+    client: available.length === 1 ? available[0] : null,
+    exactCount: matches.length,
+    availableCount: available.length,
+    linkedElsewhereCount,
+    rawMatches: matches,
+  };
 }
 
 async function storeLink(
   svc: ReturnType<typeof serviceClient>,
   userId: string,
   client: MbClient,
-  linkMethod: 'created' | 'matched_email',
+  linkMethod: 'matched_email',
   email: string,
   phone: string | null,
   rawMatches: MbClient[],
@@ -255,7 +201,7 @@ async function storeLink(
     user_id: userId,
     verified_email: email,
     verified_phone: phone,
-    match_basis: linkMethod === 'created' ? 'email' : 'email',
+    match_basis: 'email',
     match_count: 1,
     status: 'linked',
     matched_mindbody_client_id: mbClientId,
@@ -269,10 +215,7 @@ async function storeLink(
   };
 }
 
-Deno.serve(async (req) => {
-  const options = handleOptions(req);
-  if (options) return options;
-
+Deno.serve((req) => withCors(req, async () => {
   if (req.method !== 'POST') {
     return jsonResponse(
       { error: { code: 'BAD_REQUEST', message: 'POST required.' } },
@@ -331,34 +274,32 @@ Deno.serve(async (req) => {
     const emailMatch = await findLinkableEmailMatch(svc, userId, email);
     let result: { clientId: string; uniqueId: string | null; linkMethod: string };
 
-    if (emailMatch) {
+    if (emailMatch.client) {
       const stored = await storeLink(
         svc,
         userId,
-        emailMatch,
+        emailMatch.client,
         'matched_email',
         email,
         phone,
-        [emailMatch],
+        [emailMatch.client],
       );
       result = stored;
-    } else if (caller.role === 'coach' || !allowClientCreate()) {
+    } else if (emailMatch.availableCount > 1) {
       throw new MbError(
-        'NOT_LINKED',
-        'No exact Mindbody email match found. Enter the member Mindbody client ID manually.',
+        'AMBIGUOUS_MATCH',
+        'More than one Mindbody profile matches this email. Enter the correct client ID manually.',
+      );
+    } else if (emailMatch.exactCount > 0 && emailMatch.linkedElsewhereCount > 0) {
+      throw new MbError(
+        'CLIENT_OWNED',
+        'This Mindbody profile is already linked to another app account. Check that member, or enter the correct client ID manually.',
       );
     } else {
-      const created = await createMindbodyClient(email, profile);
-      const stored = await storeLink(
-        svc,
-        userId,
-        created,
-        'created',
-        email,
-        phone,
-        [created],
+      throw new MbError(
+        'NOT_LINKED',
+        'No Mindbody profile matches this email. Enter a client ID manually, or create the member in Mindbody first.',
       );
-      result = stored;
     }
 
     await writeAdminAudit(svc, caller.userId, 'auto_mindbody_link', 'mindbody_links', userId, {
@@ -377,4 +318,4 @@ Deno.serve(async (req) => {
   } catch (error) {
     return toErrorResponse(error);
   }
-});
+}));

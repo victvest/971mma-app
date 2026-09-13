@@ -333,7 +333,7 @@ export default function ProfileScreen() {
   const topInset = useAppTopInset();
   const offlineBannerVisible = useOfflineBannerVisible();
   const router = useRouter();
-  const { signOut, signOutOtherDevices } = useAuth();
+  const { signOut, signOutOtherDevices, hasPassword } = useAuth();
   const { showConfirm, showAlert } = useDialog();
   const user = useAuthStore((s) => s.user);
   const activeMemberId = useActiveMemberId();
@@ -619,8 +619,8 @@ export default function ProfileScreen() {
     list.push({
       icon: ShieldCheck,
       iconTone: 'neutral',
-      title: 'Change Password',
-      subtitle: 'Update security credentials',
+      title: hasPassword ? 'Change Password' : 'Set password',
+      subtitle: hasPassword ? 'Update security credentials' : 'Add a password to your account',
       onPress: () => router.push('/change-password'),
     });
 
@@ -665,6 +665,7 @@ export default function ProfileScreen() {
     needsActivation,
     viewingChild,
     user,
+    hasPassword,
     router,
     handleRequestDeletion,
     handleSignOutAllDevices,

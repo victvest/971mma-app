@@ -3,6 +3,9 @@
 // (the admin panel) must have their deployed origin in ALLOWED_ORIGINS.
 const DEFAULT_ALLOWED_ORIGINS = [
   'https://app.971mma.com',
+  'https://admin.971mma.com',
+  'https://971mma-admin.vercel.app',
+  'https://*.vercel.app',
   'http://localhost:3000',
   'http://localhost:3001',
 ];
