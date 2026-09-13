@@ -110,7 +110,12 @@ function applyMembershipFilter(
     return clients.filter((client) => isActiveMembership(client.appMembershipStatus));
   }
   if (membershipFilter === 'inactive') {
-    return clients.filter((client) => client.appUserId && !isActiveMembership(client.appMembershipStatus));
+    return clients.filter(
+      (client) =>
+        client.appUserId &&
+        !isActiveMembership(client.appMembershipStatus) &&
+        Boolean(client.appMembershipStatus && client.appMembershipStatus.trim() !== ''),
+    );
   }
   return clients;
 }
