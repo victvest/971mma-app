@@ -13,6 +13,7 @@ type AdminClientsRequest = {
   linkedFilter?: 'all' | 'linked' | 'unlinked';
   activeFilter?: 'all' | 'active' | 'inactive';
   membershipFilter?: 'all' | 'active' | 'inactive';
+  inAppFilter?: 'all' | 'in_app' | 'not_in_app';
   orderBy?: 'recent' | 'points';
   roleFilter?: 'admin' | 'coach' | 'member' | 'guest' | null;
 };
@@ -732,8 +733,10 @@ async function fetchFilteredMindbodyPage(input: {
   limit: number;
   offset: number;
   includeInactive: boolean;
-  linkedFilter: 'all' | 'unlinked';
+  linkedFilter: 'all' | 'unlinked' | 'linked';
   activeFilter: 'all' | 'active' | 'inactive';
+  membershipFilter?: 'all' | 'active' | 'inactive';
+  inAppFilter?: 'all' | 'in_app' | 'not_in_app';
   orderBy: 'recent' | 'points' | 'name';
 }): Promise<{ clients: NormalizedClient[]; total: number }> {
   const matched: NormalizedClient[] = [];
@@ -761,8 +764,31 @@ async function fetchFilteredMindbodyPage(input: {
       .filter((client): client is NormalizedClient => Boolean(client));
 
     let enriched = await enrichWithAppData(normalized);
+
+    // Apply inAppFilter
+    if (input.inAppFilter === 'in_app') {
+      enriched = enriched.filter((client) => Boolean(client.appUserId));
+    } else if (input.inAppFilter === 'not_in_app') {
+      enriched = enriched.filter((client) => !client.appUserId);
+    }
+
     enriched = applyLinkedFilter(enriched, input.linkedFilter);
     enriched = applyActiveFilter(enriched, input.activeFilter);
+
+    // Apply membershipFilter
+    if (input.membershipFilter === 'active') {
+      enriched = enriched.filter(
+        (client) =>
+          client.status?.toLowerCase() === 'active' ||
+          client.appMembershipStatus?.toLowerCase() === 'active',
+      );
+    } else if (input.membershipFilter === 'inactive') {
+      enriched = enriched.filter(
+        (client) =>
+          client.status?.toLowerCase() !== 'active' &&
+          client.appMembershipStatus?.toLowerCase() !== 'active',
+      );
+    }
 
     for (const client of enriched) {
       if (skipped < input.offset) {
@@ -776,7 +802,7 @@ async function fetchFilteredMindbodyPage(input: {
 
   const linkedCount = await countLinkedMembers(null);
   let estimatedTotal: number;
-  if (input.linkedFilter === 'unlinked' && input.activeFilter === 'all' && !input.query) {
+  if ((input.linkedFilter === 'unlinked' || input.inAppFilter === 'not_in_app') && input.activeFilter === 'all' && !input.query) {
     estimatedTotal = Math.max(0, (Number.isFinite(mbTotal) ? mbTotal : 0) - linkedCount);
   } else if (input.activeFilter === 'inactive' && input.linkedFilter === 'all' && !input.query) {
     // Best-effort: scanned matches plus remaining unknown pages.
@@ -807,6 +833,7 @@ Deno.serve((req) =>
       const linkedFilter = body.linkedFilter ?? 'all';
       const activeFilter = body.activeFilter ?? 'all';
       const membershipFilter = body.membershipFilter ?? 'all';
+      const inAppFilter = body.inAppFilter ?? (linkedFilter === 'unlinked' ? 'not_in_app' : 'all');
       const orderBy = body.orderBy ?? 'recent';
       const roleFilter = body.roleFilter ?? null;
 
@@ -825,14 +852,15 @@ Deno.serve((req) =>
           linkedFilter,
           activeFilter,
           membershipFilter,
+          inAppFilter,
           orderBy,
           roleFilter,
           fetchedAt: new Date().toISOString(),
         });
       }
 
-      // Linked, role, and membership filters must page from profiles database.
-      if (linkedFilter !== 'all' || roleFilter || membershipFilter !== 'all') {
+      // App directory page is used ONLY when specifically filtering for in_app or specific app roles
+      if (inAppFilter === 'in_app' || roleFilter) {
         const page = await fetchAppDirectoryPage({
           query,
           limit,
@@ -852,14 +880,16 @@ Deno.serve((req) =>
           linkedFilter,
           activeFilter,
           membershipFilter,
+          inAppFilter,
           orderBy,
           roleFilter,
           fetchedAt: new Date().toISOString(),
         });
       }
 
-      // Unlinked or inactive: scan Mindbody pages until this page is filled.
-      if (linkedFilter === 'unlinked' || activeFilter === 'inactive') {
+      // If inAppFilter === 'not_in_app' or linkedFilter === 'unlinked' or activeFilter === 'inactive' or membershipFilter !== 'all':
+      // Scan Mindbody pages with accurate filters!
+      if (inAppFilter === 'not_in_app' || linkedFilter === 'unlinked' || activeFilter === 'inactive' || membershipFilter !== 'all') {
         const page = await fetchFilteredMindbodyPage({
           query,
           limit,
@@ -867,6 +897,8 @@ Deno.serve((req) =>
           includeInactive: linkedFilter === 'unlinked' ? includeInactive : true,
           linkedFilter: linkedFilter === 'unlinked' ? 'unlinked' : 'all',
           activeFilter,
+          membershipFilter,
+          inAppFilter,
           orderBy,
         });
         return jsonResponse({
@@ -878,6 +910,7 @@ Deno.serve((req) =>
           linkedFilter,
           activeFilter,
           membershipFilter,
+          inAppFilter,
           orderBy,
           roleFilter,
           fetchedAt: new Date().toISOString(),
