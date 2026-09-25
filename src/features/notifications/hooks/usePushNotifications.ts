@@ -3,11 +3,9 @@ import { AppState } from 'react-native';
 import type { NotificationResponse } from 'expo-notifications';
 import { router } from 'expo-router';
 import { useAuthStore } from '@/stores/useAuthStore';
-import { isStartupBackgroundWorkComplete } from '@/core/startup/startupBackgroundState';
 import { resolvePushNotificationNavigation } from '@/features/notifications/resolveNotificationAction';
 import {
   registerForPushNotifications,
-  type PushRegistrationResult,
 } from '../services/pushRegistration';
 import {
   ensureNotificationHandlerConfigured,
@@ -22,6 +20,8 @@ export function usePushNotifications() {
   const isAuthenticated = useAuthStore((state) => state.isAuthenticated);
   const userId = useAuthStore((state) => state.user?.id ?? null);
   const handledResponseRef = useRef<string | null>(null);
+  const permissionAttemptedForUserRef = useRef<string | null>(null);
+  const registrationInFlightRef = useRef(false);
   const pushAvailable = isPushNotificationsAvailable();
 
   const handleResponse = useCallback((response: NotificationResponse | null) => {
@@ -56,10 +56,29 @@ export function usePushNotifications() {
   useEffect(() => {
     if (!pushAvailable || !isAuthenticated || !userId) return undefined;
 
+    const register = async (requestPermission: boolean) => {
+      if (registrationInFlightRef.current) return;
+
+      registrationInFlightRef.current = true;
+      try {
+        await registerForPushNotifications({ requestPermission });
+      } finally {
+        registrationInFlightRef.current = false;
+      }
+    };
+
+    // Register as soon as an authenticated session is available. Android 13+
+    // requires a runtime permission prompt before an Expo push token can be
+    // used; waiting for an AppState transition meant a freshly opened app
+    // could remain unregistered indefinitely.
+    if (permissionAttemptedForUserRef.current !== userId) {
+      permissionAttemptedForUserRef.current = userId;
+      void register(true);
+    }
+
     const subscription = AppState.addEventListener('change', (state) => {
       if (state !== 'active') return;
-      if (!isStartupBackgroundWorkComplete(userId)) return;
-      void registerForPushNotifications({ requestPermission: false });
+      void register(false);
     });
 
     return () => {
