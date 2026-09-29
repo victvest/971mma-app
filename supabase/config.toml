@@ -24,7 +24,6 @@ enabled = true
 site_url = "ninemma://auth/callback"
 additional_redirect_urls = [
   "ninemma://auth/callback",
-  "https://app.971mma.com/auth/callback",
 ]
 enable_signup = true
 minimum_password_length = 8

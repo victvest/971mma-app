@@ -13,11 +13,6 @@ export function getAuthRedirectPath(platform = Platform.OS): string {
 }
 
 export function getAuthRedirectUri(): string {
-  const host = getAuthCallbackHost();
-  if (host && Platform.OS !== 'web' && !__DEV__) {
-    return `https://${host}/${AUTH_CALLBACK_PATH}`;
-  }
-
   return Linking.createURL(getAuthRedirectPath());
 }
 

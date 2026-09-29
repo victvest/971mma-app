@@ -103,7 +103,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.ios,
       bundleIdentifier: APP_BUNDLE_ID,
       usesAppleSignIn: true,
-      associatedDomains: [...(config.ios?.associatedDomains ?? []), 'applinks:app.971mma.com'],
       config: {
         ...config.ios?.config,
         usesNonExemptEncryption: false,
@@ -132,18 +131,6 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       },
       intentFilters: [
         ...(config.android?.intentFilters ?? []),
-        {
-          action: 'VIEW',
-          autoVerify: true,
-          data: [
-            {
-              scheme: 'https',
-              host: 'app.971mma.com',
-              pathPrefix: '/auth/callback',
-            },
-          ],
-          category: ['BROWSABLE', 'DEFAULT'],
-        },
       ],
 
       permissions: [
