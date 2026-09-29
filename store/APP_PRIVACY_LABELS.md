@@ -4,7 +4,7 @@ Fill App Privacy to match the binary. Last audited: 22 July 2026.
 
 ## Privacy Policy URL
 
-`https://971mma.com/app-privacy/` (must be live before submit)
+`https://nine-seven-one.vercel.app/app-privacy` (must be live before submit)
 
 ## Data collection overview
 

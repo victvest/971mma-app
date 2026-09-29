@@ -1,8 +1,8 @@
 # 971 MMA Privacy Website Content
 
 ## Source links
-- App privacy policy: https://971mma.com/app-privacy/
-- App account deletion page: https://971mma.com/app-account-deletion/
+- App privacy policy: https://nine-seven-one.vercel.app/app-privacy
+- App account deletion page: https://nine-seven-one.vercel.app/app-account-deletion
 
 ## Contact
 - Email: info@971mma.com

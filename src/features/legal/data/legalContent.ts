@@ -18,7 +18,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
   title: 'Your privacy at 971 MMA',
   lastUpdated: 'July 2026',
   intro:
-    'This Privacy Policy explains what information the 971 MMA mobile app collects, how we use it, and the choices you have. By using the app you agree to the practices described here. The public copy of this policy is also published at https://971mma.com/app-privacy/.',
+    'This Privacy Policy explains what information the 971 MMA mobile app collects, how we use it, and the choices you have. By using the app you agree to the practices described here. The public copy of this policy is also published at https://nine-seven-one.vercel.app/app-privacy.',
   sections: [
     {
       heading: '1. Information we collect',
@@ -66,7 +66,7 @@ export const PRIVACY_DOCUMENT: LegalDocument = {
       paragraphs: [
         'You can review and update your name, phone number, and profile photo at any time from the Edit Profile screen.',
         'You can permanently delete your app account from Profile → Delete Account. Deletion removes your app account and associated personal data from our systems immediately. Gym membership and billing remain with the academy front desk and are not cancelled automatically by deleting the app account.',
-        'If you cannot open the app, you may also request deletion at https://971mma.com/app-account-deletion/ or by emailing info@971mma.com.',
+        'If you cannot open the app, you may also request deletion at https://nine-seven-one.vercel.app/app-account-deletion or by emailing info@971mma.com.',
         'You may contact us to ask what information we hold about you or to withdraw consent where applicable.',
       ],
     },

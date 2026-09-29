@@ -37,6 +37,10 @@ export function resolveNotificationActionFromPayload(
   const titleLower = (options.title ?? '').toLowerCase();
   const url = readPayloadId(payload, ['url']);
 
+  if (type === 'announcement' || type.includes('announcement')) {
+    return { href: '/notifications', label: 'View announcement' };
+  }
+
   if (type === 'class_reminder' || type === 'class_cancelled') {
     const classId = readPayloadId(payload, ['classId', 'class_id', 'id']);
     if (classId) {

@@ -14,9 +14,11 @@ function timingSafeEqual(left: string, right: string): boolean {
 }
 
 export function requireInternalSecret(req: Request): void {
-  const expected = Deno.env.get('CRON_SECRET');
-  if (!expected) {
-    throw new MbError('UPSTREAM_ERROR', 'Missing server env: CRON_SECRET', 500);
+  const expectedSecrets = [Deno.env.get('CRON_SECRET'), Deno.env.get('NOTIFICATION_PUSH_SECRET')]
+    .map((value) => value?.trim())
+    .filter((value): value is string => Boolean(value));
+  if (expectedSecrets.length === 0) {
+    throw new MbError('UPSTREAM_ERROR', 'Missing server internal secret.', 500);
   }
 
   const headerSecret = req.headers.get('x-cron-secret')?.trim();
@@ -26,7 +28,7 @@ export function requireInternalSecret(req: Request): void {
     : null;
   const provided = headerSecret ?? bearerSecret;
 
-  if (!provided || !timingSafeEqual(provided, expected)) {
+  if (!provided || !expectedSecrets.some((expected) => timingSafeEqual(provided, expected))) {
     throw new MbError('UNAUTHORIZED', 'Invalid internal secret.');
   }
 }

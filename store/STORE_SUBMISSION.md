@@ -35,14 +35,14 @@ Upload these HTML files to WordPress/Hostinger so they are publicly reachable **
 
 | File | Publish at |
 |---|---|
-| `store/hosting/pages/app-privacy.html` | `https://971mma.com/app-privacy/` |
-| `store/hosting/pages/app-account-deletion.html` | `https://971mma.com/app-account-deletion/` |
+| `store/hosting/pages/app-privacy.html` | `https://nine-seven-one.vercel.app/app-privacy` |
+| `store/hosting/pages/app-account-deletion.html` | `https://nine-seven-one.vercel.app/app-account-deletion` |
 
 Then verify in a private browser window:
 
 ```bash
-curl -sI https://971mma.com/app-privacy/ | head
-curl -sL https://971mma.com/app-privacy/ | rg -i "account deletion|personal data"
+curl -sI https://nine-seven-one.vercel.app/app-privacy | head
+curl -sL https://nine-seven-one.vercel.app/app-privacy | rg -i "account deletion|personal data"
 ```
 
 Use these URLs in:
@@ -132,7 +132,7 @@ Also add notes:
 
 ## App Store Connect checklist (fill exactly)
 
-- [ ] Privacy Policy URL → `https://971mma.com/app-privacy/`
+- [ ] Privacy Policy URL → `https://nine-seven-one.vercel.app/app-privacy`
 - [ ] Support URL → `https://971mma.com/` or a dedicated support page
 - [ ] Marketing URL (optional) → `https://971mma.com/`
 - [ ] Age rating questionnaire (honest answers for fitness / user-generated content if any)
@@ -156,9 +156,9 @@ Also add notes:
 ## Google Play Console checklist
 
 - [ ] Create app with package `com.victvest.ninemma`
-- [ ] Privacy policy URL → `https://971mma.com/app-privacy/`
+- [ ] Privacy policy URL → `https://nine-seven-one.vercel.app/app-privacy`
 - [ ] Data safety form — use `store/PLAY_DATA_SAFETY.md`
-- [ ] Account deletion URL → `https://971mma.com/app-account-deletion/`
+- [ ] Account deletion URL → `https://nine-seven-one.vercel.app/app-account-deletion`
 - [ ] Content rating questionnaire (IARC)
 - [ ] Target audience / Families — **not** designed primarily for children (guardian feature ≠ Kids category)
 - [ ] Advertising ID declaration → **No** (app does not use Ads SDK / AAID)

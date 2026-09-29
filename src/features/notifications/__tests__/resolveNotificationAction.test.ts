@@ -20,6 +20,10 @@ function item(
 }
 
 describe('resolveNotificationAction', () => {
+  it('routes academy announcements to the notification center', () => {
+    expect(resolveNotificationAction(item({ type: 'announcement' }))?.href).toBe('/notifications');
+  });
+
   it('routes class reminders to class detail', () => {
     expect(
       resolveNotificationAction(

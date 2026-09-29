@@ -4,7 +4,7 @@ Fill Play Console → App content → Data safety. Last audited: 22 July 2026.
 
 ## Privacy policy
 
-`https://971mma.com/app-privacy/`
+`https://nine-seven-one.vercel.app/app-privacy`
 
 ## Does your app collect or share user data?
 
@@ -15,7 +15,7 @@ Fill Play Console → App content → Data safety. Last audited: 22 July 2026.
 
 - Users can request deletion: **Yes**
 - In-app: Profile → Delete Account (immediate)
-- Web URL (required): `https://971mma.com/app-account-deletion/`
+- Web URL (required): `https://nine-seven-one.vercel.app/app-account-deletion`
 
 ## Data types
 
