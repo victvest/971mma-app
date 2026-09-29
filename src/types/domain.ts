@@ -453,6 +453,7 @@ export interface NotificationPreferences {
   milestones: boolean;
   rewards: boolean;
   guardianAlerts: boolean;
+  community: boolean;
   updatedAt: string;
 }
 

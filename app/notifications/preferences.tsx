@@ -19,7 +19,8 @@ type PreferenceKey =
   | 'classReminders'
   | 'milestones'
   | 'rewards'
-  | 'guardianAlerts';
+  | 'guardianAlerts'
+  | 'community';
 
 type PreferenceRowConfig = {
   key: PreferenceKey;
@@ -58,6 +59,12 @@ const PREFERENCE_ROWS: PreferenceRowConfig[] = [
     title: 'Guardian alerts',
     subtitle: 'Child check-ins and trainee updates',
     icon: 'people-outline',
+  },
+  {
+    key: 'community',
+    title: 'Community updates',
+    subtitle: 'Group posts and replies',
+    icon: 'chatbubbles-outline',
   },
 ];
 

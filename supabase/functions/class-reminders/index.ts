@@ -150,7 +150,7 @@ async function loadCancellationRows(svc: ServiceClient): Promise<SubscriptionWit
 async function sendReminderGroup(svc: ServiceClient, group: ClassPushGroup): Promise<void> {
   const time = formatGymTime(group.klass.starts_at);
   const title = 'Class reminder';
-  const body = `Your ${time} ${classLabel(group.klass)} class starts in 1 hour - on your way?`;
+  const body = `Your ${time} ${classLabel(group.klass)} class starts in 1 hour. See you on the mat!`;
 
   await sendPushToUsers(svc, {
     userIds: group.userIds,
@@ -174,7 +174,7 @@ async function sendReminderGroup(svc: ServiceClient, group: ClassPushGroup): Pro
 async function sendCancellationGroup(svc: ServiceClient, group: ClassPushGroup): Promise<void> {
   const time = formatGymTime(group.klass.starts_at);
   const title = 'Class cancelled';
-  const body = `${time} ${classTitle(group.klass)} has been cancelled.`;
+  const body = `Your ${time} ${classTitle(group.klass)} class was cancelled.`;
 
   await sendPushToUsers(svc, {
     userIds: group.userIds,

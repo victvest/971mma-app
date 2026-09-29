@@ -33,6 +33,7 @@ export function ensureNotificationHandlerConfigured(): void {
 
   Notifications.setNotificationHandler({
     handleNotification: async () => ({
+      shouldShowAlert: true,
       shouldShowBanner: true,
       shouldShowList: true,
       shouldPlaySound: true,
@@ -41,3 +42,6 @@ export function ensureNotificationHandlerConfigured(): void {
   });
   handlerConfigured = true;
 }
+
+// Ensure the notification handler is registered immediately upon JS bundle evaluation
+ensureNotificationHandlerConfigured();

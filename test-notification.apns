@@ -1,0 +1,13 @@
+{
+  "Simulator Target Bundle": "com.victvest.ninemma",
+  "aps": {
+    "alert": {
+      "title": "971 MMA Announcement",
+      "body": "Test push notification banner on iOS Simulator!"
+    },
+    "sound": "default",
+    "badge": 1
+  },
+  "type": "announcement",
+  "url": "/(tabs)/feed"
+}

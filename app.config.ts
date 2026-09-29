@@ -75,8 +75,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       [
         'expo-image-picker',
         {
-          photosPermission:
-            '971 MMA uses your photo library so you can choose a profile picture.',
+          photosPermission: '971 MMA uses your photo library so you can choose a profile picture.',
           microphonePermission: false,
         },
       ],
@@ -84,17 +83,17 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       'expo-apple-authentication',
       ...(googleIosUrlScheme
         ? [
-            [
-              '@react-native-google-signin/google-signin',
-              { iosUrlScheme: googleIosUrlScheme },
-            ] as [string, { iosUrlScheme: string }],
+            ['@react-native-google-signin/google-signin', { iosUrlScheme: googleIosUrlScheme }] as [
+              string,
+              { iosUrlScheme: string },
+            ],
           ]
         : []),
       'expo-video',
       [
         'expo-notifications',
         {
-          defaultChannel: 'class-reminders',
+          defaultChannel: 'academy-updates',
           color: '#00843D',
         },
       ],
@@ -104,10 +103,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
       ...config.ios,
       bundleIdentifier: APP_BUNDLE_ID,
       usesAppleSignIn: true,
-      associatedDomains: [
-        ...(config.ios?.associatedDomains ?? []),
-        'applinks:app.971mma.com',
-      ],
+      associatedDomains: [...(config.ios?.associatedDomains ?? []), 'applinks:app.971mma.com'],
       config: {
         ...config.ios?.config,
         usesNonExemptEncryption: false,
@@ -117,7 +113,7 @@ export default ({ config }: ConfigContext): ExpoConfig => {
         NSCameraUsageDescription:
           '971 MMA uses the camera so coaches can scan member QR passes for class attendance.',
         NSUserNotificationsUsageDescription:
-          '971 MMA sends reminders for classes you subscribe to.',
+          '971 MMA sends important class, progress, family, and academy updates.',
         NSPhotoLibraryUsageDescription:
           '971 MMA uses your photo library so you can choose a profile picture.',
         ITSAppUsesNonExemptEncryption: false,

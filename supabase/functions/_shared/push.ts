@@ -3,7 +3,15 @@ import { MbError } from './errors.ts';
 
 const EXPO_PUSH_URL = 'https://exp.host/--/api/v2/push/send';
 const EXPO_PUSH_BATCH_SIZE = 100;
-const CLASS_REMINDER_CHANNEL_ID = 'class-reminders';
+
+export const PUSH_CHANNEL_IDS = {
+  academy: 'academy-updates',
+  classes: 'class-reminders',
+  progress: 'progress-updates',
+  rewards: 'rewards-updates',
+  family: 'family-updates',
+  community: 'community-updates',
+} as const;
 
 export type PushData = Record<string, unknown>;
 
@@ -82,6 +90,53 @@ function readNotificationType(data: PushData): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
 }
 
+function readDataText(data: PushData, key: string): string {
+  const value = data[key];
+  return typeof value === 'string' ? value.trim().toLowerCase() : '';
+}
+
+function isPhonePushSuppressed(data: PushData): boolean {
+  const type = readNotificationType(data)?.toLowerCase() ?? '';
+
+  if (
+    type === 'referral' ||
+    type.startsWith('referral_') ||
+    type === 'community' ||
+    type === 'feed_like' ||
+    type === 'feed_comment' ||
+    type === 'gate_scan' ||
+    type === 'qr_scan' ||
+    type === 'facility_entry'
+  ) {
+    return true;
+  }
+
+  return type === 'parent_child' && readDataText(data, 'eventType') === 'check_in';
+}
+
+export function notificationChannelId(data: PushData): string {
+  const type = readNotificationType(data)?.toLowerCase() ?? '';
+
+  if (type === 'class_reminder' || type === 'class_cancelled' || type === 'class_attendance') {
+    return PUSH_CHANNEL_IDS.classes;
+  }
+  if (
+    type === 'milestone' ||
+    type === 'promotion' ||
+    type === 'belt' ||
+    type === 'progression' ||
+    type === 'streak_warning'
+  ) {
+    return PUSH_CHANNEL_IDS.progress;
+  }
+  if (type === 'reward' || type === 'redemption') return PUSH_CHANNEL_IDS.rewards;
+  if (type === 'parent_child' || type === 'guardian_alert') return PUSH_CHANNEL_IDS.family;
+  if (type === 'community' || type === 'feed_like' || type === 'feed_comment') {
+    return PUSH_CHANNEL_IDS.community;
+  }
+  return PUSH_CHANNEL_IDS.academy;
+}
+
 function expoTicketsFromResponse(body: ExpoPushResponse): ExpoPushTicket[] {
   if (!body.data) return [];
   return Array.isArray(body.data) ? body.data : [body.data];
@@ -133,17 +188,11 @@ async function insertInAppNotifications(
   return rows.length;
 }
 
-async function deleteStaleTokens(
-  svc: SupabaseClient,
-  tokens: string[],
-): Promise<number> {
+async function deleteStaleTokens(svc: SupabaseClient, tokens: string[]): Promise<number> {
   const staleTokens = uniqueStrings(tokens);
   if (staleTokens.length === 0) return 0;
 
-  const { error } = await svc
-    .from('push_tokens')
-    .delete()
-    .in('expo_push_token', staleTokens);
+  const { error } = await svc.from('push_tokens').delete().in('expo_push_token', staleTokens);
 
   if (error) {
     throw new MbError('UPSTREAM_ERROR', `Unable to delete stale push tokens: ${error.message}`);
@@ -181,6 +230,10 @@ export async function sendPushToUsers(
   svc: SupabaseClient,
   input: SendPushInput,
 ): Promise<SendPushResult> {
+  if (isPhonePushSuppressed(input.data)) {
+    throw new MbError('BAD_REQUEST', 'This notification type is not allowed as a phone push.');
+  }
+
   const userIds = uniqueStrings(input.userIds);
   if (userIds.length === 0) {
     return {
@@ -193,9 +246,7 @@ export async function sendPushToUsers(
   }
 
   const inAppCount =
-    input.insertInApp === false
-      ? 0
-      : await insertInAppNotifications(svc, userIds, input);
+    input.insertInApp === false ? 0 : await insertInAppNotifications(svc, userIds, input);
 
   const { data, error } = await svc
     .from('push_tokens')
@@ -206,9 +257,7 @@ export async function sendPushToUsers(
     throw new MbError('UPSTREAM_ERROR', `Unable to load push tokens: ${error.message}`);
   }
 
-  const tokenRows = ((data ?? []) as PushTokenRow[]).filter((row) =>
-    row.expo_push_token.trim(),
-  );
+  const tokenRows = ((data ?? []) as PushTokenRow[]).filter((row) => row.expo_push_token.trim());
 
   if (tokenRows.length === 0) {
     return {
@@ -227,7 +276,7 @@ export async function sendPushToUsers(
     data: input.data,
     sound: 'default',
     priority: 'high',
-    channelId: CLASS_REMINDER_CHANNEL_ID,
+    channelId: notificationChannelId(input.data),
     ...(typeof input.ttl === 'number' ? { ttl: input.ttl } : {}),
     ...(typeof input.expiration === 'number' ? { expiration: input.expiration } : {}),
   }));
@@ -241,10 +290,7 @@ export async function sendPushToUsers(
     ticketCount += tickets.length;
 
     tickets.forEach((ticket, index) => {
-      if (
-        ticket.status === 'error' &&
-        ticket.details?.error === 'DeviceNotRegistered'
-      ) {
+      if (ticket.status === 'error' && ticket.details?.error === 'DeviceNotRegistered') {
         const token = batch[index]?.to;
         if (token) staleTokens.push(token);
       }

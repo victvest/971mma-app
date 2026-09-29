@@ -75,6 +75,9 @@ verify_jwt = false
 [functions.push-send]
 verify_jwt = false
 
+[functions.notification-push]
+verify_jwt = false
+
 [functions.class-reminders]
 verify_jwt = false
 

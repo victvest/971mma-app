@@ -36,6 +36,7 @@ function mapPreferencesRow(row: NotificationPreferencesRow): NotificationPrefere
     milestones: row.milestones,
     rewards: row.rewards,
     guardianAlerts: row.guardian_alerts,
+    community: row.community,
     updatedAt: row.updated_at,
   };
 }
@@ -61,7 +62,7 @@ async function getNotificationPreferencesFromTable(
   const { data, error } = await client
     .from('notification_preferences')
     .select(
-      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at',
     )
     .eq('user_id', userId)
     .maybeSingle();
@@ -73,7 +74,7 @@ async function getNotificationPreferencesFromTable(
     .from('notification_preferences')
     .insert({ user_id: userId })
     .select(
-      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at',
     )
     .single();
 
@@ -86,7 +87,7 @@ async function updateNotificationPreferencesFromTable(
   patch: Partial<
     Pick<
       NotificationPreferences,
-      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts'
+      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts' | 'community'
     >
   >,
 ): Promise<NotificationPreferences> {
@@ -98,13 +99,14 @@ async function updateNotificationPreferencesFromTable(
   if (patch.milestones !== undefined) update.milestones = patch.milestones;
   if (patch.rewards !== undefined) update.rewards = patch.rewards;
   if (patch.guardianAlerts !== undefined) update.guardian_alerts = patch.guardianAlerts;
+  if (patch.community !== undefined) update.community = patch.community;
 
   const { data, error } = await getSupabaseClient()
     .from('notification_preferences')
     .update({ ...update, updated_at: new Date().toISOString() })
     .eq('user_id', userId)
     .select(
-      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, updated_at',
+      'user_id, announcements, class_reminders, milestones, rewards, guardian_alerts, community, updated_at',
     )
     .single();
 
@@ -198,7 +200,7 @@ export async function updateNotificationPreferences(
   patch: Partial<
     Pick<
       NotificationPreferences,
-      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts'
+      'announcements' | 'classReminders' | 'milestones' | 'rewards' | 'guardianAlerts' | 'community'
     >
   >,
 ): Promise<NotificationPreferences> {
@@ -208,7 +210,7 @@ export async function updateNotificationPreferences(
     p_milestones: patch.milestones ?? null,
     p_rewards: patch.rewards ?? null,
     p_guardian_alerts: patch.guardianAlerts ?? null,
-    p_community: null,
+    p_community: patch.community ?? null,
   });
 
   if (!error && data) {

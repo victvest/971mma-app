@@ -1,0 +1,56 @@
+name: Notification scheduler
+
+on:
+  schedule:
+    # Every ten minutes for one-hour class reminders and cancellation catch-up.
+    - cron: '*/10 * * * *'
+    # 6:00 PM Asia/Dubai (UTC+4).
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: notification-scheduler-${{ github.event.schedule || 'manual' }}
+  cancel-in-progress: false
+
+permissions: {}
+
+jobs:
+  class-reminders:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '*/10 * * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run class reminder job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            --connect-timeout 10 --max-time 90 \
+            -X POST "$SUPABASE_URL/functions/v1/class-reminders" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H 'content-type: application/json' \
+            --data '{}'
+
+  streak-reminders:
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '0 14 * * *'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run streak reminder job
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          set -euo pipefail
+          test -n "$SUPABASE_URL"
+          test -n "$CRON_SECRET"
+          curl --fail-with-body --silent --show-error --retry 3 --retry-all-errors \
+            --connect-timeout 10 --max-time 90 \
+            -X POST "$SUPABASE_URL/functions/v1/streak-reminders" \
+            -H "x-cron-secret: $CRON_SECRET" \
+            -H 'content-type: application/json' \
+            --data '{}'

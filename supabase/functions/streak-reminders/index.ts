@@ -54,8 +54,8 @@ Deno.serve(async (req) => {
 
     await sendPushToUsers(svc, {
       userIds,
-      title: 'Keep your streak alive',
-      body: 'You are in your grace window. Train today to protect your attendance streak.',
+      title: 'Keep your streak going',
+      body: 'Train today to keep your streak going.',
       data: {
         type: 'streak_warning',
         url: '/(tabs)/rewards',

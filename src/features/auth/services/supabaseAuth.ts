@@ -5,6 +5,7 @@ import { toUserFacingErrorMessage } from '@/lib/userFacingError';
 import { formatAuthError, normalizeEmail } from './authValidation';
 import { continueWithApple } from './appleAuth';
 import { continueWithGoogle, signOutGoogleQuietly } from './googleAuth';
+import { unregisterPushToken } from '@/features/notifications/services/pushRegistration';
 import type { AuthService } from '../types';
 
 type AuthSignInResponse = {
@@ -183,6 +184,11 @@ export const supabaseAuthService: AuthService = {
   },
 
   async signOut() {
+    try {
+      await unregisterPushToken();
+    } catch {
+      // Ignore unregister errors during signOut
+    }
     await getSupabaseClient().auth.signOut();
     await signOutGoogleQuietly();
   },
